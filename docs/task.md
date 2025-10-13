@@ -124,26 +124,26 @@ collabcanvas/
 **Goal:** Implement Firebase Auth with Google Sign-In
 
 ### Tasks:
-- [ ] **2.1** Create TypeScript types for user data
+- [x] **2.1** Create TypeScript types for user data
   - **Files:** `src/types/user.types.ts`
   
-- [ ] **2.2** Build authentication service
+- [x] **2.2** Build authentication service
   - **Files:** `src/services/auth.ts`
   - Functions: `signInWithGoogle()`, `signOut()`, `onAuthStateChanged()`
   
-- [ ] **2.3** Create AuthContext for global auth state
+- [x] **2.3** Create AuthContext for global auth state
   - **Files:** `src/contexts/AuthContext.tsx`
   - Exports: `AuthProvider`, `useAuth` hook
   
-- [ ] **2.4** Build SignInButton component
+- [x] **2.4** Build SignInButton component
   - **Files:** `src/components/Auth/SignInButton.tsx`
   - Show "Sign in with Google" when logged out
   - Show user info + sign out when logged in
   
-- [ ] **2.5** Create AuthProvider wrapper component
+- [x] **2.5** Create AuthProvider wrapper component
   - **Files:** `src/components/Auth/AuthProvider.tsx`
   
-- [ ] **2.6** Update App.tsx to use authentication
+- [x] **2.6** Update App.tsx to use authentication
   - **Files:** `src/App.tsx`
   - Show sign-in screen if not authenticated
   - Show canvas if authenticated
@@ -154,7 +154,7 @@ collabcanvas/
   - Test sign out
   - Verify persistence across page refresh
 
-- [ ] **2.8** Write unit tests for authentication service
+- [x] **2.8** Write unit tests for authentication service
   - **Files:** `src/__tests__/services/auth.test.ts`
   - **Tests to write:**
     - Mock Firebase Auth methods

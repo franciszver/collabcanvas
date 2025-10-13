@@ -1,7 +1,11 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { onAuthStateChanged, signInWithGoogle, signOut } from '../services/auth'
+import type { AuthState, AuthUserProfile } from '../types/user.types'
 
-// Placeholder types for PR #1
-export interface AuthContextValue {}
+export interface AuthContextValue extends AuthState {
+  signInWithGoogle: () => Promise<void>
+  signOut: () => Promise<void>
+}
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
@@ -12,7 +16,42 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  return <AuthContext.Provider value={{}}>{children}</AuthContext.Provider>
+  const [user, setUser] = useState<AuthUserProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged((u) => {
+      setUser(u)
+      setIsLoading(false)
+    })
+    return unsubscribe
+  }, [])
+
+  const handleSignIn = async () => {
+    setError(null)
+    try {
+      await signInWithGoogle()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  const handleSignOut = async () => {
+    setError(null)
+    try {
+      await signOut()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  const value: AuthContextValue = useMemo(
+    () => ({ user, isLoading, error, signInWithGoogle: handleSignIn, signOut: handleSignOut }),
+    [user, isLoading, error]
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 

@@ -6,7 +6,13 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.jest.json',
+        useESM: true
+      }
+    ],
   },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': '<rootDir>/src/test-utils/styleMock.js',
