@@ -74,10 +74,10 @@ collabcanvas/
 **Goal:** Bootstrap React + TypeScript project, configure Firebase, deploy "Hello World"
 
 ### Tasks:
-- [ ] **1.1** Initialize React + TypeScript project with Create React App or Vite
+- [x] **1.1** Initialize React + TypeScript project with Create React App or Vite
   - **Files:** `package.json`, `tsconfig.json`, `.gitignore`
   
-- [ ] **1.2** Install core dependencies
+- [x] **1.2** Install core dependencies
   - **Dependencies:** `react`, `react-dom`, `typescript`, `firebase`, `react-konva`, `konva`
   - **Dev Dependencies:** `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jest`, `@types/jest`, `jest-environment-jsdom`
   - **Files:** `package.json`
