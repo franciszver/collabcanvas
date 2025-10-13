@@ -71,3 +71,7 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deployment
+
+- Deployed (Firebase Hosting): [collabcanvas-aac98.web.app](https://collabcanvas-aac98.web.app)

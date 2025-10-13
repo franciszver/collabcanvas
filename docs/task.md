@@ -101,7 +101,7 @@ collabcanvas/
     - `src/App.css`
     - `public/index.html`
   
-- [ ] **1.6** Configure deployment (Vercel or Firebase Hosting)
+- [x] **1.6** Configure deployment (Vercel or Firebase Hosting)
   - **Files:** `vercel.json` OR `firebase.json`, `.firebaserc`
   
 - [ ] **1.7** Deploy "Hello World" and verify public URL works
