@@ -169,42 +169,43 @@ collabcanvas/
 **Goal:** Integrate Konva.js and implement basic canvas navigation
 
 ### Tasks:
-- [ ] **3.1** Create canvas type definitions
+- [x] **3.1** Create canvas type definitions
   - **Files:** `src/types/canvas.types.ts`
   - Define: `Rectangle`, `CanvasState`, `ViewportTransform`
   
-- [ ] **3.2** Create constants file
+- [x] **3.2** Create constants file
   - **Files:** `src/utils/constants.ts`
   - Define: `DEFAULT_RECT_WIDTH = 200`, `DEFAULT_RECT_HEIGHT = 100`, `CANVAS_SIZE`, etc.
   
-- [ ] **3.3** Build base Canvas component with Konva
+- [x] **3.3** Build base Canvas component with Konva
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Set up `Stage` and `Layer` from react-konva
   - Implement pan (drag stage)
   - Implement zoom (mouse wheel)
   
-- [ ] **3.4** Add canvas styling
+- [x] **3.4** Add canvas styling
   - **Files:** `src/components/Canvas/Canvas.module.css`
   
-- [ ] **3.5** Create CanvasContext for local state management
+- [x] **3.5** Create CanvasContext for local state management
   - **Files:** `src/contexts/CanvasContext.tsx`
   - Manage: rectangles array, viewport transform, selected tool
   - Exports: `CanvasProvider`, `useCanvas` hook
   
-- [ ] **3.6** Integrate Canvas into App layout
+- [x] **3.6** Integrate Canvas into App layout
   - **Files:** 
     - `src/App.tsx`
     - `src/components/Layout/AppLayout.tsx`
   
-- [ ] **3.7** Test pan and zoom functionality
+- [x] **3.7** Test pan and zoom functionality
   - Verify smooth 60 FPS performance
   - Test with trackpad and mouse
   - Check zoom centered on cursor position
+  - Persist viewport to localStorage between sessions
 
 ---
 
 ## PR #4: Rectangle Creation (Local Only)
-**Goal:** Click to place 200x100px rectangles on canvas (no sync yet)
+**Goal:** Click to place 200x100px rectangles on canvas and resize them (no sync yet)
 
 ### Tasks:
 - [ ] **4.1** Add click handler to Canvas component
@@ -245,6 +246,22 @@ collabcanvas/
   - Drag rectangles to move them
   - Verify no lag or visual glitches
   - Test with 20+ rectangles for performance
+
+- [ ] **4.8** Implement rectangle resizing
+  - **Files:** `src/components/Canvas/Canvas.tsx`
+  - Use Konva `Transformer` to allow resizing of a selected rectangle
+  - Update width/height while preserving position during resize
+
+- [ ] **4.9** Update context to handle size updates
+  - **Files:** `src/contexts/CanvasContext.tsx`
+  - Add method to update rectangle width/height on resize end
+
+- [ ] **4.10** Write component test for resizing
+  - **Files:** `src/__tests__/components/Canvas.test.tsx`
+  - **Tests to write:**
+    - Resize interaction updates rectangle size in state
+    - Transformer appears only for selected rectangle
+  - **Verification:** Run `npm test` - Canvas component tests should pass
 
 ---
 

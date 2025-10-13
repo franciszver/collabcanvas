@@ -3,6 +3,7 @@ import {
   getAuth,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   type User
@@ -19,13 +20,25 @@ function mapUser(user: User | null): AuthUserProfile | null {
   }
 }
 
-export async function signInWithGoogle(): Promise<AuthUserProfile> {
+export async function signInWithGoogle(): Promise<AuthUserProfile | void> {
   const auth = getAuth(getFirebaseApp())
   const provider = new GoogleAuthProvider()
-  const result = await signInWithPopup(auth, provider)
-  const profile = mapUser(result.user)
-  if (!profile) throw new Error('Failed to retrieve user after sign-in')
-  return profile
+  try {
+    const result = await signInWithPopup(auth, provider)
+    const profile = mapUser(result.user)
+    if (!profile) throw new Error('Failed to retrieve user after sign-in')
+    return profile
+  } catch (_err) {
+    // Fallback for environments where popups are restricted by COOP/COEP or browser settings
+    await signInWithRedirect(auth, provider)
+    // After redirect, onAuthStateChanged will fire; no profile to return here
+  }
+}
+
+export async function signInWithGoogleRedirect(): Promise<void> {
+  const auth = getAuth(getFirebaseApp())
+  const provider = new GoogleAuthProvider()
+  await signInWithRedirect(auth, provider)
 }
 
 export async function signOut(): Promise<void> {

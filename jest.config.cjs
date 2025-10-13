@@ -16,7 +16,8 @@ module.exports = {
   },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': '<rootDir>/src/test-utils/styleMock.js',
-    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/test-utils/fileMock.js'
+    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/test-utils/fileMock.js',
+    '^react-konva$': '<rootDir>/src/test-utils/reactKonvaMock.js'
   }
 }
 
