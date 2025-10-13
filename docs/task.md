@@ -88,13 +88,13 @@ collabcanvas/
   - Enable Authentication (Google provider)
   - Get Firebase config credentials
   
-- [ ] **1.4** Create Firebase configuration files
+- [x] **1.4** Create Firebase configuration files
   - **Files:** 
     - `src/services/firebase.ts` (Firebase initialization)
     - `.env.local` (Firebase credentials - DO NOT COMMIT)
     - `.env.example` (Template for environment variables)
   
-- [ ] **1.5** Create basic App structure with "Hello World"
+- [x] **1.5** Create basic App structure with "Hello World"
   - **Files:**
     - `src/App.tsx` (Main app component)
     - `src/index.tsx` (React entry point)
