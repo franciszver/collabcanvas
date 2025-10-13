@@ -75,3 +75,6 @@ export default defineConfig([
 ## Deployment
 
 - Deployed (Firebase Hosting): [collabcanvas-aac98.web.app](https://collabcanvas-aac98.web.app)
+- Deploy steps:
+  1. Build the app: `npm run build`
+  2. Deploy hosting: `firebase deploy --only hosting`

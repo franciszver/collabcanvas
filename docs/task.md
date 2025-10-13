@@ -104,12 +104,12 @@ collabcanvas/
 - [x] **1.6** Configure deployment (Vercel or Firebase Hosting)
   - **Files:** `vercel.json` OR `firebase.json`, `.firebaserc`
   
-- [ ] **1.7** Deploy "Hello World" and verify public URL works
+- [x] **1.7** Deploy "Hello World" and verify public URL works
   - Test deployment pipeline
   - Document deployment URL in README
   - **Files:** `README.md`
 
-- [ ] **1.8** Set up testing infrastructure
+- [x] **1.8** Set up testing infrastructure
   - **Files:** 
     - `jest.config.js` (Jest configuration)
     - `src/__tests__/setup.ts` (Test setup with Firebase mocks)
