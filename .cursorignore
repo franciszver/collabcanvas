@@ -1,0 +1,30 @@
+# Build outputs
+dist/
+build/
+out/
+.next/
+.vercel/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.Test
+firebase-debug.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Test coverage & reports
+coverage/
+*.lcov
+
+# Generated types / cache
+*.tsbuildinfo
+.cache/

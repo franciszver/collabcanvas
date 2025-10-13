@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 import AuthProvider from './components/Auth/AuthProvider'
+import { getFirebaseApp } from './services/firebase'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -11,5 +12,8 @@ createRoot(document.getElementById('root')!).render(
     </AuthProvider>
   </StrictMode>,
 )
+
+// Ensure Firebase App is initialized at startup
+getFirebaseApp()
 
 

@@ -148,7 +148,7 @@ collabcanvas/
   - Show sign-in screen if not authenticated
   - Show canvas if authenticated
   
-- [ ] **2.7** Test authentication flow
+ - [x] **2.7** Test authentication flow
   - Sign in with Google account
   - Verify user display name appears
   - Test sign out

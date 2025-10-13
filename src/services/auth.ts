@@ -1,3 +1,4 @@
+import { getFirebaseApp } from './firebase'
 import {
   getAuth,
   onAuthStateChanged as firebaseOnAuthStateChanged,
@@ -19,7 +20,7 @@ function mapUser(user: User | null): AuthUserProfile | null {
 }
 
 export async function signInWithGoogle(): Promise<AuthUserProfile> {
-  const auth = getAuth()
+  const auth = getAuth(getFirebaseApp())
   const provider = new GoogleAuthProvider()
   const result = await signInWithPopup(auth, provider)
   const profile = mapUser(result.user)
@@ -28,14 +29,14 @@ export async function signInWithGoogle(): Promise<AuthUserProfile> {
 }
 
 export async function signOut(): Promise<void> {
-  const auth = getAuth()
+  const auth = getAuth(getFirebaseApp())
   await firebaseSignOut(auth)
 }
 
 export function onAuthStateChanged(
   callback: (user: AuthUserProfile | null) => void
 ): () => void {
-  const auth = getAuth()
+  const auth = getAuth(getFirebaseApp())
   return firebaseOnAuthStateChanged(auth, (user) => callback(mapUser(user)))
 }
 
