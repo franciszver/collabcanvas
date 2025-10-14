@@ -625,12 +625,11 @@ collabcanvas/
 **Goal:** Allow creating multiple shape types with deterministic placement and validate performance under higher concurrency
 
 ### Tasks:
-- [ ] **12.1** Add "Create Shape" menu
+- [x] **12.1** Add header shape selector
   - Options: Rectangle, Circle, Triangle, Star
-  - Menu visible at top-left of the canvas workspace
-  - Selecting an option immediately creates the chosen shape
+  - Selector appears in the pinned header; choosing a shape creates it immediately
 
-- [ ] **12.2** Implement deterministic placement rules
+- [x] **12.2** Implement deterministic placement rules
   - First shape appears at top-left of canvas
   - Each subsequent shape appears +50px right and +50px down from the previous
   - After 10 shapes, restart placement back at top-left

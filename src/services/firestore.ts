@@ -86,6 +86,7 @@ export function subscribeToRectangles(
         width: data.width,
         height: data.height,
         fill: data.fill,
+        type: data.type ?? 'rect',
       }
       return { rect, updatedAtMs }
     })

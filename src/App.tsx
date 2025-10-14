@@ -5,6 +5,7 @@ import Canvas from './components/Canvas/Canvas'
 import AppLayout from './components/Layout/AppLayout'
 import ErrorBoundary from './components/Layout/ErrorBoundary'
 import DetailsDropdown from './components/Header/DetailsDropdown'
+import ShapeSelector from './components/Header/ShapeSelector'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
 import { PresenceProvider } from './contexts/PresenceContext'
@@ -33,11 +34,13 @@ function App() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 16px',
-                  borderBottom: '1px solid #1f2937',
-                  background: '#0f172a',
-                  position: 'sticky',
+                  borderBottom: '1px solid #374151',
+                  background: '#1f2937',
+                  position: 'fixed',
                   top: 0,
-                  zIndex: 10,
+                  left: 0,
+                  right: 0,
+                  zIndex: 100,
                 }}
               >
                 <div>
@@ -45,6 +48,7 @@ function App() {
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>v{APP_VERSION}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <ShapeSelector />
                   <DetailsDropdown />
                 </div>
               </div>

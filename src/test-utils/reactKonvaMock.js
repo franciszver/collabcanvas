@@ -77,6 +77,39 @@ function Text(props) {
   return React.createElement('div', { 'data-testid': 'Text', ...props })
 }
 
-module.exports = { Stage, Layer, Rect, Transformer, Text }
+function Circle(props) {
+  const { onDragMove, onDragEnd, ...rest } = props
+  const handleMouseMove = (ev) => {
+    if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleMouseUp = (ev) => {
+    if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  return React.createElement('div', { 'data-testid': 'Circle', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+}
+
+function RegularPolygon(props) {
+  const { onDragMove, onDragEnd, ...rest } = props
+  const handleMouseMove = (ev) => {
+    if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleMouseUp = (ev) => {
+    if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  return React.createElement('div', { 'data-testid': 'RegularPolygon', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+}
+
+function Star(props) {
+  const { onDragMove, onDragEnd, ...rest } = props
+  const handleMouseMove = (ev) => {
+    if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleMouseUp = (ev) => {
+    if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  return React.createElement('div', { 'data-testid': 'Star', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+}
+
+module.exports = { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star }
 
 

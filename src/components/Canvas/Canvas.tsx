@@ -1,9 +1,9 @@
-import { Stage, Layer, Rect, Transformer, Text } from 'react-konva'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line } from 'react-konva'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
-import { defaultRectAt, generateRectId, transformCanvasCoordinates } from '../../utils/helpers'
+import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
 import { updateCursorPosition } from '../../services/presence'
@@ -12,7 +12,7 @@ import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading } = useCanvas()
+  const { viewport, setViewport, rectangles, setRectangles, updateRectangle, deleteRectangle, isLoading } = useCanvas()
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
@@ -51,6 +51,24 @@ export default function Canvas() {
       }
     } catch {}
   }, [viewport, containerSize, setViewport, clampViewport])
+
+  // Compute grid lines based on visible canvas area
+  const gridLines = useMemo(() => {
+    const spacing = 50
+    const minX = -viewport.x / viewport.scale
+    const maxX = (containerSize.width - viewport.x) / viewport.scale
+    const minY = -viewport.y / viewport.scale
+    const maxY = (containerSize.height - viewport.y) / viewport.scale
+    const xs: number[] = []
+    const ys: number[] = []
+    const startX = Math.floor(minX / spacing) * spacing
+    const endX = Math.ceil(maxX / spacing) * spacing
+    const startY = Math.floor(minY / spacing) * spacing
+    const endY = Math.ceil(maxY / spacing) * spacing
+    for (let x = startX; x <= endX; x += spacing) xs.push(x)
+    for (let y = startY; y <= endY; y += spacing) ys.push(y)
+    return { xs, ys, minY, maxY, minX, maxX }
+  }, [viewport, containerSize])
   // Remote cursor smoothing
   const smoothedCursorsRef = useRef<Record<string, { x: number; y: number }>>({})
   const targetsRef = useRef<Record<string, { x: number; y: number }>>({})
@@ -156,25 +174,13 @@ export default function Canvas() {
     return () => window.removeEventListener('resize', onResize)
   }, [viewport, setViewport, clampViewport])
 
-  const onClick = useCallback(
-    (e: any) => {
-      // Only create when clicking on empty stage background
-      const stage = e.target.getStage()
-      if (e.target !== stage) return
-      // Suppress create if a drag occurred before mouseup/click
-      if (movedRef.current) {
-        movedRef.current = false
-        return
-      }
-      const pos = stage.getPointerPosition()
-      const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
-      const base = defaultRectAt(x, y)
-      const id = generateRectId()
-      addRectangle({ id, ...base })
-      setSelectedId(id)
-    },
-    [viewport, addRectangle]
-  )
+  const onClick = useCallback((e: any) => {
+    // Disable shape creation by clicking on canvas background; just clear selection
+    const stage = e.target.getStage()
+    if (e.target !== stage) return
+    setSelectedId(null)
+    movedRef.current = false
+  }, [])
 
   // Track pointer for presence updates (throttled via RAF)
   const timeoutId = useRef<any>(null)
@@ -329,6 +335,7 @@ export default function Canvas() {
         <div style={{ color: '#E5E7EB' }}>Loading canvas…</div>
       </div>
     ) : null}
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
     <Stage
       ref={stageRef}
       width={containerSize.width}
@@ -344,88 +351,131 @@ export default function Canvas() {
       onMouseUp={onMouseUp}
       draggable={false}
     >
+      {/* Grid Layer */}
+      <Layer listening={false}>
+        {gridLines.xs.map((x) => (
+          <Line key={`gx-${x}`} points={[x, gridLines.minY, x, gridLines.maxY]} stroke="#374151" strokeWidth={0.5} opacity={0.4} />
+        ))}
+        {gridLines.ys.map((y) => (
+          <Line key={`gy-${y}`} points={[gridLines.minX, y, gridLines.maxX, y]} stroke="#374151" strokeWidth={0.5} opacity={0.4} />
+        ))}
+      </Layer>
       {/* Shapes Layer */}
       <Layer listening>
-        {rectangles.map((r: Rectangle) => (
-          <Rect
-            key={`rect-${r.id}`}
-            name={`rect-${r.id}`}
-            x={(() => {
-              if (draggingIdRef.current === r.id || selectedId === r.id) return r.x
-              const s = smoothedRectsRef.current[r.id]
-              return s ? s.x : r.x
-            })()}
-            y={(() => {
-              if (draggingIdRef.current === r.id || selectedId === r.id) return r.y
-              const s = smoothedRectsRef.current[r.id]
-              return s ? s.y : r.y
-            })()}
-            width={r.width}
-            height={r.height}
-            fill={r.fill}
-            draggable
-            perfectDrawEnabled={false}
-            shadowForStrokeEnabled={false}
-            onDragStart={() => { draggingIdRef.current = r.id; setSelectedId(r.id) }}
-            onClick={(evt) => {
-              evt.cancelBubble = true
-              const node = evt.target
-              if (node && node.moveToTop) {
-                node.moveToTop()
-                node.getLayer()?.batchDraw()
-              }
-              setSelectedId(r.id)
-            }}
-            onTap={(evt) => {
-              evt.cancelBubble = true
-              const node = evt.target
-              if (node && node.moveToTop) {
-                node.moveToTop()
-                node.getLayer()?.batchDraw()
-              }
-              setSelectedId(r.id)
-            }}
-            onMouseEnter={(evt) => {
-              const node = evt.target
-              if (node && node.opacity) {
-                node.opacity(0.9)
-                node.getLayer()?.batchDraw()
-              }
-            }}
-            onMouseLeave={(evt) => {
-              const node = evt.target
-              if (node && node.opacity) {
-                node.opacity(1)
-                node.getLayer()?.batchDraw()
-              }
-            }}
-            onDragMove={(evt) => {
-              const node = evt.target
-              const nx = node.x()
-              const ny = node.y()
-              setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
-            }}
-            onDragEnd={(evt) => {
-              const node = evt.target
-              updateRectangle(r.id, { x: node.x(), y: node.y() })
-              draggingIdRef.current = null
-            }}
-            onTransformEnd={(evt) => {
-              const node = evt.target
-              const scaleX = node.scaleX ? node.scaleX() : 1
-              const scaleY = node.scaleY ? node.scaleY() : 1
-              const newWidth = Math.max(5, node.width() * scaleX)
-              const newHeight = Math.max(5, node.height() * scaleY)
-              if (node.scaleX) node.scaleX(1)
-              if (node.scaleY) node.scaleY(1)
-              if (node.moveToTop) {
-                node.moveToTop()
-                node.getLayer()?.batchDraw()
-              }
-              updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight })
-            }}
-          />
-        ))}
+        {rectangles.map((r: Rectangle) => {
+          const isSelected = selectedId === r.id
+          const sm = smoothedRectsRef.current[r.id]
+          const baseX = draggingIdRef.current === r.id || isSelected ? r.x : sm ? sm.x : r.x
+          const baseY = draggingIdRef.current === r.id || isSelected ? r.y : sm ? sm.y : r.y
+          const commonProps: any = {
+            key: `shape-${r.id}`,
+            name: `rect-${r.id}`,
+            fill: r.fill,
+            draggable: true,
+            perfectDrawEnabled: false,
+            shadowForStrokeEnabled: false,
+            onDragStart: () => { draggingIdRef.current = r.id; setSelectedId(r.id) },
+            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSelectedId(r.id) },
+            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSelectedId(r.id) },
+            onMouseEnter: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
+            onMouseLeave: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
+          }
+          const handleDragMove = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
+            const cx = node.x()
+            const cy = node.y()
+            const { x, y } = toTopLeft(cx, cy)
+            setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x, y } : rc)))
+          }
+          const handleDragEnd = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
+            const cx = node.x()
+            const cy = node.y()
+            const { x, y } = toTopLeft(cx, cy)
+            updateRectangle(r.id, { x, y })
+            draggingIdRef.current = null
+          }
+          if (r.type === 'circle') {
+            const radius = r.radius ?? Math.min(r.width, r.height) / 2
+            const cx = baseX + r.width / 2
+            const cy = baseY + r.height / 2
+            return (
+              <Circle
+                {...commonProps}
+                x={cx}
+                y={cy}
+                radius={radius}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: any) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const newRadius = Math.max(5, (node.radius ? node.radius() : radius) * scaleX)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  const newWidth = newRadius * 2
+                  const newHeight = newRadius * 2
+                  const newX = node.x() - newWidth / 2
+                  const newY = node.y() - newHeight / 2
+                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight })
+                }}
+              />
+            )
+          }
+          if (r.type === 'triangle') {
+            const radius = Math.min(r.width, r.height) / 2
+            const cx = baseX + r.width / 2
+            const cy = baseY + r.height / 2
+            return (
+              <RegularPolygon
+                {...commonProps}
+                x={cx}
+                y={cy}
+                sides={3}
+                radius={radius}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+              />
+            )
+          }
+          if (r.type === 'star') {
+            const outer = Math.min(r.width, r.height) / 2
+            const inner = outer / 2
+            const cx = baseX + r.width / 2
+            const cy = baseY + r.height / 2
+            return (
+              <Star
+                {...commonProps}
+                x={cx}
+                y={cy}
+                numPoints={5}
+                innerRadius={inner}
+                outerRadius={outer}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+              />
+            )
+          }
+          // default rectangle
+          return (
+            <Rect
+              {...commonProps}
+              x={baseX}
+              y={baseY}
+              width={r.width}
+              height={r.height}
+              onDragMove={(evt: any) => {
+                const node = evt.target
+                const nx = node.x()
+                const ny = node.y()
+                setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
+              }}
+              onDragEnd={(evt: any) => {
+                const node = evt.target
+                updateRectangle(r.id, { x: node.x(), y: node.y() })
+                draggingIdRef.current = null
+              }}
+            />
+          )
+        })}
       </Layer>
       {/* Overlay Layer for selection & delete icon */}
       <Layer listening>
@@ -461,6 +511,7 @@ export default function Canvas() {
         <Transformer ref={transformerRef} rotateEnabled={false} ignoreStroke />
       </Layer>
     </Stage>
+    </div>
     {/* Presence cursors overlay (HTML) */}
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {Object.values(users)

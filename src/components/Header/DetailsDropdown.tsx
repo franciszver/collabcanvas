@@ -34,6 +34,16 @@ export default function DetailsDropdown() {
 
   const label = useMemo(() => '☰', [])
   const rectCount = rectangles.length
+  const shapeCounts = useMemo(() => {
+    let rect = 0, circ = 0, tri = 0, star = 0
+    for (const r of rectangles) {
+      if (r.type === 'circle') circ++
+      else if (r.type === 'triangle') tri++
+      else if (r.type === 'star') star++
+      else rect++
+    }
+    return { rect, circ, tri, star, total: rectangles.length }
+  }, [rectangles])
   const canClear = !busy && !isLoading && rectCount > 0
 
   return (
@@ -91,7 +101,13 @@ export default function DetailsDropdown() {
           )}
 
           <div style={{ height: 1, background: '#1f2937', margin: '6px 0' }} />
-          <div style={{ fontSize: 13 }}>Rectangles: <span style={{ color: '#93C5FD' }}>{rectCount}</span></div>
+          <div style={{ fontSize: 13, display: 'grid', gridTemplateColumns: 'auto auto', rowGap: 4, columnGap: 12 }}>
+            <div>Rectangles:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.rect}</div>
+            <div>Circles:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.circ}</div>
+            <div>Triangles:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.tri}</div>
+            <div>Stars:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.star}</div>
+            <div style={{ fontWeight: 600 }}>Total:</div><div style={{ color: '#60A5FA', fontWeight: 600 }}>{shapeCounts.total}</div>
+          </div>
 
           <div style={{ height: 1, background: '#1f2937', margin: '6px 0' }} />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
