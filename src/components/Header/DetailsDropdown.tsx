@@ -114,7 +114,7 @@ export default function DetailsDropdown() {
             <button
               onClick={async () => {
                 if (!canClear) return
-                if (!window.confirm('Clear all rectangles for everyone? This cannot be undone.')) return
+                if (!window.confirm('Clear all shapes for everyone? This cannot be undone.')) return
                 setBusy(true)
                 try {
                   await clearAllRectangles()

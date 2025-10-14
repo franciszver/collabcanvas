@@ -598,7 +598,7 @@ collabcanvas/
     - ✅ 60 FPS during pan/zoom
     - ✅ Users have authentication/names
   
-- [ ] **11.3** Performance under load
+- [x] **11.3** Performance under load
   - Support 500+ simple objects without FPS drops
   - Support 5+ concurrent users without degradation
   
@@ -634,7 +634,7 @@ collabcanvas/
   - Each subsequent shape appears +50px right and +50px down from the previous
   - After 10 shapes, restart placement back at top-left
 
-- [ ] **12.3** Test performance with 5+ concurrent users
+- [x] **12.3** Test performance with 5+ concurrent users
   - Validate no degradation in interaction latency
   - Verify shapes create/sync reliably under load
 

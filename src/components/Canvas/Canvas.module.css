@@ -4,6 +4,8 @@
   position: fixed;
   inset: 0;
   background: #1f2937; /* lighter workspace background */
+  border: 1px solid #4b5563; /* gray border around workspace */
+  box-sizing: border-box;
 }
 
 
