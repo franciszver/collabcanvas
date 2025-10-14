@@ -17,7 +17,16 @@ jest.mock('firebase/auth', () => ({
   signOut: jest.fn(),
   GoogleAuthProvider: jest.fn(function MockProvider() {}),
 }))
-jest.mock('firebase/firestore', () => ({}))
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
+  collection: jest.fn(() => ({})),
+  doc: jest.fn(() => ({})),
+  setDoc: jest.fn(() => Promise.resolve()),
+  updateDoc: jest.fn(() => Promise.resolve()),
+  deleteDoc: jest.fn(() => Promise.resolve()),
+  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+  onSnapshot: jest.fn(() => jest.fn()),
+}))
 // Ensure local firebase initializer is not imported during tests
 jest.mock('../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
 

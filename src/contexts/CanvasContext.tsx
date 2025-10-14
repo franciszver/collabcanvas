@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createRectangle, updateRectangleDoc, deleteRectangleDoc } from '../services/firestore'
 import type { CanvasState, Rectangle, ViewportTransform } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
+import { useCanvasRealtime } from '../hooks/useCanvas'
 
 export interface CanvasContextValue extends CanvasState {
   setViewport: (v: ViewportTransform) => void
@@ -39,6 +40,8 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   })
   const [rectangles, setRectangles] = useState<Rectangle[]>([])
   const selectedTool: CanvasState['selectedTool'] = 'pan'
+  // Track last seen server update time for each rectangle (ms) to apply LWW
+  const lastSeenUpdatedAtRef = useRef<Record<string, number>>({})
 
   const addRectangle = async (rect: Rectangle) => {
     setRectangles((prev) => [...prev, rect])
@@ -86,6 +89,21 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
   }, [viewport])
+
+  // Subscribe to Firestore rectangles and merge updates using last-write-wins
+  const handleRows = useCallback((rows: { rect: Rectangle; updatedAtMs: number }[]) => {
+    const nextById: Record<string, Rectangle> = {}
+    for (const { rect, updatedAtMs } of rows) {
+      const prevSeen = lastSeenUpdatedAtRef.current[rect.id] ?? 0
+      if (updatedAtMs > prevSeen) {
+        lastSeenUpdatedAtRef.current[rect.id] = updatedAtMs
+      }
+      nextById[rect.id] = rect
+    }
+    setRectangles(Object.values(nextById))
+  }, [])
+
+  useCanvasRealtime(handleRows)
 
   return <CanvasContext.Provider value={value}>{children}</CanvasContext.Provider>
 }
