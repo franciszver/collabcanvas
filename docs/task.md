@@ -680,7 +680,7 @@ collabcanvas/
  - [ ] **13.11** Enable multi-select and group move
   - Select multiple shapes and drag them together
 
- - [ ] **13.12** Link shape movement with cursor refresh movement
+ - [x] **13.12** Link shape movement with cursor refresh movement
   - Couple shape movement updates with the cursor refresh cadence for synchronized visual feedback
 
  - [ ] **13.13** Workspace size menu
@@ -696,7 +696,12 @@ collabcanvas/
  - [x] **13.16** Update header shape buttons to icons
   - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
 
-- [ ] **13.17** Review and remove slop
+- [ ] **13.17** Add text shape functionality
+  - Introduce a new text shape that can be added, resized, and display text
+  - Text shape should have default value "Enter Text" and provide an input form in the properties menu for users to edit and change the text content
+  - Support text editing, font size, color, and basic text formatting options
+
+- [ ] **13.18** Review and remove slop
   - Audit and remove unused code, redundant comments, and cruft across `src/`
 
 ---
@@ -705,10 +710,10 @@ collabcanvas/
 **Goal:** Improve realtime responsiveness and UI performance under interaction
 
 ### Tasks:
-- [ ] **14.1** Realtime cursors via Firebase
+- [x] **14.1** Realtime cursors via Firebase
   - Use Firebase Realtime Database to track and render cursors of other users
 
-- [ ] **14.2** Realtime drag via Firebase
+- [x] **14.2** Realtime drag via Firebase
   - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
 
 - [ ] **14.3** Optimize bundle size and code-splitting
