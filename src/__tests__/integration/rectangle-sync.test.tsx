@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { CanvasProvider } from '../../contexts/CanvasContext'
+import { PresenceProvider } from '../../contexts/PresenceContext'
 import Canvas from '../../components/Canvas/Canvas'
+import AuthProvider from '../../components/Auth/AuthProvider'
 
 // Capture the onSnapshot callback so tests can emit snapshots
 let emitSnapshot: ((snap: any) => void) | null = null
@@ -33,9 +35,13 @@ function updatedAt(ms: number) {
 describe('rectangle sync', () => {
   it('renders rectangles from realtime snapshots', async () => {
     render(
-      <CanvasProvider>
-        <Canvas />
-      </CanvasProvider>
+      <AuthProvider>
+        <PresenceProvider>
+          <CanvasProvider>
+            <Canvas />
+          </CanvasProvider>
+        </PresenceProvider>
+      </AuthProvider>
     )
 
     // Emit initial snapshot with two rectangles
@@ -52,9 +58,13 @@ describe('rectangle sync', () => {
 
   it('updates existing rectangle on new snapshot (no duplicates)', async () => {
     render(
-      <CanvasProvider>
-        <Canvas />
-      </CanvasProvider>
+      <AuthProvider>
+        <PresenceProvider>
+          <CanvasProvider>
+            <Canvas />
+          </CanvasProvider>
+        </PresenceProvider>
+      </AuthProvider>
     )
 
     emitSnapshot?.({

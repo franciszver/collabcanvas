@@ -1,4 +1,13 @@
-// Placeholder types for PR #1; will be filled in PR #7
-export {}
+export interface CursorPosition {
+  x: number
+  y: number
+}
+
+export interface UserPresence {
+  userId: string
+  displayName: string | null
+  cursor: CursorPosition | null
+  updatedAt: number
+}
 
 

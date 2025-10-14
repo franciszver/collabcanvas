@@ -371,43 +371,43 @@ collabcanvas/
 **Goal:** Show other users' cursors in real-time with name labels
 
 ### Tasks:
-- [ ] **7.1** Create presence type definitions
+- [x] **7.1** Create presence type definitions
   - **Files:** `src/types/presence.types.ts`
   - Define: `CursorPosition`, `UserPresence`
   
-- [ ] **7.2** Build presence service
+- [x] **7.2** Build presence service
   - **Files:** `src/services/presence.ts`
   - Functions: `updateCursorPosition()`, `subscribeToCursors()`, `setUserOnline()`, `setUserOffline()`
   
-- [ ] **7.3** Create PresenceContext
+- [x] **7.3** Create PresenceContext
   - **Files:** `src/contexts/PresenceContext.tsx`
   - Manage: online users, cursor positions
   - Exports: `PresenceProvider`, `usePresence` hook
   
-- [ ] **7.4** Build UserCursor component
+- [x] **7.4** Build UserCursor component
   - **Files:** `src/components/Presence/UserCursor.tsx`
   - Render cursor icon/dot at position
   - Show user's display name label
   - Style with CSS for visibility
   
-- [ ] **7.5** Implement cursor tracking in Canvas
+- [x] **7.5** Implement cursor tracking in Canvas
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Track mouse movement on stage
   - Throttle cursor updates (every 50ms max)
   - Send to Firestore via presence service
   
-- [ ] **7.6** Create useCursorSync hook
+- [x] **7.6** Create useCursorSync hook
   - **Files:** `src/hooks/useCursorSync.ts`
   - Subscribe to other users' cursor positions
   - Update PresenceContext with cursor data
   
-- [ ] **7.7** Render all user cursors on canvas
+- [x] **7.7** Render all user cursors on canvas
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Map over presence data
   - Render UserCursor component for each user
   - Filter out current user's cursor
   
-- [ ] **7.8** Write unit tests for presence service
+- [x] **7.8** Write unit tests for presence service
   - **Files:** `src/__tests__/services/presence.test.ts`
   - **Tests to write:**
     - Mock Firestore presence updates
@@ -417,7 +417,7 @@ collabcanvas/
     - Test cursor position coordinates are valid numbers
   - **Verification:** Run `npm test` - presence tests should pass
   
-- [ ] **7.9** Write integration test for cursor sync
+- [x] **7.9** Write integration test for cursor sync
   - **Files:** `src/__tests__/integration/cursor-sync.test.ts`
   - **Tests to write:**
     - Mock multiple user cursor positions
@@ -428,7 +428,7 @@ collabcanvas/
     - Test cursor positions update in real-time
   - **Verification:** Run `npm test` - cursor sync integration tests should pass
   
-- [ ] **7.10** Test cursor sync manually
+- [x] **7.10** Test cursor sync manually
   - Open 2-3 browser windows
   - Move mouse and verify cursors appear in other windows
   - Verify <50ms latency

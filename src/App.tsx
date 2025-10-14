@@ -4,6 +4,7 @@ import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
+import { PresenceProvider } from './contexts/PresenceContext'
 
 function App() {
   const { user, isLoading } = useAuth()
@@ -18,7 +19,8 @@ function App() {
           <SignInButton />
         </>
       ) : (
-        <CanvasProvider>
+        <PresenceProvider>
+          <CanvasProvider>
           <div
             style={{
               display: 'flex',
@@ -41,7 +43,8 @@ function App() {
             </div>
           </div>
           <Canvas />
-        </CanvasProvider>
+          </CanvasProvider>
+        </PresenceProvider>
       )}
     </div>
   )

@@ -5,9 +5,17 @@ import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
 import { defaultRectAt, generateRectId, transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
+import { usePresence } from '../../contexts/PresenceContext'
+import { setUserOnline, setUserOffline, updateCursorPosition } from '../../services/presence'
+import { useAuth } from '../../contexts/AuthContext'
+import UserCursor from '../Presence/UserCursor'
+import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
   const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle } = useCanvas()
+  const { users } = usePresence()
+  const { user } = useAuth()
+  useCursorSync()
   const isPanningRef = useRef(false)
   const lastPosRef = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
@@ -132,9 +140,53 @@ export default function Canvas() {
     [viewport, addRectangle]
   )
 
+  // Track pointer for presence updates (throttled via RAF)
+  const timeoutId = useRef<any>(null)
+  const pendingCursor = useRef<{ x: number; y: number } | null>(null)
+  const lastSentAt = useRef<number>(0)
+  const stageRef = useRef<any>(null)
+
+  const scheduleCursorSend = useCallback(() => {
+    if (timeoutId.current != null) return
+    timeoutId.current = setTimeout(async () => {
+      timeoutId.current = null
+      const now = Date.now()
+      if (now - lastSentAt.current < 50) {
+        scheduleCursorSend()
+        return
+      }
+      const p = pendingCursor.current
+      if (!p || !user) return
+      pendingCursor.current = null
+      lastSentAt.current = now
+      try {
+        await updateCursorPosition(user.id, p)
+      } catch {}
+    }, 50)
+  }, [user])
+
+  const onStageMouseMove = useCallback((e: any) => {
+    const stage = e.target.getStage()
+    const pos = stage.getPointerPosition()
+    if (!pos) return
+    const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
+    pendingCursor.current = { x, y }
+    scheduleCursorSend()
+  }, [viewport, scheduleCursorSend])
+
+  // Set online/offline presence for current user within this canvas session
+  useEffect(() => {
+    if (!user) return
+    setUserOnline(user.id, user.displayName ?? null).catch(() => {})
+    return () => {
+      setUserOffline(user.id).catch(() => {})
+    }
+  }, [user])
+
   return (
     <div className={styles.root}>
     <Stage
+      ref={stageRef}
       width={containerSize.width}
       height={containerSize.height}
       scaleX={viewport.scale}
@@ -144,7 +196,7 @@ export default function Canvas() {
       onClick={onClick}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
+      onMouseMove={(e) => { onMouseMove(e); onStageMouseMove(e) }}
       onMouseUp={onMouseUp}
       draggable={false}
     >
@@ -235,6 +287,17 @@ export default function Canvas() {
         <Transformer ref={transformerRef} rotateEnabled={false} ignoreStroke />
       </Layer>
     </Stage>
+    {/* Presence cursors overlay (HTML) */}
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {Object.values(users)
+        .filter((u) => u.userId !== (user?.id ?? ''))
+        .filter((u) => !!u.cursor)
+        .map((u) => {
+          const sx = viewport.x + u.cursor!.x * viewport.scale
+          const sy = viewport.y + u.cursor!.y * viewport.scale
+          return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
+        })}
+    </div>
     </div>
   )
 }
