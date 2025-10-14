@@ -133,6 +133,8 @@ export function rectangleToShape(rect: Rectangle, documentId: string, userId: st
     rotation: rect.rotation || 0,
     z: rect.z || 0,
     fill: rect.fill,
+    text: rect.text,
+    fontSize: rect.fontSize,
     createdBy: userId,
     updatedBy: userId,
     documentId,
@@ -151,6 +153,8 @@ export function shapeToRectangle(shape: ShapeDocument): Rectangle {
     rotation: shape.rotation,
     z: shape.z,
     fill: shape.fill,
+    text: shape.text,
+    fontSize: shape.fontSize,
   }
 }
 

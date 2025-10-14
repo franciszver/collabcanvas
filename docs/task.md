@@ -696,9 +696,10 @@ collabcanvas/
  - [x] **13.16** Update header shape buttons to icons
   - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
 
-- [ ] **13.17** Add text shape functionality
+- [x] **13.17** Add text shape functionality
   - Introduce a new text shape that can be added, resized, and display text
-  - Text shape should have default value "Enter Text" and provide an input form in the properties menu for users to edit and change the text content
+  - Text shape should have default value "Enter Text" and default size of 200x300 pixels
+  - Add text input form to the existing floating properties panel (that appears when a shape is selected) between the delete button and layer buttons, only visible when a text shape is selected
   - Support text editing, font size, color, and basic text formatting options
 
 - [ ] **13.18** Review and remove slop

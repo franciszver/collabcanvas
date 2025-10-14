@@ -4,7 +4,7 @@ export interface ViewportTransform {
   y: number
 }
 
-export type CanvasShapeType = 'rect' | 'circle' | 'triangle' | 'star' | 'arrow'
+export type CanvasShapeType = 'rect' | 'circle' | 'triangle' | 'star' | 'arrow' | 'text'
 
 export interface Rectangle {
   id: string
@@ -19,6 +19,8 @@ export interface Rectangle {
   points?: number
   rotation?: number
   z?: number
+  text?: string
+  fontSize?: number
 }
 
 export interface CanvasState {

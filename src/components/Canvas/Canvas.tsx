@@ -1,4 +1,4 @@
-import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow } from 'react-konva'
+import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow, Text } from 'react-konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
@@ -447,6 +447,36 @@ export default function Canvas() {
               />
             )
           }
+          if (r.type === 'text') {
+            return (
+              <Text
+                {...commonProps}
+                x={baseX}
+                y={baseY}
+                width={r.width}
+                height={r.height}
+                text={r.text || 'Enter Text'}
+                fontSize={r.fontSize || 16}
+                fill={r.fill}
+                rotation={r.rotation || 0}
+                align="left"
+                verticalAlign="top"
+                padding={8}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                onTransformEnd={(evt: any) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const scaleY = node.scaleY ? node.scaleY() : 1
+                  const newWidth = Math.max(50, r.width * scaleX)
+                  const newHeight = Math.max(30, r.height * scaleY)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                }}
+              />
+            )
+          }
           // default rectangle
           return (
             <Rect
@@ -557,6 +587,79 @@ export default function Canvas() {
           >
             Layer ↓
           </button>
+          {sel.type === 'text' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="text"
+                value={sel.text || 'Enter Text'}
+                onChange={(e) => updateRectangle(sel.id, { text: e.target.value })}
+                placeholder="Enter text..."
+                style={{
+                  background: '#111827',
+                  color: '#E5E7EB',
+                  border: '1px solid #374151',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  fontSize: 14,
+                  minWidth: 120,
+                  maxWidth: 200,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <button
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    updateRectangle(sel.id, { fontSize: Math.min(72, (sel.fontSize || 16) + 2) }) 
+                  }}
+                  title="Increase font size"
+                  aria-label="Increase font size"
+                  style={{
+                    background: '#0b3a1a',
+                    color: '#D1FAE5',
+                    border: '1px solid #065F46',
+                    borderRadius: 4,
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    lineHeight: 1,
+                    minWidth: 24,
+                    height: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 16) - 2) }) 
+                  }}
+                  title="Decrease font size"
+                  aria-label="Decrease font size"
+                  style={{
+                    background: '#3a0b0b',
+                    color: '#FECACA',
+                    border: '1px solid #7F1D1D',
+                    borderRadius: 4,
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    lineHeight: 1,
+                    minWidth: 24,
+                    height: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"

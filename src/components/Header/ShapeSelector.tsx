@@ -8,6 +8,7 @@ const SHAPES = [
   { key: 'triangle', label: 'Triangle', icon: '▲' },
   { key: 'star', label: 'Star', icon: '★' },
   { key: 'arrow', label: 'Arrow', icon: '➜' },
+  { key: 'text', label: 'Text', icon: 'T' },
 ] as const
 
 export default function ShapeSelector() {
@@ -47,7 +48,23 @@ export default function ShapeSelector() {
     try {
       const id = generateRectId()
       const pos = computePosition()
-      await addRectangle({ id, x: pos.x, y: pos.y, width: 200, height: 100, fill: color || getRandomColor(), type: type as any })
+      
+      // Set default size based on shape type
+      const isText = type === 'text'
+      const width = isText ? 200 : 200
+      const height = isText ? 300 : 100
+      
+      await addRectangle({ 
+        id, 
+        x: pos.x, 
+        y: pos.y, 
+        width, 
+        height, 
+        fill: color || getRandomColor(), 
+        type: type as any,
+        text: isText ? 'Enter Text' : undefined,
+        fontSize: isText ? 16 : undefined
+      })
       setIsOpen(false) // Close menu after creating shape
     } finally {
       setBusy(false)
