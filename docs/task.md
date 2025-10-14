@@ -696,6 +696,9 @@ collabcanvas/
  - [x] **13.16** Update header shape buttons to icons
   - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
 
+- [ ] **13.17** Review and remove slop
+  - Audit and remove unused code, redundant comments, and cruft across `src/`
+
 ---
 
 ## PR #14: Performance and Realtime Improvements

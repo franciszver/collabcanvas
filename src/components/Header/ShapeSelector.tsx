@@ -22,7 +22,7 @@ export default function ShapeSelector() {
     return { x: baseX + index * 50, y: baseY + index * 50 }
   }
 
-  // Position helper is no longer used here; random generation moved to DetailsDropdown
+  // Deterministic placement only; random generation moved to DetailsDropdown
 
   const createShape = async (type: string) => {
     if (busy) return
