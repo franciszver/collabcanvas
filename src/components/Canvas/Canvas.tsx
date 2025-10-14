@@ -26,6 +26,31 @@ export default function Canvas() {
   const prevSizeRef = useRef(containerSize)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const transformerRef = useRef<any>(null)
+  // Clamp viewport so Stage stays within browser viewport
+  const clampViewport = useCallback(
+    (x: number, y: number) => {
+      const maxX = Math.max(0, window.innerWidth - containerSize.width)
+      const maxY = Math.max(0, window.innerHeight - containerSize.height)
+      const clampedX = Math.max(0, Math.min(x, maxX))
+      const clampedY = Math.max(0, Math.min(y, maxY))
+      return { x: clampedX, y: clampedY }
+    },
+    [containerSize]
+  )
+
+  // Center stage initially if not persisted
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('collabcanvas:viewport') : null
+      if (!raw && viewport.x === 0 && viewport.y === 0) {
+        const centered = clampViewport(
+          Math.round((window.innerWidth - containerSize.width) / 2),
+          Math.round((window.innerHeight - containerSize.height) / 2)
+        )
+        setViewport({ ...viewport, ...centered })
+      }
+    } catch {}
+  }, [viewport, containerSize, setViewport, clampViewport])
   // Remote cursor smoothing
   const smoothedCursorsRef = useRef<Record<string, { x: number; y: number }>>({})
   const targetsRef = useRef<Record<string, { x: number; y: number }>>({})
@@ -53,9 +78,10 @@ export default function Canvas() {
         x: stage.getPointerPosition().x - mousePointTo.x * newScale,
         y: stage.getPointerPosition().y - mousePointTo.y * newScale,
       }
-      setViewport({ scale: newScale, x: newPos.x, y: newPos.y })
+      const clamped = clampViewport(newPos.x, newPos.y)
+      setViewport({ scale: newScale, x: clamped.x, y: clamped.y })
     },
-    [viewport, setViewport]
+    [viewport, setViewport, clampViewport]
   )
 
   const onMouseDown = useCallback((e: any) => {
@@ -72,9 +98,10 @@ export default function Canvas() {
       const dy = pos.y - lastPosRef.current.y
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
       lastPosRef.current = pos
-      setViewport({ ...viewport, x: viewport.x + dx, y: viewport.y + dy })
+      const clamped = clampViewport(viewport.x + dx, viewport.y + dy)
+      setViewport({ ...viewport, x: clamped.x, y: clamped.y })
     },
-    [viewport, setViewport]
+    [viewport, setViewport, clampViewport]
   )
 
   const onMouseUp = useCallback(() => {
@@ -119,16 +146,15 @@ export default function Canvas() {
       const centerCanvasX = (prev.width / 2 - viewport.x) / viewport.scale
       const centerCanvasY = (prev.height / 2 - viewport.y) / viewport.scale
       setContainerSize({ width: newWidth, height: newHeight })
-      setViewport({
-        ...viewport,
-        x: newWidth / 2 - centerCanvasX * viewport.scale,
-        y: newHeight / 2 - centerCanvasY * viewport.scale,
-      })
+      const nx = newWidth / 2 - centerCanvasX * viewport.scale
+      const ny = newHeight / 2 - centerCanvasY * viewport.scale
+      const clamped = clampViewport(nx, ny)
+      setViewport({ ...viewport, x: clamped.x, y: clamped.y })
       prevSizeRef.current = { width: newWidth, height: newHeight }
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [viewport, setViewport])
+  }, [viewport, setViewport, clampViewport])
 
   const onClick = useCallback(
     (e: any) => {

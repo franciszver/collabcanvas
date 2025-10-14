@@ -579,7 +579,7 @@ collabcanvas/
 **Goal:** Comprehensive testing and documentation for MVP launch
 
 ### Tasks:
-- [ ] **11.1** Run complete test suite
+ - [x] **11.1** Run complete test suite
   - **Command:** `npm test -- --coverage`
   - **Verification:** 
     - All unit tests pass (auth, firestore, presence, helpers)
@@ -588,7 +588,7 @@ collabcanvas/
     - Code coverage report generated
   - **Target Coverage:** Aim for >70% coverage on critical paths
   
-- [ ] **11.2** Run full MVP testing checklist
+- [x] **11.2** Run full MVP testing checklist
   - **Testing Scenarios:**
     - ✅ Two users can edit simultaneously in different browsers
     - ✅ Changes sync in <100ms
@@ -598,24 +598,11 @@ collabcanvas/
     - ✅ 60 FPS during pan/zoom
     - ✅ Users have authentication/names
   
-- [ ] **11.3** Multi-browser testing
-  - Test in Chrome, Firefox, Safari
-  - Test with 3+ concurrent users
-  - Test in incognito/private windows
+- [ ] **11.3** Performance under load
+  - Support 500+ simple objects without FPS drops
+  - Support 5+ concurrent users without degradation
   
-- [ ] **11.3** Network condition testing
-  - **Files:** Test using Chrome DevTools Network throttling
-  - Test "Slow 3G" simulation
-  - Test disconnect/reconnect scenarios
-  - Verify graceful degradation
-  
-- [ ] **11.4** Edge case testing
-  - Rapid rectangle creation (spam clicking)
-  - Simultaneous edits to same rectangle
-  - Very long user session (30+ minutes)
-  - Browser tab in background (test presence)
-  
-- [ ] **11.7** Update README with complete documentation
+- [ ] **11.4** Update README with complete documentation
   - **Files:** `README.md`
   - Project description
   - Setup instructions
@@ -626,71 +613,36 @@ collabcanvas/
   - Known limitations (last-write-wins, etc.)
   - Future roadmap
   
-- [ ] **11.8** Add code comments and documentation
+- [ ] **11.5** Add code comments and documentation
   - **Files:** All service files, complex components
   - Document Firestore structure
   - Document conflict resolution strategy
   - Add JSDoc comments to key functions
-  
-- [ ] **11.7** Final deployment
-  - Deploy to production
-  - Test production URL
-  - Share with team for UAT
-  
-- [ ] **11.8** Create demo video/screenshots
-  - Record multi-user demo
-  - Take screenshots for README
-  - Document in `docs/` folder
 
 ---
 
-## Testing Strategy Summary
+## PR #12: Shape Creation Menu & Concurrent Load Testing
+**Goal:** Allow creating multiple shape types with deterministic placement and validate performance under higher concurrency
 
-### Unit Tests (Fast, Isolated)
-**Purpose:** Verify individual functions and services work correctly
-- **PR #2:** Auth service tests (sign in, sign out, state changes)
-- **PR #4:** Helper utility tests (ID generation, color selection, coordinate transforms)
-- **PR #5:** Firestore service tests (CRUD operations, error handling)
-- **PR #7:** Presence service tests (cursor updates, throttling, online/offline)
-- **PR #10:** Canvas component tests (render, pan, zoom, drag)
+### Tasks:
+- [ ] **12.1** Add "Create Shape" menu
+  - Options: Rectangle, Circle, Triangle, Star
+  - Menu visible at top-left of the canvas workspace
+  - Selecting an option immediately creates the chosen shape
 
-### Integration Tests (Slower, Multi-Component)
-**Purpose:** Verify features work correctly across multiple components/services
-- **PR #6:** Rectangle sync integration (multi-user, conflict resolution, latency)
-- **PR #7:** Cursor sync integration (real-time updates, throttling, filtering)
-- **PR #9:** Persistence integration (load, save, reconnect, no data loss)
+- [ ] **12.2** Implement deterministic placement rules
+  - First shape appears at top-left of canvas
+  - Each subsequent shape appears +50px right and +50px down from the previous
+  - After 10 shapes, restart placement back at top-left
 
-### Manual E2E Testing (Full User Flows)
-**Purpose:** Verify complete user experience in real browsers
-- **PR #11:** Full MVP checklist, multi-browser, network conditions, edge cases
+- [ ] **12.3** Test performance with 5+ concurrent users
+  - Validate no degradation in interaction latency
+  - Verify shapes create/sync reliably under load
 
-### Running Tests
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode (during development)
-npm test -- --watch
-
-# Run tests with coverage report
-npm test -- --coverage
-
-# Run specific test file
-npm test -- helpers.test.ts
-
-# Run tests in CI/CD
-npm test -- --ci --coverage --maxWorkers=2
-```
-
-### Test Verification Checklist
-- [ ] All unit tests pass
-- [ ] All integration tests pass
-- [ ] Code coverage >70% on critical paths
-- [ ] No flaky tests (tests pass consistently)
-- [ ] Tests run in <30 seconds total
-- [ ] CI/CD pipeline includes test automation
 
 ---
+
+***
 
 ## Success Checklist - MVP Complete ✅
 
@@ -710,15 +662,10 @@ npm test -- --ci --coverage --maxWorkers=2
 - [ ] 60 FPS maintained during all interactions
 - [ ] Object sync latency < 100ms
 - [ ] Cursor sync latency < 50ms
-- [ ] No visual lag with 20+ rectangles
-- [ ] Handles 3+ concurrent users without degradation
+- [ ] No visual lag with 500+ simple objects
+- [ ] Handles 5+ concurrent users without degradation
 
-### Testing Verification
-- [ ] Tested in 2+ browsers simultaneously
-- [ ] Tested with network throttling
-- [ ] Tested disconnect/reconnect scenarios
-- [ ] Tested rapid concurrent edits
-- [ ] No sync bugs or data loss
+ 
 
 ---
 
