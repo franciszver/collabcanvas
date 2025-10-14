@@ -83,23 +83,23 @@ describe('DetailsDropdown', () => {
   })
 
   it('clears rectangles when confirmed', async () => {
-    const { deleteAllRectangles } = await import('../../services/firestore')
+    const { deleteAllRectanglesRtdb } = await import('../../services/realtime')
     renderWithProviders(<DetailsDropdown />)
     fireEvent.click(screen.getByRole('button', { name: /menu/i }))
     const clearBtn = screen.getByRole('button', { name: /clear all/i })
     // Disabled when 0 rectangles; still click to ensure no call
     fireEvent.click(clearBtn)
-    expect((deleteAllRectangles as any)).toHaveBeenCalledTimes(0)
+    expect((deleteAllRectanglesRtdb as any)).toHaveBeenCalledTimes(0)
   })
 
   it('does not clear when user cancels confirm and enables clear when rects exist', async () => {
     const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => false)
-    const { deleteAllRectangles } = await import('../../services/firestore')
+    const { deleteAllRectanglesRtdb } = await import('../../services/realtime')
     renderWithProviders(<DetailsDropdown />)
     fireEvent.click(screen.getByRole('button', { name: /menu/i }))
     const clearBtn = screen.getByRole('button', { name: /clear all/i })
     fireEvent.click(clearBtn)
-    expect((deleteAllRectangles as any)).toHaveBeenCalledTimes(0)
+    expect((deleteAllRectanglesRtdb as any)).toHaveBeenCalledTimes(0)
     confirmSpy.mockRestore()
   })
 

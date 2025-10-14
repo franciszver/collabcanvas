@@ -6,7 +6,7 @@ import type { Rectangle } from '../../types/canvas.types'
 import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
-import { updateCursorPosition } from '../../services/presence'
+import { updateCursorPositionRtdb, publishDragPositionsRtdb, subscribeToDragRtdb, clearDragPositionRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
@@ -25,6 +25,7 @@ export default function Canvas() {
   const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
   const prevSizeRef = useRef(containerSize)
   const selectedIdsRef = useRef<Set<string>>(new Set())
+  const [liveDragPositions, setLiveDragPositions] = useState<Record<string, { x: number; y: number }>>({})
   const setSingleSelection = useCallback((id: string) => {
     selectedIdsRef.current = new Set([id])
     setSelectedId(id)
@@ -81,15 +82,6 @@ export default function Canvas() {
     for (let y = startY; y <= endY; y += spacing) ys.push(y)
     return { xs, ys, minY, maxY, minX, maxX }
   }, [viewport, containerSize])
-  // Remote cursor smoothing
-  const smoothedCursorsRef = useRef<Record<string, { x: number; y: number }>>({})
-  const targetsRef = useRef<Record<string, { x: number; y: number }>>({})
-  const rafIdRef = useRef<number | null>(null)
-  const [, setFrameTick] = useState(0)
-  // Remote rectangle movement smoothing
-  const smoothedRectsRef = useRef<Record<string, { x: number; y: number }>>({})
-  const rectTargetsRef = useRef<Record<string, { x: number; y: number }>>({})
-  const rectRafIdRef = useRef<number | null>(null)
   const draggingIdRef = useRef<string | null>(null)
   const lastDragPosRef = useRef<Record<string, { x: number; y: number }>>({})
 
@@ -218,13 +210,11 @@ export default function Canvas() {
       rectPending.current = {}
       lastRectSentAt.current = now
       const entries = Object.entries(pending)
-      for (const [id, pos] of entries) {
-        try {
-          await updateRectangle(id, { x: pos.x, y: pos.y })
-        } catch {}
-      }
+      try {
+        if (user) await publishDragPositionsRtdb(entries as any, user.id)
+      } catch {}
     }, 50)
-  }, [updateRectangle])
+  }, [user])
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
@@ -240,7 +230,7 @@ export default function Canvas() {
       pendingCursor.current = null
       lastSentAt.current = now
       try {
-        await updateCursorPosition(user.id, p)
+        await updateCursorPositionRtdb(user.id, p)
       } catch {}
     }, 50)
   }, [user])
@@ -256,114 +246,14 @@ export default function Canvas() {
 
   // Online/offline lifecycle is handled by PresenceProvider
 
-  // Smooth remote cursor movement via rAF interpolation
+  // Subscribe to live drag updates from RTDB
   useEffect(() => {
-    // Update targets from presence users (excluding self and users without cursor)
-    const nextTargets: Record<string, { x: number; y: number }> = {}
-    for (const u of Object.values(users)) {
-      if (u.userId === (user?.id ?? '')) continue
-      if (u.cursor) nextTargets[u.userId] = { x: u.cursor.x, y: u.cursor.y }
-    }
-    targetsRef.current = nextTargets
-
-    // Start loop if needed
-    if (Object.keys(nextTargets).length > 0 && rafIdRef.current == null) {
-      const step = () => {
-        const targets = targetsRef.current
-        const smoothed = smoothedCursorsRef.current
-        const targetIds = Object.keys(targets)
-        let anyChanged = false
-        // Remove smoothed entries that no longer have targets
-        for (const id of Object.keys(smoothed)) {
-          if (!targets[id]) delete smoothed[id]
-        }
-        for (const id of targetIds) {
-          const t = targets[id]
-          const s = smoothed[id] || { x: t.x, y: t.y }
-          const dx = t.x - s.x
-          const dy = t.y - s.y
-          const nx = s.x + dx * 0.2
-          const ny = s.y + dy * 0.2
-          if (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25) anyChanged = true
-          smoothed[id] = { x: nx, y: ny }
-        }
-        if (anyChanged) setFrameTick((n) => (n + 1) % 1000000)
-        if (Object.keys(targetsRef.current).length === 0) {
-          if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current)
-          rafIdRef.current = null
-          return
-        }
-        rafIdRef.current = requestAnimationFrame(step)
-      }
-      rafIdRef.current = requestAnimationFrame(step)
-    }
-
-    // Stop loop if no targets
-    if (Object.keys(nextTargets).length === 0 && rafIdRef.current != null) {
-      cancelAnimationFrame(rafIdRef.current)
-      rafIdRef.current = null
-    }
-
-    return () => {
-      // Cleanup on unmount
-      if (rafIdRef.current != null) {
-        cancelAnimationFrame(rafIdRef.current)
-        rafIdRef.current = null
-      }
-    }
-  }, [users, user?.id])
-
-  // Smooth remote rectangle position updates via rAF interpolation
-  useEffect(() => {
-    const nextTargets: Record<string, { x: number; y: number }> = {}
-    for (const r of rectangles) {
-      nextTargets[r.id] = { x: r.x, y: r.y }
-    }
-    rectTargetsRef.current = nextTargets
-
-    if (Object.keys(nextTargets).length > 0 && rectRafIdRef.current == null) {
-      const step = () => {
-        const targets = rectTargetsRef.current
-        const smoothed = smoothedRectsRef.current
-        const ids = Object.keys(targets)
-        let anyChanged = false
-        // drop smoothed entries for removed rects
-        for (const id of Object.keys(smoothed)) {
-          if (!targets[id]) delete smoothed[id]
-        }
-        for (const id of ids) {
-          const t = targets[id]
-          const s = smoothed[id] || { x: t.x, y: t.y }
-          const dx = t.x - s.x
-          const dy = t.y - s.y
-          const nx = s.x + dx * 0.2
-          const ny = s.y + dy * 0.2
-          if (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25) anyChanged = true
-          smoothed[id] = { x: nx, y: ny }
-        }
-        if (anyChanged) setFrameTick((n) => (n + 1) % 1000000)
-        if (Object.keys(rectTargetsRef.current).length === 0) {
-          if (rectRafIdRef.current != null) cancelAnimationFrame(rectRafIdRef.current)
-          rectRafIdRef.current = null
-          return
-        }
-        rectRafIdRef.current = requestAnimationFrame(step)
-      }
-      rectRafIdRef.current = requestAnimationFrame(step)
-    }
-
-    if (Object.keys(nextTargets).length === 0 && rectRafIdRef.current != null) {
-      cancelAnimationFrame(rectRafIdRef.current)
-      rectRafIdRef.current = null
-    }
-
-    return () => {
-      if (rectRafIdRef.current != null) {
-        cancelAnimationFrame(rectRafIdRef.current)
-        rectRafIdRef.current = null
-      }
-    }
-  }, [rectangles])
+    if (!user) return
+    const unsub = subscribeToDragRtdb(user.id, (live) => {
+      setLiveDragPositions(live)
+    })
+    return unsub
+  }, [user?.id])
 
   return (
     <div className={styles.root}>
@@ -403,9 +293,9 @@ export default function Canvas() {
       <Layer listening>
         {([...rectangles].sort((a, b) => (a.z ?? 0) - (b.z ?? 0))).map((r: Rectangle) => {
           const isSelected = selectedId === r.id
-          const sm = smoothedRectsRef.current[r.id]
-          const baseX = draggingIdRef.current === r.id || isSelected ? r.x : sm ? sm.x : r.x
-          const baseY = draggingIdRef.current === r.id || isSelected ? r.y : sm ? sm.y : r.y
+          const livePos = liveDragPositions[r.id]
+          const baseX = draggingIdRef.current === r.id || isSelected ? r.x : livePos ? livePos.x : r.x
+          const baseY = draggingIdRef.current === r.id || isSelected ? r.y : livePos ? livePos.y : r.y
           const commonProps: any = {
             key: `shape-${r.id}`,
             name: `rect-${r.id}`,
@@ -475,6 +365,11 @@ export default function Canvas() {
               updateRectangle(r.id, { x, y })
             }
             draggingIdRef.current = null
+            
+            // Clear RTDB drag data for this shape
+            if (user) {
+              clearDragPositionRtdb(r.id, user.id).catch(() => {})
+            }
           }
           if (r.type === 'circle') {
             const radius = r.radius ?? Math.min(r.width, r.height) / 2
@@ -612,6 +507,11 @@ export default function Canvas() {
                 const node = evt.target
                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 draggingIdRef.current = null
+                
+                // Clear RTDB drag data for this shape
+                if (user) {
+                  clearDragPositionRtdb(r.id, user.id).catch(() => {})
+                }
               }}
               onTransformEnd={(evt: any) => {
                 const node = evt.target
@@ -643,9 +543,9 @@ export default function Canvas() {
           <>
       {Object.values(users)
         .filter((u) => u.userId !== (user?.id ?? ''))
-        .filter((u) => !!(smoothedCursorsRef.current[u.userId] || u.cursor))
+        .filter((u) => !!u.cursor)
         .map((u) => {
-          const pos = smoothedCursorsRef.current[u.userId] || u.cursor!
+          const pos = u.cursor!
               const sx = offsetX + viewport.x + pos.x * viewport.scale
               const sy = offsetY + viewport.y + pos.y * viewport.scale
               return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />

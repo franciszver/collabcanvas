@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { UserPresence } from '../types/presence.types'
-import { setUserOffline, setUserOnline } from '../services/presence'
+import { setUserOfflineRtdb, setUserOnlineRtdb } from '../services/realtime'
 import { useAuth } from './AuthContext'
 
 export interface PresenceContextValue {
@@ -25,14 +25,14 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   // Manage online/offline lifecycle for the authenticated user
   useEffect(() => {
     if (!user) return
-    setUserOnline(user.id, user.displayName ?? null).catch(() => {})
+    setUserOnlineRtdb(user.id, user.displayName ?? null).catch(() => {})
     const handleBeforeUnload = () => {
-      setUserOffline(user.id).catch(() => {})
+      setUserOfflineRtdb(user.id).catch(() => {})
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      setUserOffline(user.id).catch(() => {})
+      setUserOfflineRtdb(user.id).catch(() => {})
     }
   }, [user])
 
@@ -40,7 +40,7 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onOnline = () => {
       setIsOnline(true)
-      if (user) setUserOnline(user.id, user.displayName ?? null).catch(() => {})
+      if (user) setUserOnlineRtdb(user.id, user.displayName ?? null).catch(() => {})
     }
     const onOffline = () => setIsOnline(false)
     window.addEventListener('online', onOnline)

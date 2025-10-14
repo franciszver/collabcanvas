@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { createRectangle, updateRectangleDoc, deleteRectangleDoc, deleteAllRectangles } from '../services/firestore'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createRectangleRtdb, updateRectangleRtdb, deleteRectangleRtdb, deleteAllRectanglesRtdb } from '../services/realtime'
 import type { CanvasState, Rectangle, ViewportTransform } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
 import { useCanvasRealtime } from '../hooks/useCanvas'
@@ -46,13 +46,11 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const selectedTool: CanvasState['selectedTool'] = 'pan'
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  // Track last seen server update time for each rectangle (ms) to apply LWW
-  const lastSeenUpdatedAtRef = useRef<Record<string, number>>({})
 
   const addRectangle = async (rect: Rectangle) => {
     setRectangles((prev) => [...prev, rect])
     try {
-      await createRectangle(rect)
+      await createRectangleRtdb(rect)
     } catch (e) {
       // rollback on failure
       setRectangles((prev) => prev.filter((r) => r.id !== rect.id))
@@ -63,7 +61,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const updateRectangle = async (id: string, update: Partial<Rectangle>) => {
     setRectangles((prev) => prev.map((r) => (r.id === id ? { ...r, ...update } : r)))
     try {
-      await updateRectangleDoc(id, update)
+      await updateRectangleRtdb(id, update)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to update rectangle', e)
@@ -74,7 +72,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     const prevRects = rectangles
     setRectangles((prev) => prev.filter((r) => r.id !== id))
     try {
-      await deleteRectangleDoc(id)
+      await deleteRectangleRtdb(id)
     } catch (e) {
       // rollback on failure
       setRectangles(prevRects)
@@ -87,7 +85,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     const prevRects = rectangles
     setRectangles([])
     try {
-      await deleteAllRectangles()
+      await deleteAllRectanglesRtdb()
     } catch (e) {
       setRectangles(prevRects)
       // eslint-disable-next-line no-console
@@ -108,25 +106,13 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [viewport])
 
-  // Subscribe to Firestore rectangles and merge updates using last-write-wins
-  const handleRows = useCallback((rows: { rect: Rectangle; updatedAtMs: number }[]) => {
-    const rectById: Record<string, Rectangle> = {}
-    const tsById: Record<string, number> = {}
-    for (const { rect, updatedAtMs } of rows) {
-      const prevSeen = lastSeenUpdatedAtRef.current[rect.id] ?? 0
-      if (updatedAtMs > prevSeen) {
-        lastSeenUpdatedAtRef.current[rect.id] = updatedAtMs
-      }
-      rectById[rect.id] = rect
-      tsById[rect.id] = updatedAtMs
-    }
-    const sortedIds = Object.keys(rectById).sort((a, b) => (tsById[a] || 0) - (tsById[b] || 0))
-    const nextArray = sortedIds.map((id) => rectById[id])
-    setRectangles(nextArray)
+  // Subscribe to RTDB rectangles
+  const handleRectangles = useCallback((rectangles: Rectangle[]) => {
+    setRectangles(rectangles)
     setIsLoading(false)
   }, [])
 
-  useCanvasRealtime(handleRows)
+  useCanvasRealtime(handleRectangles)
 
   return <CanvasContext.Provider value={value}>{children}</CanvasContext.Provider>
 }

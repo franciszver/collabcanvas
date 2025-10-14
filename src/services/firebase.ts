@@ -1,9 +1,11 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { getDatabase } from 'firebase/database'
 // TODO: Replace with real imports where used: getAuth, getFirestore, etc.
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
@@ -17,6 +19,8 @@ export function getFirebaseApp(): FirebaseApp {
   if (!app) {
     // TODO: Ensure environment variables are set in .env.local before initializing in production
     app = initializeApp(firebaseConfig)
+    // Initialize RTDB side-effect to ensure the module is bundled
+    getDatabase(app)
   }
   return app
 }

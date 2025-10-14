@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { subscribeToCursors } from '../services/presence'
+import { subscribeToPresenceRtdb } from '../services/realtime'
 import type { UserPresence } from '../types/presence.types'
 import { usePresence } from '../contexts/PresenceContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +9,7 @@ export function useCursorSync(): void {
   const { user } = useAuth()
 
   useEffect(() => {
-    const unsub = subscribeToCursors((rows: UserPresence[]) => {
+    const unsub = subscribeToPresenceRtdb((rows: UserPresence[]) => {
       const map: Record<string, UserPresence> = {}
       for (const r of rows) {
         // Store all users; consumer can filter out self

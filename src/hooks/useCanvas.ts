@@ -1,31 +1,16 @@
 import { useEffect } from 'react'
-import { subscribeToRectangles } from '../services/firestore'
+import { subscribeToRectanglesRtdb } from '../services/realtime'
+import type { Rectangle } from '../types/canvas.types'
 
-export interface RectangleRow {
-  rect: {
-    id: string
-    x: number
-    y: number
-    width: number
-    height: number
-    fill: string
-  }
-  updatedAtMs: number
-}
-
-// Subscribes to Firestore rectangles and forwards rows to the provided callback.
+// Subscribes to RTDB rectangles and forwards rectangles to the provided callback.
 // Returns nothing; manages lifecycle internally via React useEffect.
-export function useCanvasRealtime(onRows: (rows: RectangleRow[]) => void): void {
+export function useCanvasRealtime(onRectangles: (rectangles: Rectangle[]) => void): void {
   useEffect(() => {
-    const unsubscribe = subscribeToRectangles((rows) => {
-      onRows(rows as RectangleRow[])
-    })
+    const unsubscribe = subscribeToRectanglesRtdb(onRectangles)
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe()
     }
-  }, [onRows])
+  }, [onRectangles])
 }
 
 export default undefined
-
-
