@@ -714,6 +714,10 @@ collabcanvas/
 - [ ] **14.4** Tune Konva layers and redraw strategy
   - Minimize layer redraws; leverage caching where safe; throttle non-essential updates
 
+- [ ] **14.5** Remove dead code and AI slop
+  - Delete unused imports, variables, and functions across `src/`
+  - Remove redundant code/comments; tighten obvious types and simplify props
+
 ---
 
 ***
