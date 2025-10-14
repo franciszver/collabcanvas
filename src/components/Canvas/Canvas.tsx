@@ -6,14 +6,14 @@ import type { Rectangle } from '../../types/canvas.types'
 import { defaultRectAt, generateRectId, transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
-import { setUserOnline, setUserOffline, updateCursorPosition } from '../../services/presence'
+import { updateCursorPosition } from '../../services/presence'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle } = useCanvas()
-  const { users } = usePresence()
+  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading } = useCanvas()
+  const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
   const isPanningRef = useRef(false)
@@ -174,17 +174,16 @@ export default function Canvas() {
     scheduleCursorSend()
   }, [viewport, scheduleCursorSend])
 
-  // Set online/offline presence for current user within this canvas session
-  useEffect(() => {
-    if (!user) return
-    setUserOnline(user.id, user.displayName ?? null).catch(() => {})
-    return () => {
-      setUserOffline(user.id).catch(() => {})
-    }
-  }, [user])
+  // Online/offline lifecycle is handled by PresenceProvider
 
   return (
     <div className={styles.root}>
+    {/* Loading overlay */}
+    {isLoading ? (
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.6)', zIndex: 20 }}>
+        <div style={{ color: '#E5E7EB' }}>Loading canvas…</div>
+      </div>
+    ) : null}
     <Stage
       ref={stageRef}
       width={containerSize.width}
@@ -298,6 +297,12 @@ export default function Canvas() {
           return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
         })}
     </div>
+    {/* Reconnection banner */}
+    {!isOnline ? (
+      <div style={{ position: 'absolute', left: 16, bottom: 16, background: '#111827', color: '#FCD34D', border: '1px solid #374151', borderRadius: 8, padding: '8px 10px', zIndex: 25 }}>
+        Reconnecting…
+      </div>
+    ) : null}
     </div>
   )
 }

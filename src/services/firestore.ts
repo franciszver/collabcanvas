@@ -6,6 +6,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   serverTimestamp,
   onSnapshot,
   type Unsubscribe,
@@ -42,6 +43,18 @@ export async function updateRectangleDoc(id: string, update: Partial<Rectangle>)
 export async function deleteRectangleDoc(id: string): Promise<void> {
   const ref = doc(rectanglesCollection(), id)
   await deleteDoc(ref)
+}
+
+// Deletes all rectangle documents in the collection. Sequential, suitable for small counts.
+export async function deleteAllRectangles(): Promise<void> {
+  const snap = await getDocs(rectanglesCollection())
+  const ops: Promise<void>[] = []
+  snap.forEach((d) => {
+    ops.push(deleteDoc(doc(rectanglesCollection(), d.id)))
+  })
+  for (const p of ops) {
+    await p
+  }
 }
 
 

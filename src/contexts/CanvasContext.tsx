@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { createRectangle, updateRectangleDoc, deleteRectangleDoc } from '../services/firestore'
+import { createRectangle, updateRectangleDoc, deleteRectangleDoc, deleteAllRectangles } from '../services/firestore'
 import type { CanvasState, Rectangle, ViewportTransform } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
 import { useCanvasRealtime } from '../hooks/useCanvas'
@@ -10,6 +10,8 @@ export interface CanvasContextValue extends CanvasState {
   addRectangle: (rect: Rectangle) => void
   updateRectangle: (id: string, update: Partial<Rectangle>) => void
   deleteRectangle: (id: string) => void
+  isLoading: boolean
+  clearAllRectangles: () => Promise<void>
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -39,6 +41,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     return { scale: INITIAL_SCALE, x: 0, y: 0 }
   })
   const [rectangles, setRectangles] = useState<Rectangle[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const selectedTool: CanvasState['selectedTool'] = 'pan'
   // Track last seen server update time for each rectangle (ms) to apply LWW
   const lastSeenUpdatedAtRef = useRef<Record<string, number>>({})
@@ -77,9 +80,21 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const clearAllRectangles = async () => {
+    const prevRects = rectangles
+    setRectangles([])
+    try {
+      await deleteAllRectangles()
+    } catch (e) {
+      setRectangles(prevRects)
+      // eslint-disable-next-line no-console
+      console.error('Failed to clear rectangles', e)
+    }
+  }
+
   const value: CanvasContextValue = useMemo(
-    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle, deleteRectangle }),
-    [viewport, rectangles, selectedTool]
+    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading, clearAllRectangles }),
+    [viewport, rectangles, selectedTool, isLoading]
   )
 
   useEffect(() => {
@@ -101,6 +116,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
       nextById[rect.id] = rect
     }
     setRectangles(Object.values(nextById))
+    setIsLoading(false)
   }, [])
 
   useCanvasRealtime(handleRows)

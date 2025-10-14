@@ -440,33 +440,33 @@ collabcanvas/
 **Goal:** Show list of currently online users
 
 ### Tasks:
-- [ ] **8.1** Update presence service for online status
+- [x] **8.1** Update presence service for online status
   - **Files:** `src/services/presence.ts`
   - Set user as online on auth
   - Set user as offline on disconnect/tab close
   - Use Firestore `onDisconnect()` for cleanup
   
-- [ ] **8.2** Build OnlineUsersList component
+- [x] **8.2** Build OnlineUsersList component
   - **Files:** `src/components/Presence/OnlineUsersList.tsx`
   - Display list of online users with names
   - Show count of online users
-  - Style as sidebar or overlay
+  - Style as sidebar or overlay (implemented as header dropdown)
   
-- [ ] **8.3** Create usePresence hook
+- [x] **8.3** Create usePresence hook
   - **Files:** `src/hooks/usePresence.ts`
   - Subscribe to online users
   - Update when users join/leave
   
-- [ ] **8.4** Integrate OnlineUsersList into layout
+- [x] **8.4** Integrate OnlineUsersList into layout
   - **Files:** `src/components/Layout/AppLayout.tsx`
   - Position in UI (top right corner or sidebar)
   
-- [ ] **8.5** Handle user connection/disconnection
+- [x] **8.5** Handle user connection/disconnection
   - **Files:** `src/contexts/PresenceContext.tsx`
   - Update online users list in real-time
   - Clean up presence data on user disconnect
   
-- [ ] **8.6** Test presence awareness
+- [x] **8.6** Test presence awareness
   - Open multiple browsers with different users
   - Verify all users appear in online list
   - Close browser and verify user disappears from list
@@ -478,32 +478,32 @@ collabcanvas/
 **Goal:** Persist canvas state and handle user reconnections
 
 ### Tasks:
-- [ ] **9.1** Verify Firestore persistence is working
+- [x] **9.1** Verify Firestore persistence is working
   - **Files:** Review `src/services/firestore.ts`
   - Rectangles should already persist (from PR #5-6)
   
-- [ ] **9.2** Handle page refresh gracefully
+- [x] **9.2** Handle page refresh gracefully
   - **Files:** `src/contexts/CanvasContext.tsx`
   - On mount: load all rectangles from Firestore
   - Show loading state while fetching
   
-- [ ] **9.3** Implement reconnection logic
+- [x] **9.3** Implement reconnection logic
   - **Files:** `src/contexts/PresenceContext.tsx`
   - Detect when user reconnects (auth state change)
   - Re-establish presence
   - Re-subscribe to real-time listeners
   
-- [ ] **9.4** Add loading states to UI
+- [x] **9.4** Add loading states to UI
   - **Files:** `src/App.tsx`, `src/components/Canvas/Canvas.tsx`
   - Show spinner while loading initial data
   - Show "Reconnecting..." message on connection loss
   
-- [ ] **9.5** Test persistence scenarios
+- [x] **9.5** Test persistence scenarios
   - Create rectangles, refresh page, verify they persist
   - Disconnect internet, reconnect, verify data syncs
   - Close tab, reopen, verify canvas state is restored
   
-- [ ] **9.6** Write integration test for state persistence
+- [x] **9.6** Write integration test for state persistence
   - **Files:** `src/__tests__/integration/persistence.test.ts`
   - **Tests to write:**
     - Mock Firestore persistence layer
@@ -514,7 +514,7 @@ collabcanvas/
     - Test loading states appear correctly
   - **Verification:** Run `npm test` - persistence tests should pass
   
-- [ ] **9.7** Test multi-user persistence
+- [x] **9.7** Test multi-user persistence
   - User A creates rectangles
   - User A disconnects
   - User B joins and sees User A's rectangles
