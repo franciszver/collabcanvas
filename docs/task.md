@@ -644,21 +644,21 @@ collabcanvas/
 **Goal:** Address known issues and polish the workspace experience
 
 ### Tasks:
-- [ ] **13.1** Fix cursor sync positions
-  - Ensure remote user cursors render at accurate positions relative to viewport/scale
+- [x] **13.1** Fix cursor sync positions
+  - Ensure remote user cursors render at accurate positions relative to viewport/scale, window size, and display resolution
 
-- [ ] **13.2** Add Arrow shape
+- [x] **13.2** Add Arrow shape
   - Include an Arrow option in the shape selector
   - Support drag and position updates; random color selection
 
-- [ ] **13.3** Widen canvas workspace grid
+- [x] **13.3** Widen canvas workspace grid
   - Increase spacing/scale of the grid to feel more spacious
   - Keep grid performance-friendly
 
-- [ ] **13.4** Add white border around workspace
-  - Apply a subtle white border to delineate the canvas area
+- [x] **13.4** Add white border around Konva presentation area
+  - Apply a subtle white border around the Konva Stage presentation area to clearly delineate the drawing surface
 
- - [ ] **13.5** Add color picker for shapes
+ - [x] **13.5** Add color picker for shapes
   - Provide UI to choose shape color (create and update)
   - Persist color choice and sync in real-time
 

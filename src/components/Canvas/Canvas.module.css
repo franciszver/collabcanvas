@@ -4,8 +4,14 @@
   position: fixed;
   inset: 0;
   background: #1f2937; /* lighter workspace background */
-  border: 1px solid #4b5563; /* gray border around workspace */
   box-sizing: border-box;
+}
+
+.stageFrame {
+  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,0.3); /* subtle white border around Konva presentation area */
+  border-radius: 8px;
+  background: #111827; /* slightly darker than root to delineate surface */
 }
 
 

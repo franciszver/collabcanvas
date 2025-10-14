@@ -9,7 +9,8 @@
     "bump:patch": "node scripts/bump-version.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "deploy:hosting": "npx --yes firebase-tools deploy --only hosting --non-interactive"
   },
   "dependencies": {
     "firebase": "^11.10.0",

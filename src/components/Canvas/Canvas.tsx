@@ -1,4 +1,4 @@
-import { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line } from 'react-konva'
+import { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line, Arrow } from 'react-konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
@@ -52,9 +52,9 @@ export default function Canvas() {
     } catch {}
   }, [viewport, containerSize, setViewport, clampViewport])
 
-  // Compute grid lines based on visible canvas area
+  // Compute grid lines based on visible canvas area (wider spacing)
   const gridLines = useMemo(() => {
-    const spacing = 50
+    const spacing = 80
     const minX = -viewport.x / viewport.scale
     const maxX = (containerSize.width - viewport.x) / viewport.scale
     const minY = -viewport.y / viewport.scale
@@ -335,7 +335,8 @@ export default function Canvas() {
         <div style={{ color: '#E5E7EB' }}>Loading canvas…</div>
       </div>
     ) : null}
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+    <div className={styles.stageFrame} style={{ width: containerSize.width, height: containerSize.height, display: 'flex', alignItems: 'stretch', justifyContent: 'stretch' }}>
     <Stage
       ref={stageRef}
       width={containerSize.width}
@@ -454,6 +455,24 @@ export default function Canvas() {
               />
             )
           }
+          if (r.type === 'arrow') {
+            const points = [0, r.height / 2, r.width, r.height / 2]
+            return (
+              <Arrow
+                {...commonProps}
+                x={baseX}
+                y={baseY}
+                points={points}
+                stroke={r.fill}
+                fill={r.fill}
+                strokeWidth={Math.max(2, Math.min(10, r.height / 4))}
+                pointerLength={Math.max(8, Math.min(24, r.height))}
+                pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+              />
+            )
+          }
           // default rectangle
           return (
             <Rect
@@ -512,18 +531,48 @@ export default function Canvas() {
       </Layer>
     </Stage>
     </div>
+    </div>
     {/* Presence cursors overlay (HTML) */}
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {(() => {
+        const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
+        const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
+        return (
+          <>
       {Object.values(users)
         .filter((u) => u.userId !== (user?.id ?? ''))
         .filter((u) => !!(smoothedCursorsRef.current[u.userId] || u.cursor))
         .map((u) => {
           const pos = smoothedCursorsRef.current[u.userId] || u.cursor!
-          const sx = viewport.x + pos.x * viewport.scale
-          const sy = viewport.y + pos.y * viewport.scale
-          return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
+              const sx = offsetX + viewport.x + pos.x * viewport.scale
+              const sy = offsetY + viewport.y + pos.y * viewport.scale
+              return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
         })}
+          </>
+        )
+      })()}
     </div>
+    {/* Selected shape color picker overlay */}
+    {selectedId ? (() => {
+      const sel = rectangles.find((rr) => rr.id === selectedId)
+      if (!sel) return null
+      const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
+      const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
+      const anchorX = offsetX + viewport.x + (sel.x + sel.width) * viewport.scale
+      const anchorY = offsetY + viewport.y + sel.y * viewport.scale
+      return (
+        <div style={{ position: 'absolute', left: Math.max(0, anchorX - 120), top: Math.max(0, anchorY - 40), pointerEvents: 'auto', zIndex: 26, background: '#0b1220', border: '1px solid #374151', borderRadius: 6, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: '#9CA3AF' }}>Color</span>
+          <input
+            type="color"
+            value={sel.fill}
+            onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
+            style={{ width: 24, height: 24, padding: 0, background: 'transparent', border: '1px solid #1f2937', borderRadius: 4 }}
+            aria-label="Change shape color"
+          />
+        </div>
+      )
+    })() : null}
     {/* Reconnection banner */}
     {!isOnline ? (
       <div style={{ position: 'absolute', left: 16, bottom: 16, background: '#111827', color: '#FCD34D', border: '1px solid #374151', borderRadius: 8, padding: '8px 10px', zIndex: 25 }}>

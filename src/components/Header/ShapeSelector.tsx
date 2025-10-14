@@ -7,11 +7,13 @@ const SHAPES = [
   { key: 'circle', label: 'Circle' },
   { key: 'triangle', label: 'Triangle' },
   { key: 'star', label: 'Star' },
+  { key: 'arrow', label: 'Arrow' },
 ] as const
 
 export default function ShapeSelector() {
   const { rectangles, addRectangle, viewport } = useCanvas() as any
   const [busy, setBusy] = useState(false)
+  const [color, setColor] = useState<string>('#60A5FA')
 
   const computePosition = () => {
     const index = rectangles.length % 10
@@ -33,7 +35,7 @@ export default function ShapeSelector() {
       const id = generateRectId()
       const pos = computePosition()
       // Store as rectangle shape record; Canvas renderer will respect `type`
-      await addRectangle({ id, x: pos.x, y: pos.y, width: 200, height: 100, fill: getRandomColor(), type: type as any })
+      await addRectangle({ id, x: pos.x, y: pos.y, width: 200, height: 100, fill: color || getRandomColor(), type: type as any })
     } finally {
       setBusy(false)
     }
@@ -42,6 +44,13 @@ export default function ShapeSelector() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 12, color: '#9CA3AF' }}>Create shape:</span>
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        title="Shape color"
+        style={{ width: 28, height: 28, background: 'transparent', border: '1px solid #1f2937', borderRadius: 6, padding: 0 }}
+      />
       {SHAPES.map((s) => (
         <button
           key={s.key}
@@ -66,15 +75,15 @@ export default function ShapeSelector() {
           try {
             const target = 500
             const need = Math.max(0, target - rectangles.length)
-            const types = ['rect', 'circle', 'triangle', 'star'] as const
+            const types = ['rect', 'circle', 'triangle', 'star', 'arrow'] as const
             for (let i = 0; i < need; i++) {
               const id = generateRectId()
               const pos = randomCanvasPosition()
               const t = types[Math.floor(Math.random() * types.length)]
-              const fill = getRandomColor()
+              const fill = color || getRandomColor()
               // Size defaults by type
-              const w = t === 'rect' ? 200 : 120
-              const h = t === 'rect' ? 100 : 120
+              const w = t === 'rect' ? 200 : t === 'arrow' ? 220 : 120
+              const h = t === 'rect' ? 100 : t === 'arrow' ? 20 : 120
               await addRectangle({ id, x: pos.x, y: pos.y, width: w, height: h, fill, type: t as any })
             }
           } finally {
