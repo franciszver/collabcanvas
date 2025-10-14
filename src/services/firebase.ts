@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getDatabase } from 'firebase/database'
-// TODO: Replace with real imports where used: getAuth, getFirestore, etc.
+import { getFirestore } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,10 +20,25 @@ export function getFirebaseApp(): FirebaseApp {
   if (!app) {
     // TODO: Ensure environment variables are set in .env.local before initializing in production
     app = initializeApp(firebaseConfig)
-    // Initialize RTDB side-effect to ensure the module is bundled
+    // Initialize services side-effects to ensure modules are bundled
     getDatabase(app)
+    getFirestore(app)
+    getAuth(app)
   }
   return app
+}
+
+// Export individual service getters
+export function getFirestoreDB() {
+  return getFirestore(getFirebaseApp())
+}
+
+export function getRealtimeDB() {
+  return getDatabase(getFirebaseApp())
+}
+
+export function getAuthService() {
+  return getAuth(getFirebaseApp())
 }
 
 

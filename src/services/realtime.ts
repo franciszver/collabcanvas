@@ -1,6 +1,5 @@
-import { getFirebaseApp } from './firebase'
+import { getRealtimeDB } from './firebase'
 import {
-  getDatabase,
   ref,
   onValue,
   off,
@@ -10,10 +9,9 @@ import {
   type Database,
 } from 'firebase/database'
 import type { CursorPosition, UserPresence } from '../types/presence.types'
-import type { Rectangle } from '../types/canvas.types'
 
 function rtdb(): Database {
-  return getDatabase(getFirebaseApp())
+  return getRealtimeDB()
 }
 
 // Presence (cursors) via RTDB
@@ -100,51 +98,84 @@ export async function clearDragPositionRtdb(rectId: string, userId: string): Pro
   await remove(dragRef)
 }
 
-// Rectangle CRUD operations via RTDB
-export async function createRectangleRtdb(rect: Rectangle): Promise<void> {
-  const rectRef = ref(rtdb(), `rectangles/${rect.id}`)
-  await update(rectRef, { ...rect, updatedAt: serverTimestamp() as any })
+// Throttled drag position updates for smooth animations
+const DRAG_THROTTLE_MS = 1000 / 30 // 30fps max
+const dragThrottleMap = new Map<string, number>()
+
+export async function publishDragPositionsRtdbThrottled(
+  entries: Array<[string, { x: number; y: number }]>,
+  userId: string
+): Promise<void> {
+  if (!entries.length) return
+  
+  const now = Date.now()
+  const throttledEntries: Array<[string, { x: number; y: number }]> = []
+  
+  for (const [rectId, pos] of entries) {
+    const key = `${rectId}-${userId}`
+    const lastUpdate = dragThrottleMap.get(key) || 0
+    
+    if (now - lastUpdate >= DRAG_THROTTLE_MS) {
+      throttledEntries.push([rectId, pos])
+      dragThrottleMap.set(key, now)
+    }
+  }
+  
+  if (throttledEntries.length > 0) {
+    await publishDragPositionsRtdb(throttledEntries, userId)
+  }
 }
 
-export async function updateRectangleRtdb(id: string, updateData: Partial<Rectangle>): Promise<void> {
-  const rectRef = ref(rtdb(), `rectangles/${id}`)
-  await update(rectRef, { ...updateData, updatedAt: serverTimestamp() as any })
+// Throttled resize position updates
+export async function publishResizePositionsRtdb(
+  entries: Array<[string, { x: number; y: number; width: number; height: number }]>,
+  userId: string
+): Promise<void> {
+  if (!entries.length) return
+  const payload: Record<string, any> = {}
+  const ts = serverTimestamp() as any
+  for (const [rectId, data] of entries) {
+    payload[`resize/${rectId}/${userId}`] = { ...data, updatedAt: ts }
+  }
+  await update(ref(rtdb()), payload)
 }
 
-export async function deleteRectangleRtdb(id: string): Promise<void> {
-  const rectRef = ref(rtdb(), `rectangles/${id}`)
-  await remove(rectRef)
-}
-
-export async function deleteAllRectanglesRtdb(): Promise<void> {
-  const rectanglesRef = ref(rtdb(), 'rectangles')
-  await remove(rectanglesRef)
-}
-
-export function subscribeToRectanglesRtdb(
-  callback: (rectangles: Rectangle[]) => void
+export function subscribeToResizeRtdb(
+  selfUserId: string,
+  callback: (live: Record<string, { x: number; y: number; width: number; height: number; ts: number }>) => void
 ): () => void {
-  const rectanglesRef = ref(rtdb(), 'rectangles')
+  const resizeRef = ref(rtdb(), 'resize')
   const handler = (snap: any) => {
     const val = snap.val() || {}
-    const rectangles: Rectangle[] = Object.keys(val).map((id) => {
-      const data = val[id] || {}
-      return {
-        id,
-        x: data.x ?? 0,
-        y: data.y ?? 0,
-        width: data.width ?? 100,
-        height: data.height ?? 100,
-        fill: data.fill ?? '#3b82f6',
-        type: data.type ?? 'rect',
-        rotation: data.rotation ?? 0,
-        z: data.z ?? 0,
+    const live: Record<string, { x: number; y: number; width: number; height: number; ts: number }> = {}
+    for (const rectId of Object.keys(val)) {
+      const users = val[rectId] || {}
+      let best: { x: number; y: number; width: number; height: number; ts: number } | null = null
+      for (const uid of Object.keys(users)) {
+        if (uid === selfUserId) continue
+        const d = users[uid]
+        const ts = typeof d?.updatedAt === 'number' ? d.updatedAt : 0
+        if (!best || ts > best.ts) {
+          best = { 
+            x: d?.x ?? 0, 
+            y: d?.y ?? 0, 
+            width: d?.width ?? 100, 
+            height: d?.height ?? 100, 
+            ts 
+          }
+        }
       }
-    })
-    callback(rectangles)
+      if (best) live[rectId] = best
+    }
+    callback(live)
   }
-  onValue(rectanglesRef, handler)
-  return () => off(rectanglesRef, 'value', handler)
+  onValue(resizeRef, handler)
+  return () => off(resizeRef, 'value', handler)
+}
+
+export async function clearResizePositionRtdb(rectId: string, userId: string): Promise<void> {
+  const resizeRef = ref(rtdb(), `resize/${rectId}/${userId}`)
+  await remove(resizeRef)
 }
 
 

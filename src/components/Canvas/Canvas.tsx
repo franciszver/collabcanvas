@@ -6,13 +6,25 @@ import type { Rectangle } from '../../types/canvas.types'
 import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
-import { updateCursorPositionRtdb, publishDragPositionsRtdb, subscribeToDragRtdb, clearDragPositionRtdb } from '../../services/realtime'
+import { updateCursorPositionRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, setRectangles, updateRectangle, deleteRectangle, isLoading, selectedId, setSelectedId } = useCanvas() as any
+  const { 
+    viewport, 
+    setViewport, 
+    rectangles, 
+    updateRectangle, 
+    deleteRectangle, 
+    isLoading, 
+    selectedId, 
+    setSelectedId,
+    liveDragPositions,
+    publishDragUpdate,
+    clearDragUpdate
+  } = useCanvas()
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
@@ -25,7 +37,6 @@ export default function Canvas() {
   const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
   const prevSizeRef = useRef(containerSize)
   const selectedIdsRef = useRef<Set<string>>(new Set())
-  const [liveDragPositions, setLiveDragPositions] = useState<Record<string, { x: number; y: number }>>({})
   const setSingleSelection = useCallback((id: string) => {
     selectedIdsRef.current = new Set([id])
     setSelectedId(id)
@@ -193,28 +204,6 @@ export default function Canvas() {
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
   const stageRef = useRef<any>(null)
-  // Throttled rectangle position updates (linked to cursor cadence ~50ms)
-  const rectTimeoutId = useRef<any>(null)
-  const rectPending = useRef<Record<string, { x: number; y: number }>>({})
-  const lastRectSentAt = useRef<number>(0)
-  const scheduleRectSends = useCallback(() => {
-    if (rectTimeoutId.current != null) return
-    rectTimeoutId.current = setTimeout(async () => {
-      rectTimeoutId.current = null
-      const now = Date.now()
-      if (now - lastRectSentAt.current < 50) {
-        scheduleRectSends()
-        return
-      }
-      const pending = rectPending.current
-      rectPending.current = {}
-      lastRectSentAt.current = now
-      const entries = Object.entries(pending)
-      try {
-        if (user) await publishDragPositionsRtdb(entries as any, user.id)
-      } catch {}
-    }, 50)
-  }, [user])
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
@@ -246,14 +235,6 @@ export default function Canvas() {
 
   // Online/offline lifecycle is handled by PresenceProvider
 
-  // Subscribe to live drag updates from RTDB
-  useEffect(() => {
-    if (!user) return
-    const unsub = subscribeToDragRtdb(user.id, (live) => {
-      setLiveDragPositions(live)
-    })
-    return unsub
-  }, [user?.id])
 
   return (
     <div className={styles.root}>
@@ -313,34 +294,12 @@ export default function Canvas() {
             const cx = node.x()
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
-            const selected = selectedIdsRef.current
-            const prev = lastDragPosRef.current[r.id] || { x, y }
-            const dx = x - prev.x
-            const dy = y - prev.y
             lastDragPosRef.current[r.id] = { x, y }
-            setRectangles(rectangles.map((rc: Rectangle) => {
-              if (!selected.has(r.id)) {
-                // dragging single
-                return rc.id === r.id ? { ...rc, x, y } : rc
-              }
-              if (selected.has(rc.id)) {
-                if (rc.id === r.id) return { ...rc, x, y }
-                return { ...rc, x: rc.x + dx, y: rc.y + dy }
-              }
-              return rc
-            }))
-            // schedule throttled sync
-            if (selected.size > 0) {
-              for (const id of selected) {
-                const target = id === r.id ? { x, y } : undefined
-                const current = rectangles.find((rc: Rectangle) => rc.id === id)
-                const pos = target ?? (current ? { x: current.x + dx, y: current.y + dy } : undefined)
-                if (pos) rectPending.current[id] = pos
-              }
-              scheduleRectSends()
-            } else {
-              rectPending.current[r.id] = { x, y }
-              scheduleRectSends()
+            // Update local state immediately for responsive UI
+            // Note: In hybrid approach, this is handled by the context
+            // Publish live drag update via RTDB for other users
+            if (user) {
+              publishDragUpdate(r.id, { x, y }).catch(console.error)
             }
           }
           const handleDragEnd = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
@@ -368,7 +327,7 @@ export default function Canvas() {
             
             // Clear RTDB drag data for this shape
             if (user) {
-              clearDragPositionRtdb(r.id, user.id).catch(() => {})
+              clearDragUpdate(r.id).catch(() => {})
             }
           }
           if (r.type === 'circle') {
@@ -497,11 +456,8 @@ export default function Canvas() {
               width={r.width}
               height={r.height}
               rotation={r.rotation || 0}
-              onDragMove={(evt: any) => {
-                const node = evt.target
-                const nx = node.x()
-                const ny = node.y()
-                setRectangles(rectangles.map((rc: Rectangle) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
+              onDragMove={() => {
+                // Update handled by context in hybrid approach
               }}
               onDragEnd={(evt: any) => {
                 const node = evt.target
@@ -510,7 +466,7 @@ export default function Canvas() {
                 
                 // Clear RTDB drag data for this shape
                 if (user) {
-                  clearDragPositionRtdb(r.id, user.id).catch(() => {})
+                  clearDragUpdate(r.id).catch(() => {})
                 }
               }}
               onTransformEnd={(evt: any) => {
