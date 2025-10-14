@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import usePresence from '../../hooks/usePresence'
 import { useCanvas } from '../../contexts/CanvasContext'
 import { useAuth } from '../../contexts/AuthContext'
+import { generateRectId, getRandomColor, transformCanvasCoordinates } from '../../utils/helpers'
 
 export default function DetailsDropdown() {
   const { onlineUsers, onlineCount } = usePresence()
-  const { rectangles, clearAllRectangles, isLoading } = useCanvas()
+  const { rectangles, clearAllRectangles, isLoading, addRectangle, viewport } = useCanvas() as any
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -45,6 +46,13 @@ export default function DetailsDropdown() {
     return { rect, circ, tri, star, total: rectangles.length }
   }, [rectangles])
   const canClear = !busy && !isLoading && rectCount > 0
+  const canGenerate = !busy && !isLoading
+
+  const randomCanvasPosition = () => {
+    const sx = Math.max(0, Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200))
+    const sy = Math.max(0, Math.random() * Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 800) - 120)) + 80
+    return transformCanvasCoordinates(sx, sy, viewport)
+  }
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -111,6 +119,42 @@ export default function DetailsDropdown() {
 
           <div style={{ height: 1, background: '#1f2937', margin: '6px 0' }} />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              onClick={async () => {
+                if (!canGenerate) return
+                setBusy(true)
+                try {
+                  const target = 500
+                  const need = Math.max(0, target - rectangles.length)
+                  const types = ['rect', 'circle', 'triangle', 'star', 'arrow'] as const
+                  for (let i = 0; i < need; i++) {
+                    const id = generateRectId()
+                    const pos = randomCanvasPosition()
+                    const t = types[Math.floor(Math.random() * types.length)] as any
+                    const fill = getRandomColor()
+                    const w = t === 'rect' ? 200 : t === 'arrow' ? 220 : 120
+                    const h = t === 'rect' ? 100 : t === 'arrow' ? 20 : 120
+                    await addRectangle({ id, x: pos.x, y: pos.y, width: w, height: h, fill, type: t })
+                  }
+                } finally {
+                  setBusy(false)
+                }
+              }}
+              disabled={!canGenerate}
+              title="Random 500"
+              style={{
+                background: '#0B4F1A',
+                color: '#D1FAE5',
+                border: '1px solid #065F46',
+                borderRadius: 6,
+                padding: '6px 10px',
+                cursor: canGenerate ? 'pointer' : 'not-allowed',
+                opacity: canGenerate ? 1 : 0.6,
+                marginRight: 'auto',
+              }}
+            >
+              {busy ? 'Generating…' : 'Random 500'}
+            </button>
             <button
               onClick={async () => {
                 if (!canClear) return
