@@ -668,13 +668,13 @@ collabcanvas/
  - [x] **13.7** Prevent background color change during color pick
   - Ensure only the selected shape color changes, not the canvas background
 
- - [ ] **13.8** Add z-index control in color panel
+ - [x] **13.8** Add z-index control in color panel
   - Allow setting a shape's z layer and nudging up/down
 
  - [x] **13.9** Move delete into color panel
   - Relocate the delete icon into the selected shape's color selector UI
 
- - [ ] **13.10** Add copy/duplicate shape action
+ - [x] **13.10** Add copy/duplicate shape action
   - Duplicate a shape preserving color/size; position via deterministic placement logic
 
  - [ ] **13.11** Enable multi-select and group move
@@ -694,6 +694,10 @@ collabcanvas/
 
  - [ ] **13.16** Revert workspace size change
   - Add menu action to revert workspace size to previous setting
+
+
+ - [ ] **13.17** Convert color panel to Properties panel pinned at top
+  - Decouple from selection overlay; rename to Properties; pin at top of workspace to edit selected shape properties
 
 
 ---

@@ -88,6 +88,7 @@ export function subscribeToRectangles(
         fill: data.fill,
         type: data.type ?? 'rect',
         rotation: typeof data.rotation === 'number' ? data.rotation : 0,
+        z: typeof data.z === 'number' ? data.z : 0,
       }
       return { rect, updatedAtMs }
     })

@@ -18,6 +18,7 @@ export interface Rectangle {
   sides?: number
   points?: number
   rotation?: number
+  z?: number
 }
 
 export interface CanvasState {

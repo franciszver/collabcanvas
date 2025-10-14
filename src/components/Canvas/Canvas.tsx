@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
-import { transformCanvasCoordinates } from '../../utils/helpers'
+import { transformCanvasCoordinates, generateRectId } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
 import { updateCursorPosition } from '../../services/presence'
@@ -12,7 +12,7 @@ import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, setRectangles, updateRectangle, deleteRectangle, isLoading } = useCanvas()
+  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading } = useCanvas() as any
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
@@ -25,6 +25,19 @@ export default function Canvas() {
   const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
   const prevSizeRef = useRef(containerSize)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedIdsRef = useRef<Set<string>>(new Set())
+  const setSingleSelection = useCallback((id: string) => {
+    selectedIdsRef.current = new Set([id])
+    setSelectedId(id)
+  }, [])
+  const toggleSelection = useCallback((id: string) => {
+    const next = new Set(selectedIdsRef.current)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    selectedIdsRef.current = next
+    // keep a primary selected id for UI; choose the most recently toggled
+    setSelectedId(id)
+  }, [])
   const transformerRef = useRef<any>(null)
   // Clamp viewport so Stage stays within browser viewport
   const clampViewport = useCallback(
@@ -79,6 +92,7 @@ export default function Canvas() {
   const rectTargetsRef = useRef<Record<string, { x: number; y: number }>>({})
   const rectRafIdRef = useRef<number | null>(null)
   const draggingIdRef = useRef<string | null>(null)
+  const lastDragPosRef = useRef<Record<string, { x: number; y: number }>>({})
 
   const onWheel = useCallback(
     (e: any) => {
@@ -150,7 +164,7 @@ export default function Canvas() {
 
   // Deselect locally if the selected rectangle was deleted remotely
   useEffect(() => {
-    if (selectedId && !rectangles.some((r) => r.id === selectedId)) {
+    if (selectedId && !rectangles.some((r: Rectangle) => r.id === selectedId)) {
       setSelectedId(null)
     }
   }, [rectangles, selectedId])
@@ -179,6 +193,7 @@ export default function Canvas() {
     const stage = e.target.getStage()
     if (e.target !== stage) return
     setSelectedId(null)
+    selectedIdsRef.current = new Set()
     movedRef.current = false
   }, [])
 
@@ -187,6 +202,30 @@ export default function Canvas() {
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
   const stageRef = useRef<any>(null)
+  // Throttled rectangle position updates (linked to cursor cadence ~50ms)
+  const rectTimeoutId = useRef<any>(null)
+  const rectPending = useRef<Record<string, { x: number; y: number }>>({})
+  const lastRectSentAt = useRef<number>(0)
+  const scheduleRectSends = useCallback(() => {
+    if (rectTimeoutId.current != null) return
+    rectTimeoutId.current = setTimeout(async () => {
+      rectTimeoutId.current = null
+      const now = Date.now()
+      if (now - lastRectSentAt.current < 50) {
+        scheduleRectSends()
+        return
+      }
+      const pending = rectPending.current
+      rectPending.current = {}
+      lastRectSentAt.current = now
+      const entries = Object.entries(pending)
+      for (const [id, pos] of entries) {
+        try {
+          await updateRectangle(id, { x: pos.x, y: pos.y })
+        } catch {}
+      }
+    }, 50)
+  }, [updateRectangle])
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
@@ -363,7 +402,7 @@ export default function Canvas() {
       </Layer>
       {/* Shapes Layer */}
       <Layer listening>
-        {rectangles.map((r: Rectangle) => {
+        {([...rectangles].sort((a, b) => (a.z ?? 0) - (b.z ?? 0))).map((r: Rectangle) => {
           const isSelected = selectedId === r.id
           const sm = smoothedRectsRef.current[r.id]
           const baseX = draggingIdRef.current === r.id || isSelected ? r.x : sm ? sm.x : r.x
@@ -375,9 +414,9 @@ export default function Canvas() {
             draggable: true,
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
-            onDragStart: () => { draggingIdRef.current = r.id; setSelectedId(r.id) },
-            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSelectedId(r.id) },
-            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSelectedId(r.id) },
+            onDragStart: (evt: any) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
+            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
+            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSingleSelection(r.id) },
             onMouseEnter: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
             onMouseLeave: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
           }
@@ -385,13 +424,57 @@ export default function Canvas() {
             const cx = node.x()
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
-            setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x, y } : rc)))
+            const selected = selectedIdsRef.current
+            const prev = lastDragPosRef.current[r.id] || { x, y }
+            const dx = x - prev.x
+            const dy = y - prev.y
+            lastDragPosRef.current[r.id] = { x, y }
+            setRectangles(rectangles.map((rc: Rectangle) => {
+              if (!selected.has(r.id)) {
+                // dragging single
+                return rc.id === r.id ? { ...rc, x, y } : rc
+              }
+              if (selected.has(rc.id)) {
+                if (rc.id === r.id) return { ...rc, x, y }
+                return { ...rc, x: rc.x + dx, y: rc.y + dy }
+              }
+              return rc
+            }))
+            // schedule throttled sync
+            if (selected.size > 0) {
+              for (const id of selected) {
+                const target = id === r.id ? { x, y } : undefined
+                const current = rectangles.find((rc: Rectangle) => rc.id === id)
+                const pos = target ?? (current ? { x: current.x + dx, y: current.y + dy } : undefined)
+                if (pos) rectPending.current[id] = pos
+              }
+              scheduleRectSends()
+            } else {
+              rectPending.current[r.id] = { x, y }
+              scheduleRectSends()
+            }
           }
           const handleDragEnd = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
             const cx = node.x()
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
-            updateRectangle(r.id, { x, y })
+            const selected = selectedIdsRef.current
+            if (selected.size > 1) {
+              // persist all selected
+              const prev = lastDragPosRef.current[r.id] || { x, y }
+              const dx = x - prev.x
+              const dy = y - prev.y
+              for (const id of selected) {
+                if (id === r.id) {
+                  updateRectangle(id, { x, y })
+                } else {
+                  const cur = rectangles.find((rc: Rectangle) => rc.id === id)
+                  if (cur) updateRectangle(id, { x: cur.x + dx, y: cur.y + dy })
+                }
+              }
+            } else {
+              updateRectangle(r.id, { x, y })
+            }
             draggingIdRef.current = null
           }
           if (r.type === 'circle') {
@@ -524,7 +607,7 @@ export default function Canvas() {
                 const node = evt.target
                 const nx = node.x()
                 const ny = node.y()
-                setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
+                setRectangles(rectangles.map((rc: Rectangle) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
               }}
               onDragEnd={(evt: any) => {
                 const node = evt.target
@@ -572,9 +655,9 @@ export default function Canvas() {
         )
       })()}
     </div>
-    {/* Selected shape color picker overlay */}
+      {/* Selected shape color picker overlay */}
     {selectedId ? (() => {
-      const sel = rectangles.find((rr) => rr.id === selectedId)
+      const sel = rectangles.find((rr: Rectangle) => rr.id === selectedId)
       if (!sel) return null
       const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
       const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
@@ -606,6 +689,40 @@ export default function Canvas() {
             style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
             aria-label="Change shape color"
           />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
+              title="Layer up"
+              aria-label="Layer up"
+              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
+            >
+              ↑
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
+              title="Layer down"
+              aria-label="Layer down"
+              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
+            >
+              ↓
+            </button>
+            <button
+              onClick={async (e) => {
+                e.stopPropagation()
+                const id = generateRectId()
+                const index = rectangles.length % 10
+                const baseX = 20
+                const baseY = 80
+                const pos = { x: baseX + index * 50, y: baseY + index * 50 }
+                await addRectangle({ id, x: pos.x, y: pos.y, width: sel.width, height: sel.height, fill: sel.fill, type: sel.type, rotation: sel.rotation ?? 0, z: (sel.z ?? 0) })
+              }}
+              title="Copy shape"
+              aria-label="Copy shape"
+              style={{ background: '#111827', color: '#E5E7EB', border: '1px solid #1f2937', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
+            >
+              Copy
+            </button>
+          </div>
           <button
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"
