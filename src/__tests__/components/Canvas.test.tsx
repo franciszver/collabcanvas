@@ -1,6 +1,8 @@
 import { render, fireEvent, screen } from '@testing-library/react'
+import { useEffect } from 'react'
 import AuthProvider from '../../components/Auth/AuthProvider'
 import { CanvasProvider } from '../../contexts/CanvasContext'
+import { useCanvas } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 jest.mock('../../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
 // Make Firestore listener immediately emit empty snapshot (so loading overlay clears)
@@ -27,6 +29,19 @@ jest.mock('../../services/auth', () => ({
   signOut: jest.fn(async () => {}),
 }))
 import Canvas from '../../components/Canvas/Canvas'
+
+function SeedRectOnce() {
+  const { setRectangles } = useCanvas()
+  useEffect(() => {
+    const rect = { id: 'test-rect-1', x: 200, y: 200, width: 200, height: 100, fill: '#f00', type: 'rect' as const }
+    const timer = setTimeout(() => {
+      setRectangles([rect])
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return null
+}
 
 describe('Canvas', () => {
   it('renders placeholder without crashing', () => {
@@ -107,20 +122,18 @@ describe('Canvas', () => {
     expect(afterScale).not.toBe(beforeScale)
   })
 
-  it('updates rectangle position on drag', () => {
+  it('updates rectangle position on drag', async () => {
     render(
       <AuthProvider>
         <PresenceProvider>
           <CanvasProvider>
+            <SeedRectOnce />
             <Canvas />
           </CanvasProvider>
         </PresenceProvider>
       </AuthProvider>
     )
-    // Create a rectangle by clicking the empty stage
-    const stage = screen.getByTestId('Stage')
-    fireEvent.click(stage, { clientX: 300, clientY: 300 })
-    const rect = screen.getByTestId('Rect')
+    const rect = await screen.findByTestId('Rect')
     // Drag the rectangle (mock handlers in reactKonvaMock will call onDragStart/Move/End)
     const beforeX = rect.getAttribute('x')
     const beforeY = rect.getAttribute('y')
@@ -133,23 +146,22 @@ describe('Canvas', () => {
     expect(afterY).not.toBe(beforeY)
   })
 
-  it('deletes rectangle via delete icon after selection', () => {
+  it('deletes rectangle via delete icon after selection', async () => {
     render(
       <AuthProvider>
         <PresenceProvider>
           <CanvasProvider>
+            <SeedRectOnce />
             <Canvas />
           </CanvasProvider>
         </PresenceProvider>
       </AuthProvider>
     )
-    const stage = screen.getByTestId('Stage')
-    fireEvent.click(stage, { clientX: 200, clientY: 200 })
-    const rect = screen.getByTestId('Rect')
+    const rect = await screen.findByTestId('Rect')
     // Select the rectangle
     fireEvent.click(rect)
     // Expect delete Text to appear and be clickable
-    const deleteIcon = screen.getByTestId('Text')
+    const deleteIcon = await screen.findByTestId('Text')
     fireEvent.click(deleteIcon)
   })
 

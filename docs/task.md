@@ -638,6 +638,33 @@ collabcanvas/
   - Validate no degradation in interaction latency
   - Verify shapes create/sync reliably under load
 
+---
+
+## PR #13: Bug Fixes & Enhancements
+**Goal:** Address known issues and polish the workspace experience
+
+### Tasks:
+- [ ] **13.1** Fix cursor sync positions
+  - Ensure remote user cursors render at accurate positions relative to viewport/scale
+
+- [ ] **13.2** Add Arrow shape
+  - Include an Arrow option in the shape selector
+  - Support drag and position updates; random color selection
+
+- [ ] **13.3** Widen canvas workspace grid
+  - Increase spacing/scale of the grid to feel more spacious
+  - Keep grid performance-friendly
+
+- [ ] **13.4** Add white border around workspace
+  - Apply a subtle white border to delineate the canvas area
+
+ - [ ] **13.5** Add color picker for shapes
+  - Provide UI to choose shape color (create and update)
+  - Persist color choice and sync in real-time
+
+ - [ ] **13.6** Verify hosting paths work
+  - Test on `*.web.app` and `*.firebaseapp.com` URLs for full functionality
+
 
 ---
 
@@ -646,16 +673,14 @@ collabcanvas/
 ## Success Checklist - MVP Complete ✅
 
 ### Core Functionality
-- [ ] Users can create rectangles by clicking (200x100px default size)
-- [ ] Users can drag rectangles to move them
-- [ ] Pan and zoom work smoothly (60 FPS)
-- [ ] Multiple users can see each other's changes in real-time (<100ms)
-- [ ] Cursor positions sync across users (<50ms latency)
-- [ ] User names appear with cursors
-- [ ] Online users list shows who's currently active
-- [ ] Canvas persists when users refresh the page
-- [ ] Users can sign in with Google account
-- [ ] App is deployed and publicly accessible
+- [ ] Basic canvas with pan/zoom
+- [ ] At least one shape type (rectangle, circle, or text)
+- [ ] Ability to create and move objects
+- [ ] Real-time sync between 2+ users
+- [ ] Multiplayer cursors with name labels
+- [ ] Presence awareness (who’s online)
+- [ ] User authentication (users have accounts/names)
+- [ ] Deployed and publicly accessible
 
 ### Performance Metrics
 - [ ] 60 FPS maintained during all interactions
@@ -668,20 +693,3 @@ collabcanvas/
 
 ---
 
-## Post-MVP Enhancements (Future PRs)
-- Multiple shape types (circles, triangles, polygons)
-- Delete and duplicate operations
-- Resize and rotate shapes
-- Color picker UI
-- Text layers
-- Undo/redo functionality
-- Selection and multi-select
-- Keyboard shortcuts
-- Layer management / z-index
-- Export canvas to image/JSON
-- Multiple canvas workspaces
-- Permissions system
-- Mobile responsive design
-- Offline mode with sync
-- Advanced conflict resolution (CRDTs)
-- AI collaboration agent (Phase 2)

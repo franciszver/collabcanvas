@@ -57,7 +57,7 @@ function Layer(props) {
   return React.createElement('div', { 'data-testid': 'Layer', ...props })
 }
 function Rect(props) {
-  const { onDragStart, onDragMove, onDragEnd, ...rest } = props
+  const { onDragStart, onDragMove, onDragEnd, onClick, onTap, ...rest } = props
   const handleMouseDown = (ev) => {
     if (onDragStart) onDragStart({ target: { x: () => props.x, y: () => props.y } })
   }
@@ -67,7 +67,11 @@ function Rect(props) {
   const handleMouseUp = (ev) => {
     if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
-  return React.createElement('div', { 'data-testid': 'Rect', onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+  const handleClick = (ev) => {
+    if (ev && ev.stopPropagation) ev.stopPropagation()
+    if (onClick) onClick({ target: { x: () => props.x, y: () => props.y } })
+  }
+  return React.createElement('div', { 'data-testid': 'Rect', onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onClick: handleClick, onTap, ...rest })
 }
 function Transformer(props) {
   return React.createElement('div', { 'data-testid': 'Transformer', ...props })
@@ -110,6 +114,10 @@ function Star(props) {
   return React.createElement('div', { 'data-testid': 'Star', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
 }
 
-module.exports = { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star }
+function Line(props) {
+  return React.createElement('div', { 'data-testid': 'Line', ...props })
+}
+
+module.exports = { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line }
 
 
