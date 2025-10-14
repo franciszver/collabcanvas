@@ -3,11 +3,11 @@ import { useCanvas } from '../../contexts/CanvasContext'
 import { generateRectId, getRandomColor, transformCanvasCoordinates } from '../../utils/helpers'
 
 const SHAPES = [
-  { key: 'rect', label: 'Rectangle' },
-  { key: 'circle', label: 'Circle' },
-  { key: 'triangle', label: 'Triangle' },
-  { key: 'star', label: 'Star' },
-  { key: 'arrow', label: 'Arrow' },
+  { key: 'rect', label: 'Rectangle', icon: '▭' },
+  { key: 'circle', label: 'Circle', icon: '●' },
+  { key: 'triangle', label: 'Triangle', icon: '▲' },
+  { key: 'star', label: 'Star', icon: '★' },
+  { key: 'arrow', label: 'Arrow', icon: '➜' },
 ] as const
 
 export default function ShapeSelector() {
@@ -43,31 +43,38 @@ export default function ShapeSelector() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 12, color: '#9CA3AF' }}>Create shape:</span>
-      <input
-        type="color"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
-        title="Shape color"
-        style={{ width: 28, height: 28, background: 'transparent', border: '1px solid #1f2937', borderRadius: 6, padding: 0 }}
-      />
       {SHAPES.map((s) => (
         <button
           key={s.key}
           onClick={() => createShape(s.key)}
           disabled={busy}
+          title={s.label}
+          aria-label={s.label}
           style={{
             background: '#111827',
             color: '#E5E7EB',
             border: '1px solid #1f2937',
             borderRadius: 6,
             padding: '4px 8px',
+            minWidth: 32,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 14,
+            lineHeight: 1,
             cursor: busy ? 'not-allowed' : 'pointer',
           }}
         >
-          {s.label}
+          {s.icon}
         </button>
       ))}
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        title="New shape color"
+        style={{ width: 28, height: 28, background: 'transparent', border: '1px solid #1f2937', borderRadius: 6, padding: 0, marginLeft: 6 }}
+      />
       <button
         onClick={async () => {
           if (busy) return

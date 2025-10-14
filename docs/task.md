@@ -693,7 +693,7 @@ collabcanvas/
  - [x] **13.15** Convert color panel to Properties panel floating at top of canvas
   - Show only when a shape is selected; render as a horizontal bar at the top of the canvas; allow editing color, z-layer up/down, and deleting the selected object
 
- - [ ] **13.16** Update header shape buttons to icons
+ - [x] **13.16** Update header shape buttons to icons
   - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
 
 ---
