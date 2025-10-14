@@ -355,10 +355,10 @@ export default function Canvas() {
       {/* Grid Layer */}
       <Layer listening={false}>
         {gridLines.xs.map((x) => (
-          <Line key={`gx-${x}`} points={[x, gridLines.minY, x, gridLines.maxY]} stroke="#374151" strokeWidth={0.5} opacity={0.4} />
+          <Line key={`gx-${x}`} points={[x, gridLines.minY, x, gridLines.maxY]} stroke="#374151" strokeWidth={1.5} opacity={0.4} />
         ))}
         {gridLines.ys.map((y) => (
-          <Line key={`gy-${y}`} points={[gridLines.minX, y, gridLines.maxX, y]} stroke="#374151" strokeWidth={0.5} opacity={0.4} />
+          <Line key={`gy-${y}`} points={[gridLines.minX, y, gridLines.maxX, y]} stroke="#374151" strokeWidth={1.5} opacity={0.4} />
         ))}
       </Layer>
       {/* Shapes Layer */}
@@ -404,6 +404,7 @@ export default function Canvas() {
                 x={cx}
                 y={cy}
                 radius={radius}
+                rotation={r.rotation || 0}
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onTransformEnd={(evt: any) => {
@@ -416,7 +417,7 @@ export default function Canvas() {
                   const newHeight = newRadius * 2
                   const newX = node.x() - newWidth / 2
                   const newY = node.y() - newHeight / 2
-                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight })
+                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 }}
               />
             )
@@ -432,8 +433,21 @@ export default function Canvas() {
                 y={cy}
                 sides={3}
                 radius={radius}
+                rotation={r.rotation || 0}
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: any) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const scaleY = node.scaleY ? node.scaleY() : 1
+                  const newWidth = Math.max(5, r.width * scaleX)
+                  const newHeight = Math.max(5, r.height * scaleY)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  const newX = node.x() - newWidth / 2
+                  const newY = node.y() - newHeight / 2
+                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                }}
               />
             )
           }
@@ -450,8 +464,21 @@ export default function Canvas() {
                 numPoints={5}
                 innerRadius={inner}
                 outerRadius={outer}
+                rotation={r.rotation || 0}
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: any) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const scaleY = node.scaleY ? node.scaleY() : 1
+                  const newWidth = Math.max(5, r.width * scaleX)
+                  const newHeight = Math.max(5, r.height * scaleY)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  const newX = node.x() - newWidth / 2
+                  const newY = node.y() - newHeight / 2
+                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                }}
               />
             )
           }
@@ -468,8 +495,19 @@ export default function Canvas() {
                 strokeWidth={Math.max(2, Math.min(10, r.height / 4))}
                 pointerLength={Math.max(8, Math.min(24, r.height))}
                 pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
+                rotation={r.rotation || 0}
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
                 onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                onTransformEnd={(evt: any) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const scaleY = node.scaleY ? node.scaleY() : 1
+                  const newWidth = Math.max(5, r.width * scaleX)
+                  const newHeight = Math.max(5, r.height * scaleY)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                }}
               />
             )
           }
@@ -481,6 +519,7 @@ export default function Canvas() {
               y={baseY}
               width={r.width}
               height={r.height}
+              rotation={r.rotation || 0}
               onDragMove={(evt: any) => {
                 const node = evt.target
                 const nx = node.x()
@@ -489,8 +528,18 @@ export default function Canvas() {
               }}
               onDragEnd={(evt: any) => {
                 const node = evt.target
-                updateRectangle(r.id, { x: node.x(), y: node.y() })
+                updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 draggingIdRef.current = null
+              }}
+              onTransformEnd={(evt: any) => {
+                const node = evt.target
+                const scaleX = node.scaleX ? node.scaleX() : 1
+                const scaleY = node.scaleY ? node.scaleY() : 1
+                const newWidth = Math.max(5, r.width * scaleX)
+                const newHeight = Math.max(5, r.height * scaleY)
+                if (node.scaleX) node.scaleX(1)
+                if (node.scaleY) node.scaleY(1)
+                updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
               }}
             />
           )
@@ -527,7 +576,7 @@ export default function Canvas() {
             />
           )
         })() : null}
-        <Transformer ref={transformerRef} rotateEnabled={false} ignoreStroke />
+        <Transformer ref={transformerRef} rotateEnabled ignoreStroke />
       </Layer>
     </Stage>
     </div>
@@ -561,13 +610,13 @@ export default function Canvas() {
       const anchorX = offsetX + viewport.x + (sel.x + sel.width) * viewport.scale
       const anchorY = offsetY + viewport.y + sel.y * viewport.scale
       return (
-        <div style={{ position: 'absolute', left: Math.max(0, anchorX - 120), top: Math.max(0, anchorY - 40), pointerEvents: 'auto', zIndex: 26, background: '#0b1220', border: '1px solid #374151', borderRadius: 6, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ position: 'absolute', left: Math.max(0, anchorX - 120), top: Math.max(0, anchorY - 40), pointerEvents: 'auto', zIndex: 26, background: '#0b1220', border: '1px solid #374151', borderRadius: 6, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
           <span style={{ fontSize: 11, color: '#9CA3AF' }}>Color</span>
           <input
             type="color"
             value={sel.fill}
             onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
-            style={{ width: 24, height: 24, padding: 0, background: 'transparent', border: '1px solid #1f2937', borderRadius: 4 }}
+            style={{ width: 24, height: 24, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4 }}
             aria-label="Change shape color"
           />
         </div>
