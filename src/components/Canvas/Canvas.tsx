@@ -1,15 +1,21 @@
-import { Stage, Layer, Rect, Transformer } from 'react-konva'
+import { Stage, Layer, Rect, Transformer, Text } from 'react-konva'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
 import { defaultRectAt, generateRectId, transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, addRectangle, updateRectangle } = useCanvas()
+  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle } = useCanvas()
   const isPanningRef = useRef(false)
   const lastPosRef = useRef<{ x: number; y: number } | null>(null)
-  const [containerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
+  const movedRef = useRef(false)
+  const widthPct = 0.8
+  const heightPct = 0.7
+  const sizePct = (n: number, pct: number) => Math.round(n * pct)
+  const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
+  const prevSizeRef = useRef(containerSize)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const transformerRef = useRef<any>(null)
 
@@ -36,6 +42,7 @@ export default function Canvas() {
 
   const onMouseDown = useCallback((e: any) => {
     isPanningRef.current = true
+    movedRef.current = false
     lastPosRef.current = e.target.getStage().getPointerPosition()
   }, [])
 
@@ -45,6 +52,7 @@ export default function Canvas() {
       const pos = e.target.getStage().getPointerPosition()
       const dx = pos.x - lastPosRef.current.x
       const dy = pos.y - lastPosRef.current.y
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
       lastPosRef.current = pos
       setViewport({ ...viewport, x: viewport.x + dx, y: viewport.y + dy })
     },
@@ -77,20 +85,48 @@ export default function Canvas() {
     }
   }, [selectedId, rectangles])
 
+  useEffect(() => {
+    const onResize = () => {
+      const newWidth = sizePct(window.innerWidth, widthPct)
+      const newHeight = sizePct(window.innerHeight, heightPct)
+      const prev = prevSizeRef.current
+      // Keep the same canvas center point in view after resize
+      const centerCanvasX = (prev.width / 2 - viewport.x) / viewport.scale
+      const centerCanvasY = (prev.height / 2 - viewport.y) / viewport.scale
+      setContainerSize({ width: newWidth, height: newHeight })
+      setViewport({
+        ...viewport,
+        x: newWidth / 2 - centerCanvasX * viewport.scale,
+        y: newHeight / 2 - centerCanvasY * viewport.scale,
+      })
+      prevSizeRef.current = { width: newWidth, height: newHeight }
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [viewport, setViewport])
+
   const onClick = useCallback(
     (e: any) => {
       // Only create when clicking on empty stage background
       const stage = e.target.getStage()
       if (e.target !== stage) return
+      // Suppress create if a drag occurred before mouseup/click
+      if (movedRef.current) {
+        movedRef.current = false
+        return
+      }
       const pos = stage.getPointerPosition()
       const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
       const base = defaultRectAt(x, y)
-      addRectangle({ id: generateRectId(), ...base })
+      const id = generateRectId()
+      addRectangle({ id, ...base })
+      setSelectedId(id)
     },
     [viewport, addRectangle]
   )
 
   return (
+    <div className={styles.root}>
     <Stage
       width={containerSize.width}
       height={containerSize.height}
@@ -105,10 +141,11 @@ export default function Canvas() {
       onMouseUp={onMouseUp}
       draggable={false}
     >
+      {/* Shapes Layer */}
       <Layer>
         {rectangles.map((r: Rectangle) => (
           <Rect
-            key={r.id}
+            key={`rect-${r.id}`}
             name={`rect-${r.id}`}
             x={r.x}
             y={r.y}
@@ -134,6 +171,12 @@ export default function Canvas() {
               }
               setSelectedId(r.id)
             }}
+            onDragMove={(evt) => {
+              const node = evt.target
+              const nx = node.x()
+              const ny = node.y()
+              setRectangles(rectangles.map((rc) => (rc.id === r.id ? { ...rc, x: nx, y: ny } : rc)))
+            }}
             onDragEnd={(evt) => {
               const node = evt.target
               updateRectangle(r.id, { x: node.x(), y: node.y() })
@@ -150,9 +193,42 @@ export default function Canvas() {
             }}
           />
         ))}
+      </Layer>
+      {/* Overlay Layer for selection & delete icon */}
+      <Layer listening>
+        {selectedId ? (() => {
+          const sel = rectangles.find((rr) => rr.id === selectedId)
+          if (!sel) return null
+          return (
+            <Text
+              key={`x-${sel.id}`}
+              x={sel.x + sel.width / 2 - 14}
+              y={sel.y - 28 - 15}
+              text="✕"
+              fontSize={28}
+              fontStyle="bold"
+              fill="#ef4444"
+              shadowColor="#ffffff"
+              shadowBlur={4}
+              shadowOpacity={0.9}
+              listening
+              onClick={(evt) => {
+                evt.cancelBubble = true
+                deleteRectangle(sel.id)
+                setSelectedId(null)
+              }}
+              onTap={(evt) => {
+                evt.cancelBubble = true
+                deleteRectangle(sel.id)
+                setSelectedId(null)
+              }}
+            />
+          )
+        })() : null}
         <Transformer ref={transformerRef} rotateEnabled={false} ignoreStroke />
       </Layer>
     </Stage>
+    </div>
   )
 }
 

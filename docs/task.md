@@ -274,33 +274,33 @@ collabcanvas/
 **Goal:** Set up Firestore collections and write operations (read operations in next PR)
 
 ### Tasks:
-- [ ] **5.1** Create Firestore service layer
+- [x] **5.1** Create Firestore service layer
   - **Files:** `src/services/firestore.ts`
   - Initialize Firestore instance
   - Export database reference
   
-- [ ] **5.2** Define Firestore collection structure
+- [x] **5.2** Define Firestore collection structure
   - **Files:** `src/services/firestore.ts`
   - Collections: `objects` (rectangles), `presence` (user cursors), `users`
   - Document structure for each collection
   
-- [ ] **5.3** Implement write operations for rectangles
+- [x] **5.3** Implement write operations for rectangles
   - **Files:** `src/services/firestore.ts`
   - Functions: `createRectangle()`, `updateRectangle()`, `deleteRectangle()`
   - Use Firestore `setDoc()`, `updateDoc()`, `deleteDoc()`
   
-- [ ] **5.4** Update CanvasContext to write to Firestore
+- [x] **5.4** Update CanvasContext to write to Firestore
   - **Files:** `src/contexts/CanvasContext.tsx`
   - On rectangle create: write to Firestore
   - On rectangle move: update Firestore
   - Use optimistic updates (update local state immediately)
   
-- [ ] **5.5** Add error handling for Firestore operations
+- [x] **5.5** Add error handling for Firestore operations
   - **Files:** `src/services/firestore.ts`, `src/contexts/CanvasContext.tsx`
   - Try/catch blocks
   - Log errors to console
   
-- [ ] **5.6** Write unit tests for Firestore service
+- [x] **5.6** Write unit tests for Firestore service
   - **Files:** `src/__tests__/services/firestore.test.ts`
   - **Tests to write:**
     - Mock Firestore methods (`setDoc`, `updateDoc`, `deleteDoc`)
@@ -310,7 +310,7 @@ collabcanvas/
     - Test error handling when Firestore operations fail
   - **Verification:** Run `npm test` - all Firestore tests should pass
   
-- [ ] **5.7** Test write operations
+- [x] **5.7** Test write operations
   - Create rectangles and verify in Firebase Console
   - Move rectangles and verify updates in Firebase Console
   - Check for any write errors in console

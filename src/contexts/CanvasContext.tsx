@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createRectangle, updateRectangleDoc, deleteRectangleDoc } from '../services/firestore'
 import type { CanvasState, Rectangle, ViewportTransform } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
 
@@ -7,6 +8,7 @@ export interface CanvasContextValue extends CanvasState {
   setRectangles: (r: Rectangle[]) => void
   addRectangle: (rect: Rectangle) => void
   updateRectangle: (id: string, update: Partial<Rectangle>) => void
+  deleteRectangle: (id: string) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -38,12 +40,42 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const [rectangles, setRectangles] = useState<Rectangle[]>([])
   const selectedTool: CanvasState['selectedTool'] = 'pan'
 
-  const addRectangle = (rect: Rectangle) => setRectangles((prev) => [...prev, rect])
-  const updateRectangle = (id: string, update: Partial<Rectangle>) =>
+  const addRectangle = async (rect: Rectangle) => {
+    setRectangles((prev) => [...prev, rect])
+    try {
+      await createRectangle(rect)
+    } catch (e) {
+      // rollback on failure
+      setRectangles((prev) => prev.filter((r) => r.id !== rect.id))
+      // eslint-disable-next-line no-console
+      console.error('Failed to create rectangle', e)
+    }
+  }
+  const updateRectangle = async (id: string, update: Partial<Rectangle>) => {
     setRectangles((prev) => prev.map((r) => (r.id === id ? { ...r, ...update } : r)))
+    try {
+      await updateRectangleDoc(id, update)
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update rectangle', e)
+    }
+  }
+
+  const deleteRectangle = async (id: string) => {
+    const prevRects = rectangles
+    setRectangles((prev) => prev.filter((r) => r.id !== id))
+    try {
+      await deleteRectangleDoc(id)
+    } catch (e) {
+      // rollback on failure
+      setRectangles(prevRects)
+      // eslint-disable-next-line no-console
+      console.error('Failed to delete rectangle', e)
+    }
+  }
 
   const value: CanvasContextValue = useMemo(
-    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle }),
+    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle, deleteRectangle }),
     [viewport, rectangles, selectedTool]
   )
 
