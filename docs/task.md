@@ -575,7 +575,7 @@ collabcanvas/
 
 ---
 
-## PR #11: Final Testing & Documentation
+## PR #11: Further Testing and Documentation
 **Goal:** Comprehensive testing and documentation for MVP launch
 
 ### Tasks:
@@ -602,7 +602,7 @@ collabcanvas/
   - Support 500+ simple objects without FPS drops
   - Support 5+ concurrent users without degradation
   
-- [ ] **11.4** Update README with complete documentation
+- [x] **11.4** Update README with complete documentation
   - **Files:** `README.md`
   - Project description
   - Setup instructions
@@ -613,7 +613,7 @@ collabcanvas/
   - Known limitations (last-write-wins, etc.)
   - Future roadmap
   
-- [ ] **11.5** Add code comments and documentation
+- [x] **11.5** Add code comments and documentation
   - **Files:** All service files, complex components
   - Document Firestore structure
   - Document conflict resolution strategy
