@@ -677,33 +677,26 @@ collabcanvas/
  - [x] **13.10** Add copy/duplicate shape action
   - Duplicate a shape preserving color/size; position via deterministic placement logic
 
- - [ ] **13.11** Enable multi-select and group move
-  - Select multiple shapes and drag them together
-
- - [x] **13.12** Link shape movement with cursor refresh movement
+ - [x] **13.11** Link shape movement with cursor refresh movement
   - Couple shape movement updates with the cursor refresh cadence for synchronized visual feedback
-
- - [ ] **13.13** Workspace size menu
-  - Add menu to define workspace size; if too small, auto-handle object cluttering
-
- - [ ] **13.14** Revert workspace size change
-  - Add menu action to revert workspace size to previous setting
-
  
- - [x] **13.15** Convert color panel to Properties panel floating at top of canvas
+ - [x] **13.12** Convert color panel to Properties panel floating at top of canvas
   - Show only when a shape is selected; render as a horizontal bar at the top of the canvas; allow editing color, z-layer up/down, and deleting the selected object
 
- - [x] **13.16** Update header shape buttons to icons
+ - [x] **13.13** Update header shape buttons to icons
   - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
 
-- [x] **13.17** Add text shape functionality
+- [x] **13.14** Add text shape functionality
   - Introduce a new text shape that can be added, resized, and display text
   - Text shape should have default value "Enter Text" and default size of 200x300 pixels
   - Add text input form to the existing floating properties panel (that appears when a shape is selected) between the delete button and layer buttons, only visible when a text shape is selected
   - Support text editing, font size, color, and basic text formatting options
 
-- [ ] **13.18** Review and remove slop
+- [ ] **13.15** Check and cleanup code slop
   - Audit and remove unused code, redundant comments, and cruft across `src/`
+  - Remove unused imports, variables, and functions
+  - Clean up any AI-generated code artifacts or redundant implementations
+  - Ensure code follows consistent patterns and best practices
 
 ---
 
@@ -726,6 +719,18 @@ collabcanvas/
 - [ ] **14.5** Remove dead code and AI slop
   - Delete unused imports, variables, and functions across `src/`
   - Remove redundant code/comments; tighten obvious types and simplify props
+
+- [ ] **14.6** Enable multi-select and group move
+  - Select multiple shapes and drag them together
+
+- [ ] **14.7** Workspace size menu
+  - Add menu to define workspace size; if too small, auto-handle object cluttering
+
+- [ ] **14.8** Revert workspace size change
+  - Add menu action to revert workspace size to previous setting
+
+- [ ] **14.9** Review and remove slop
+  - Audit and remove unused code, redundant comments, and cruft across `src/`
 
 ---
 
