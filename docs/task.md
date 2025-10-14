@@ -683,22 +683,36 @@ collabcanvas/
  - [ ] **13.12** Link shape movement with cursor refresh movement
   - Couple shape movement updates with the cursor refresh cadence for synchronized visual feedback
 
- - [ ] **13.13** Realtime cursors via Firebase
-  - Use Firebase Realtime Database to track and render cursors of other users
-
- - [ ] **13.14** Realtime drag via Firebase
-  - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
-
- - [ ] **13.15** Workspace size menu
+ - [ ] **13.13** Workspace size menu
   - Add menu to define workspace size; if too small, auto-handle object cluttering
 
- - [ ] **13.16** Revert workspace size change
+ - [ ] **13.14** Revert workspace size change
   - Add menu action to revert workspace size to previous setting
 
-
- - [x] **13.17** Convert color panel to Properties panel floating at top of canvas
+ 
+ - [x] **13.15** Convert color panel to Properties panel floating at top of canvas
   - Show only when a shape is selected; render as a horizontal bar at the top of the canvas; allow editing color, z-layer up/down, and deleting the selected object
 
+ - [ ] **13.16** Update header shape buttons to icons
+  - Replace text labels with shape icons; remove "Create shape" wording; move color selector to the end of the header controls
+
+---
+
+## PR #14: Performance and Realtime Improvements
+**Goal:** Improve realtime responsiveness and UI performance under interaction
+
+### Tasks:
+- [ ] **14.1** Realtime cursors via Firebase
+  - Use Firebase Realtime Database to track and render cursors of other users
+
+- [ ] **14.2** Realtime drag via Firebase
+  - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
+
+- [ ] **14.3** Optimize bundle size and code-splitting
+  - Reduce main chunk size; split heavy modules; lazy-load non-critical UI
+
+- [ ] **14.4** Tune Konva layers and redraw strategy
+  - Minimize layer redraws; leverage caching where safe; throttle non-essential updates
 
 ---
 
