@@ -696,8 +696,8 @@ collabcanvas/
   - Add menu action to revert workspace size to previous setting
 
 
- - [ ] **13.17** Convert color panel to Properties panel pinned at top
-  - Decouple from selection overlay; rename to Properties; pin at top of workspace to edit selected shape properties
+ - [x] **13.17** Convert color panel to Properties panel floating at top of canvas
+  - Show only when a shape is selected; render as a horizontal bar at the top of the canvas; allow editing color, z-layer up/down, and deleting the selected object
 
 
 ---

@@ -12,6 +12,8 @@ export interface CanvasContextValue extends CanvasState {
   deleteRectangle: (id: string) => void
   isLoading: boolean
   clearAllRectangles: () => Promise<void>
+  selectedId: string | null
+  setSelectedId: (id: string | null) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -43,6 +45,7 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const [rectangles, setRectangles] = useState<Rectangle[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const selectedTool: CanvasState['selectedTool'] = 'pan'
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   // Track last seen server update time for each rectangle (ms) to apply LWW
   const lastSeenUpdatedAtRef = useRef<Record<string, number>>({})
 
@@ -93,8 +96,8 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   }
 
   const value: CanvasContextValue = useMemo(
-    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading, clearAllRectangles }),
-    [viewport, rectangles, selectedTool, isLoading]
+    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading, clearAllRectangles, selectedId, setSelectedId }),
+    [viewport, rectangles, selectedTool, isLoading, selectedId]
   )
 
   useEffect(() => {

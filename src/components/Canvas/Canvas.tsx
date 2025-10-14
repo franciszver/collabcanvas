@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
-import { transformCanvasCoordinates, generateRectId } from '../../utils/helpers'
+import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
 import { updateCursorPosition } from '../../services/presence'
@@ -12,7 +12,7 @@ import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 
 export default function Canvas() {
-  const { viewport, setViewport, rectangles, setRectangles, addRectangle, updateRectangle, deleteRectangle, isLoading } = useCanvas() as any
+  const { viewport, setViewport, rectangles, setRectangles, updateRectangle, deleteRectangle, isLoading, selectedId, setSelectedId } = useCanvas() as any
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
@@ -24,7 +24,6 @@ export default function Canvas() {
   const sizePct = (n: number, pct: number) => Math.round(n * pct)
   const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
   const prevSizeRef = useRef(containerSize)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const selectedIdsRef = useRef<Set<string>>(new Set())
   const setSingleSelection = useCallback((id: string) => {
     selectedIdsRef.current = new Set([id])
@@ -655,30 +654,27 @@ export default function Canvas() {
         )
       })()}
     </div>
-      {/* Selected shape color picker overlay */}
+    {/* Floating Properties bar at top of canvas */}
     {selectedId ? (() => {
       const sel = rectangles.find((rr: Rectangle) => rr.id === selectedId)
       if (!sel) return null
       const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
       const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
-      const anchorX = offsetX + viewport.x + (sel.x + sel.width) * viewport.scale
-      const anchorY = offsetY + viewport.y + sel.y * viewport.scale
       return (
         <div
           style={{
             position: 'absolute',
-            left: Math.max(0, anchorX - 120),
-            top: Math.max(0, anchorY - 40),
+            left: offsetX + 12,
+            top: offsetY + 12,
             pointerEvents: 'auto',
             zIndex: 26,
             background: '#0b1220',
             border: '1px solid #374151',
-            borderRadius: 6,
-            padding: '6px',
+            borderRadius: 8,
+            padding: '6px 10px',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            gap: 8,
+            gap: 10,
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -689,55 +685,29 @@ export default function Canvas() {
             style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
             aria-label="Change shape color"
           />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
-              title="Layer up"
-              aria-label="Layer up"
-              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
-            >
-              ↑
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
-              title="Layer down"
-              aria-label="Layer down"
-              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
-            >
-              ↓
-            </button>
-            <button
-              onClick={async (e) => {
-                e.stopPropagation()
-                const id = generateRectId()
-                const index = rectangles.length % 10
-                const baseX = 20
-                const baseY = 80
-                const pos = { x: baseX + index * 50, y: baseY + index * 50 }
-                await addRectangle({ id, x: pos.x, y: pos.y, width: sel.width, height: sel.height, fill: sel.fill, type: sel.type, rotation: sel.rotation ?? 0, z: (sel.z ?? 0) })
-              }}
-              title="Copy shape"
-              aria-label="Copy shape"
-              style={{ background: '#111827', color: '#E5E7EB', border: '1px solid #1f2937', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}
-            >
-              Copy
-            </button>
-          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
+            title="Layer up"
+            aria-label="Layer up"
+            style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+          >
+            Layer ↑
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
+            title="Layer down"
+            aria-label="Layer down"
+            style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+          >
+            Layer ↓
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"
             aria-label="Delete selected shape"
-            style={{
-              background: '#7f1d1d',
-              color: '#FEE2E2',
-              border: '1px solid #b91c1c',
-              borderRadius: 6,
-              padding: '2px 8px',
-              cursor: 'pointer',
-              lineHeight: 1.2,
-            }}
+            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
           >
-            ✕
+            Delete
           </button>
         </div>
       )
