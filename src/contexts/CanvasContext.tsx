@@ -5,6 +5,8 @@ import { INITIAL_SCALE } from '../utils/constants'
 export interface CanvasContextValue extends CanvasState {
   setViewport: (v: ViewportTransform) => void
   setRectangles: (r: Rectangle[]) => void
+  addRectangle: (rect: Rectangle) => void
+  updateRectangle: (id: string, update: Partial<Rectangle>) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -36,8 +38,12 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
   const [rectangles, setRectangles] = useState<Rectangle[]>([])
   const selectedTool: CanvasState['selectedTool'] = 'pan'
 
+  const addRectangle = (rect: Rectangle) => setRectangles((prev) => [...prev, rect])
+  const updateRectangle = (id: string, update: Partial<Rectangle>) =>
+    setRectangles((prev) => prev.map((r) => (r.id === id ? { ...r, ...update } : r)))
+
   const value: CanvasContextValue = useMemo(
-    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles }),
+    () => ({ viewport, rectangles, selectedTool, setViewport, setRectangles, addRectangle, updateRectangle }),
     [viewport, rectangles, selectedTool]
   )
 

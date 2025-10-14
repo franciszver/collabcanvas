@@ -7,7 +7,13 @@ function Stage(props) {
 function Layer(props) {
   return React.createElement('div', { 'data-testid': 'Layer', ...props })
 }
+function Rect(props) {
+  return React.createElement('div', { 'data-testid': 'Rect', ...props })
+}
+function Transformer(props) {
+  return React.createElement('div', { 'data-testid': 'Transformer', ...props })
+}
 
-module.exports = { Stage, Layer }
+module.exports = { Stage, Layer, Rect, Transformer }
 
 

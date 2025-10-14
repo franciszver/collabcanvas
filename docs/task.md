@@ -208,31 +208,32 @@ collabcanvas/
 **Goal:** Click to place 200x100px rectangles on canvas and resize them (no sync yet)
 
 ### Tasks:
-- [ ] **4.1** Add click handler to Canvas component
+- [x] **4.1** Add click handler to Canvas component
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - On stage click: create rectangle at cursor position
+  - Only create when clicking empty canvas background (not on existing rectangles)
   
-- [ ] **4.2** Implement rectangle rendering
+- [x] **4.2** Implement rectangle rendering
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Map rectangles array to Konva `<Rect>` components
   - Apply default size: 200x100px
   - Apply random colors (hardcode 4-5 colors)
   
-- [ ] **4.3** Add rectangle to local state
+- [x] **4.3** Add rectangle to local state
   - **Files:** `src/contexts/CanvasContext.tsx`
   - Update context with `addRectangle()` function
   - Generate unique IDs (use `crypto.randomUUID()`)
   
-- [ ] **4.4** Implement rectangle dragging
+- [x] **4.4** Implement rectangle dragging
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Enable `draggable` prop on Konva Rect
   - Update rectangle position in state on drag end
   
-- [ ] **4.5** Add helper utilities
+- [x] **4.5** Add helper utilities
   - **Files:** `src/utils/helpers.ts`
   - Functions: `generateRectId()`, `getRandomColor()`, `transformCanvasCoordinates()`
   
-- [ ] **4.6** Write unit tests for helper utilities
+- [x] **4.6** Write unit tests for helper utilities
   - **Files:** `src/__tests__/utils/helpers.test.ts`
   - **Tests to write:**
     - Test `generateRectId()` returns unique IDs
@@ -241,22 +242,26 @@ collabcanvas/
     - Test coordinate transformation edge cases (negative values, zoom levels)
   - **Verification:** Run `npm test` - all helper tests should pass
   
-- [ ] **4.7** Test rectangle creation and movement
+- [x] **4.7** Test rectangle creation and movement
   - Click to place multiple rectangles
   - Drag rectangles to move them
   - Verify no lag or visual glitches
   - Test with 20+ rectangles for performance
-
-- [ ] **4.8** Implement rectangle resizing
+  - Verify clicking an existing rectangle does not create a new one
+  - Verify selected rectangle is brought to the front (z-order)
+ 
+- [x] **4.8** Implement rectangle resizing
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Use Konva `Transformer` to allow resizing of a selected rectangle
   - Update width/height while preserving position during resize
+  - Clicking a rectangle selects it and attaches the `Transformer`
+  - Bring selected rectangle to front (z-order) when selected
 
-- [ ] **4.9** Update context to handle size updates
+- [x] **4.9** Update context to handle size updates
   - **Files:** `src/contexts/CanvasContext.tsx`
   - Add method to update rectangle width/height on resize end
 
-- [ ] **4.10** Write component test for resizing
+- [x] **4.10** Write component test for resizing
   - **Files:** `src/__tests__/components/Canvas.test.tsx`
   - **Tests to write:**
     - Resize interaction updates rectangle size in state
