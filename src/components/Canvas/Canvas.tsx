@@ -1,4 +1,4 @@
-import { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line, Arrow } from 'react-konva'
+import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow } from 'react-konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
@@ -545,37 +545,8 @@ export default function Canvas() {
           )
         })}
       </Layer>
-      {/* Overlay Layer for selection & delete icon */}
+      {/* Overlay Layer for Transformer only */}
       <Layer listening>
-        {selectedId ? (() => {
-          const sel = rectangles.find((rr) => rr.id === selectedId)
-          if (!sel) return null
-          return (
-            <Text
-              key={`x-${sel.id}`}
-              x={sel.x + sel.width / 2 - 14}
-              y={sel.y - 28 - 15}
-              text="✕"
-              fontSize={28}
-              fontStyle="bold"
-              fill="#ef4444"
-              shadowColor="#ffffff"
-              shadowBlur={4}
-              shadowOpacity={0.9}
-              listening
-              onClick={(evt) => {
-                evt.cancelBubble = true
-                deleteRectangle(sel.id)
-                setSelectedId(null)
-              }}
-              onTap={(evt) => {
-                evt.cancelBubble = true
-                deleteRectangle(sel.id)
-                setSelectedId(null)
-              }}
-            />
-          )
-        })() : null}
         <Transformer ref={transformerRef} rotateEnabled ignoreStroke />
       </Layer>
     </Stage>
@@ -610,15 +581,47 @@ export default function Canvas() {
       const anchorX = offsetX + viewport.x + (sel.x + sel.width) * viewport.scale
       const anchorY = offsetY + viewport.y + sel.y * viewport.scale
       return (
-        <div style={{ position: 'absolute', left: Math.max(0, anchorX - 120), top: Math.max(0, anchorY - 40), pointerEvents: 'auto', zIndex: 26, background: '#0b1220', border: '1px solid #374151', borderRadius: 6, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <span style={{ fontSize: 11, color: '#9CA3AF' }}>Color</span>
+        <div
+          style={{
+            position: 'absolute',
+            left: Math.max(0, anchorX - 120),
+            top: Math.max(0, anchorY - 40),
+            pointerEvents: 'auto',
+            zIndex: 26,
+            background: '#0b1220',
+            border: '1px solid #374151',
+            borderRadius: 6,
+            padding: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             type="color"
             value={sel.fill}
             onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
-            style={{ width: 24, height: 24, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4 }}
+            style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
             aria-label="Change shape color"
           />
+          <button
+            onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
+            title="Delete shape"
+            aria-label="Delete selected shape"
+            style={{
+              background: '#7f1d1d',
+              color: '#FEE2E2',
+              border: '1px solid #b91c1c',
+              borderRadius: 6,
+              padding: '2px 8px',
+              cursor: 'pointer',
+              lineHeight: 1.2,
+            }}
+          >
+            ✕
+          </button>
         </div>
       )
     })() : null}

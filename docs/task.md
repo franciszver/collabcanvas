@@ -662,44 +662,38 @@ collabcanvas/
   - Provide UI to choose shape color (create and update)
   - Persist color choice and sync in real-time
 
- - [ ] **13.6** Verify hosting paths work
-  - Test on `*.web.app` and `*.firebaseapp.com` URLs for full functionality
-
-- [x] **13.7** Enable shape rotation
+ - [x] **13.6** Enable shape rotation
   - Allow rotating shapes with Transformer; persist and sync rotation
 
-- [x] **13.8** Thicken grid lines by 1px
-  - Increase grid stroke width to improve legibility
-
-- [x] **13.9** Prevent background color change during color pick
+ - [x] **13.7** Prevent background color change during color pick
   - Ensure only the selected shape color changes, not the canvas background
 
-- [ ] **13.10** Add z-index control in color panel
+ - [ ] **13.8** Add z-index control in color panel
   - Allow setting a shape's z layer and nudging up/down
 
-- [ ] **13.11** Move delete into color panel
+ - [x] **13.9** Move delete into color panel
   - Relocate the delete icon into the selected shape's color selector UI
 
-- [ ] **13.12** Add copy/duplicate shape action
+ - [ ] **13.10** Add copy/duplicate shape action
   - Duplicate a shape preserving color/size; position via deterministic placement logic
 
-- [ ] **13.13** Enable multi-select and group move
+ - [ ] **13.11** Enable multi-select and group move
   - Select multiple shapes and drag them together
 
-- [ ] **13.14** Realtime drag via Firebase
-  - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
+ - [ ] **13.12** Link shape movement with cursor refresh movement
+  - Couple shape movement updates with the cursor refresh cadence for synchronized visual feedback
 
-- [ ] **13.15** Realtime cursors via Firebase
+ - [ ] **13.13** Realtime cursors via Firebase
   - Use Firebase Realtime Database to track and render cursors of other users
 
-- [ ] **13.16** Workspace size menu
+ - [ ] **13.14** Realtime drag via Firebase
+  - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
+
+ - [ ] **13.15** Workspace size menu
   - Add menu to define workspace size; if too small, auto-handle object cluttering
 
-- [ ] **13.17** Revert workspace size change
+ - [ ] **13.16** Revert workspace size change
   - Add menu action to revert workspace size to previous setting
-
-- [ ] **13.18** Update Firebase auth for second domain
-  - Add additional authorized domain in Firebase Authentication settings and update local `.env` if needed
 
 
 ---
