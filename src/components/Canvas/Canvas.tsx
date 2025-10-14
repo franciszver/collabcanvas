@@ -85,6 +85,13 @@ export default function Canvas() {
     }
   }, [selectedId, rectangles])
 
+  // Deselect locally if the selected rectangle was deleted remotely
+  useEffect(() => {
+    if (selectedId && !rectangles.some((r) => r.id === selectedId)) {
+      setSelectedId(null)
+    }
+  }, [rectangles, selectedId])
+
   useEffect(() => {
     const onResize = () => {
       const newWidth = sizePct(window.innerWidth, widthPct)

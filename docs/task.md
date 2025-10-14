@@ -321,34 +321,34 @@ collabcanvas/
 **Goal:** Listen to Firestore changes and sync rectangles across users
 
 ### Tasks:
-- [ ] **6.1** Implement Firestore real-time listeners
+- [x] **6.1** Implement Firestore real-time listeners
   - **Files:** `src/services/firestore.ts`
   - Function: `subscribeToRectangles(callback)`
   - Use Firestore `onSnapshot()`
   
-- [ ] **6.2** Create useCanvas hook for data fetching
+- [x] **6.2** Create useCanvas hook for data fetching
   - **Files:** `src/hooks/useCanvas.ts`
   - Subscribe to rectangles on mount
   - Unsubscribe on unmount
   - Sync Firestore data to CanvasContext
   
-- [ ] **6.3** Handle incoming rectangle updates
+- [x] **6.3** Handle incoming rectangle updates
   - **Files:** `src/contexts/CanvasContext.tsx`
   - Merge remote changes with local state
   - Distinguish between local and remote updates (prevent echo)
   
-- [ ] **6.4** Implement "last write wins" conflict resolution
+- [x] **6.4** Implement "last write wins" conflict resolution
   - **Files:** `src/services/firestore.ts`, `src/contexts/CanvasContext.tsx`
   - Document strategy in code comments
   - Use Firestore server timestamps
   
-- [ ] **6.5** Test multi-user rectangle sync
+- [x] **6.5** Test multi-user rectangle sync
   - Open 2-3 browser windows with different Google accounts
   - Create rectangles in one window, verify they appear in others
   - Move rectangles and verify sync <100ms
   - Test rapid concurrent edits
   
-- [ ] **6.6** Write integration test for rectangle sync
+- [x] **6.6** Write integration test for rectangle sync
   - **Files:** `src/__tests__/integration/rectangle-sync.test.ts`
   - **Tests to write:**
     - Mock Firestore snapshot listeners
@@ -360,7 +360,7 @@ collabcanvas/
     - Test no infinite update loops occur
   - **Verification:** Run `npm test` - integration tests should pass
   
-- [ ] **6.7** Debug any sync issues
+- [x] **6.7** Debug any sync issues
   - Check for duplicate rectangles
   - Verify no infinite update loops
   - Test network throttling (Chrome DevTools)
