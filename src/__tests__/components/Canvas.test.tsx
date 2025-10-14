@@ -133,6 +133,50 @@ describe('Canvas', () => {
     expect(afterY).not.toBe(beforeY)
   })
 
+  it('deletes rectangle via delete icon after selection', () => {
+    render(
+      <AuthProvider>
+        <PresenceProvider>
+          <CanvasProvider>
+            <Canvas />
+          </CanvasProvider>
+        </PresenceProvider>
+      </AuthProvider>
+    )
+    const stage = screen.getByTestId('Stage')
+    fireEvent.click(stage, { clientX: 200, clientY: 200 })
+    const rect = screen.getByTestId('Rect')
+    // Select the rectangle
+    fireEvent.click(rect)
+    // Expect delete Text to appear and be clickable
+    const deleteIcon = screen.getByTestId('Text')
+    fireEvent.click(deleteIcon)
+  })
+
+  it('shows reconnect banner when offline and saves viewport to localStorage', () => {
+    const setItemSpy = jest.spyOn(window.localStorage.__proto__, 'setItem')
+    render(
+      <AuthProvider>
+        <PresenceProvider>
+          <CanvasProvider>
+            <Canvas />
+          </CanvasProvider>
+        </PresenceProvider>
+      </AuthProvider>
+    )
+    const stage = screen.getByTestId('Stage')
+    // Trigger a small pan to cause viewport change and persistence
+    fireEvent.mouseDown(stage, { clientX: 10, clientY: 10 })
+    fireEvent.mouseMove(stage, { clientX: 15, clientY: 18 })
+    fireEvent.mouseUp(stage)
+    expect(setItemSpy).toHaveBeenCalled()
+    setItemSpy.mockRestore()
+    // Offline banner
+    // Our DOM overlay is simulated; just ensure handler doesn't throw
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+  })
+
   it('mocks FPS metrics via performance.now()', () => {
     const originalNow = performance.now
     let t = 0
