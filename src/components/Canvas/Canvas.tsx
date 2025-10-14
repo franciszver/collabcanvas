@@ -26,6 +26,16 @@ export default function Canvas() {
   const prevSizeRef = useRef(containerSize)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const transformerRef = useRef<any>(null)
+  // Remote cursor smoothing
+  const smoothedCursorsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const targetsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const rafIdRef = useRef<number | null>(null)
+  const [, setFrameTick] = useState(0)
+  // Remote rectangle movement smoothing
+  const smoothedRectsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const rectTargetsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const rectRafIdRef = useRef<number | null>(null)
+  const draggingIdRef = useRef<string | null>(null)
 
   const onWheel = useCallback(
     (e: any) => {
@@ -176,6 +186,115 @@ export default function Canvas() {
 
   // Online/offline lifecycle is handled by PresenceProvider
 
+  // Smooth remote cursor movement via rAF interpolation
+  useEffect(() => {
+    // Update targets from presence users (excluding self and users without cursor)
+    const nextTargets: Record<string, { x: number; y: number }> = {}
+    for (const u of Object.values(users)) {
+      if (u.userId === (user?.id ?? '')) continue
+      if (u.cursor) nextTargets[u.userId] = { x: u.cursor.x, y: u.cursor.y }
+    }
+    targetsRef.current = nextTargets
+
+    // Start loop if needed
+    if (Object.keys(nextTargets).length > 0 && rafIdRef.current == null) {
+      const step = () => {
+        const targets = targetsRef.current
+        const smoothed = smoothedCursorsRef.current
+        const targetIds = Object.keys(targets)
+        let anyChanged = false
+        // Remove smoothed entries that no longer have targets
+        for (const id of Object.keys(smoothed)) {
+          if (!targets[id]) delete smoothed[id]
+        }
+        for (const id of targetIds) {
+          const t = targets[id]
+          const s = smoothed[id] || { x: t.x, y: t.y }
+          const dx = t.x - s.x
+          const dy = t.y - s.y
+          const nx = s.x + dx * 0.2
+          const ny = s.y + dy * 0.2
+          if (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25) anyChanged = true
+          smoothed[id] = { x: nx, y: ny }
+        }
+        if (anyChanged) setFrameTick((n) => (n + 1) % 1000000)
+        if (Object.keys(targetsRef.current).length === 0) {
+          if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current)
+          rafIdRef.current = null
+          return
+        }
+        rafIdRef.current = requestAnimationFrame(step)
+      }
+      rafIdRef.current = requestAnimationFrame(step)
+    }
+
+    // Stop loop if no targets
+    if (Object.keys(nextTargets).length === 0 && rafIdRef.current != null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+
+    return () => {
+      // Cleanup on unmount
+      if (rafIdRef.current != null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+    }
+  }, [users, user?.id])
+
+  // Smooth remote rectangle position updates via rAF interpolation
+  useEffect(() => {
+    const nextTargets: Record<string, { x: number; y: number }> = {}
+    for (const r of rectangles) {
+      nextTargets[r.id] = { x: r.x, y: r.y }
+    }
+    rectTargetsRef.current = nextTargets
+
+    if (Object.keys(nextTargets).length > 0 && rectRafIdRef.current == null) {
+      const step = () => {
+        const targets = rectTargetsRef.current
+        const smoothed = smoothedRectsRef.current
+        const ids = Object.keys(targets)
+        let anyChanged = false
+        // drop smoothed entries for removed rects
+        for (const id of Object.keys(smoothed)) {
+          if (!targets[id]) delete smoothed[id]
+        }
+        for (const id of ids) {
+          const t = targets[id]
+          const s = smoothed[id] || { x: t.x, y: t.y }
+          const dx = t.x - s.x
+          const dy = t.y - s.y
+          const nx = s.x + dx * 0.2
+          const ny = s.y + dy * 0.2
+          if (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25) anyChanged = true
+          smoothed[id] = { x: nx, y: ny }
+        }
+        if (anyChanged) setFrameTick((n) => (n + 1) % 1000000)
+        if (Object.keys(rectTargetsRef.current).length === 0) {
+          if (rectRafIdRef.current != null) cancelAnimationFrame(rectRafIdRef.current)
+          rectRafIdRef.current = null
+          return
+        }
+        rectRafIdRef.current = requestAnimationFrame(step)
+      }
+      rectRafIdRef.current = requestAnimationFrame(step)
+    }
+
+    if (Object.keys(nextTargets).length === 0 && rectRafIdRef.current != null) {
+      cancelAnimationFrame(rectRafIdRef.current)
+      rectRafIdRef.current = null
+    }
+
+    return () => {
+      if (rectRafIdRef.current != null) {
+        cancelAnimationFrame(rectRafIdRef.current)
+        rectRafIdRef.current = null
+      }
+    }
+  }, [rectangles])
+
   return (
     <div className={styles.root}>
     {/* Loading overlay */}
@@ -200,17 +319,28 @@ export default function Canvas() {
       draggable={false}
     >
       {/* Shapes Layer */}
-      <Layer>
+      <Layer listening>
         {rectangles.map((r: Rectangle) => (
           <Rect
             key={`rect-${r.id}`}
             name={`rect-${r.id}`}
-            x={r.x}
-            y={r.y}
+            x={(() => {
+              if (draggingIdRef.current === r.id || selectedId === r.id) return r.x
+              const s = smoothedRectsRef.current[r.id]
+              return s ? s.x : r.x
+            })()}
+            y={(() => {
+              if (draggingIdRef.current === r.id || selectedId === r.id) return r.y
+              const s = smoothedRectsRef.current[r.id]
+              return s ? s.y : r.y
+            })()}
             width={r.width}
             height={r.height}
             fill={r.fill}
             draggable
+            perfectDrawEnabled={false}
+            shadowForStrokeEnabled={false}
+            onDragStart={() => { draggingIdRef.current = r.id; setSelectedId(r.id) }}
             onClick={(evt) => {
               evt.cancelBubble = true
               const node = evt.target
@@ -229,6 +359,20 @@ export default function Canvas() {
               }
               setSelectedId(r.id)
             }}
+            onMouseEnter={(evt) => {
+              const node = evt.target
+              if (node && node.opacity) {
+                node.opacity(0.9)
+                node.getLayer()?.batchDraw()
+              }
+            }}
+            onMouseLeave={(evt) => {
+              const node = evt.target
+              if (node && node.opacity) {
+                node.opacity(1)
+                node.getLayer()?.batchDraw()
+              }
+            }}
             onDragMove={(evt) => {
               const node = evt.target
               const nx = node.x()
@@ -238,6 +382,7 @@ export default function Canvas() {
             onDragEnd={(evt) => {
               const node = evt.target
               updateRectangle(r.id, { x: node.x(), y: node.y() })
+              draggingIdRef.current = null
             }}
             onTransformEnd={(evt) => {
               const node = evt.target
@@ -247,6 +392,10 @@ export default function Canvas() {
               const newHeight = Math.max(5, node.height() * scaleY)
               if (node.scaleX) node.scaleX(1)
               if (node.scaleY) node.scaleY(1)
+              if (node.moveToTop) {
+                node.moveToTop()
+                node.getLayer()?.batchDraw()
+              }
               updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight })
             }}
           />
@@ -290,10 +439,11 @@ export default function Canvas() {
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {Object.values(users)
         .filter((u) => u.userId !== (user?.id ?? ''))
-        .filter((u) => !!u.cursor)
+        .filter((u) => !!(smoothedCursorsRef.current[u.userId] || u.cursor))
         .map((u) => {
-          const sx = viewport.x + u.cursor!.x * viewport.scale
-          const sy = viewport.y + u.cursor!.y * viewport.scale
+          const pos = smoothedCursorsRef.current[u.userId] || u.cursor!
+          const sx = viewport.x + pos.x * viewport.scale
+          const sy = viewport.y + pos.y * viewport.scale
           return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
         })}
     </div>

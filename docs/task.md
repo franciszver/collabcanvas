@@ -526,38 +526,38 @@ collabcanvas/
 **Goal:** Ensure 60 FPS performance and fix any remaining issues
 
 ### Tasks:
-- [ ] **10.1** Profile canvas performance
+- [x] **10.1** Profile canvas performance
   - Use Chrome DevTools Performance tab
   - Verify 60 FPS during pan/zoom/drag
   - Identify any bottlenecks
   
-- [ ] **10.2** Optimize Konva rendering
+- [x] **10.2** Optimize Konva rendering
   - **Files:** `src/components/Canvas/Canvas.tsx`
   - Use `listening={false}` on non-interactive elements
   - Batch updates where possible
   - Add `perfectDrawEnabled={false}` for performance
   
-- [ ] **10.3** Throttle cursor position updates
+- [x] **10.3** Throttle cursor position updates
   - **Files:** `src/components/Canvas/Canvas.tsx`, `src/services/presence.ts`
   - Ensure cursor updates max every 50ms
   - Use `lodash.throttle` or custom throttle
   
-- [ ] **10.4** Optimize Firestore queries
+- [x] **10.4** Optimize Firestore queries
   - **Files:** `src/services/firestore.ts`
   - Add indexes if needed (check Firebase Console)
   - Limit query results if canvas grows large
   
-- [ ] **10.5** Add error boundaries
+- [x] **10.5** Add error boundaries
   - **Files:** `src/components/Layout/ErrorBoundary.tsx`, `src/App.tsx`
   - Catch and display React errors gracefully
   
-- [ ] **10.6** Improve visual feedback
+- [x] **10.6** Improve visual feedback
   - **Files:** `src/components/Canvas/Canvas.tsx`, CSS files
   - Hover states on rectangles
   - Visual indication of selected/dragging rectangle
   - Smooth transitions
   
-- [ ] **10.7** Write performance tests
+- [x] **10.7** Write performance tests
   - **Files:** `src/__tests__/components/Canvas.test.tsx`
   - **Tests to write:**
     - Test Canvas component renders without crashing
@@ -568,7 +568,7 @@ collabcanvas/
     - Test throttling functions work correctly
   - **Verification:** Run `npm test` - Canvas component tests should pass
   
-- [ ] **10.8** Test performance under load
+- [x] **10.8** Test performance under load
   - Create 50+ rectangles
   - Test with 3-4 simultaneous users
   - Verify no lag or frame drops

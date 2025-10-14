@@ -107,15 +107,19 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
 
   // Subscribe to Firestore rectangles and merge updates using last-write-wins
   const handleRows = useCallback((rows: { rect: Rectangle; updatedAtMs: number }[]) => {
-    const nextById: Record<string, Rectangle> = {}
+    const rectById: Record<string, Rectangle> = {}
+    const tsById: Record<string, number> = {}
     for (const { rect, updatedAtMs } of rows) {
       const prevSeen = lastSeenUpdatedAtRef.current[rect.id] ?? 0
       if (updatedAtMs > prevSeen) {
         lastSeenUpdatedAtRef.current[rect.id] = updatedAtMs
       }
-      nextById[rect.id] = rect
+      rectById[rect.id] = rect
+      tsById[rect.id] = updatedAtMs
     }
-    setRectangles(Object.values(nextById))
+    const sortedIds = Object.keys(rectById).sort((a, b) => (tsById[a] || 0) - (tsById[b] || 0))
+    const nextArray = sortedIds.map((id) => rectById[id])
+    setRectangles(nextArray)
     setIsLoading(false)
   }, [])
 

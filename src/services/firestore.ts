@@ -9,6 +9,9 @@ import {
   getDocs,
   serverTimestamp,
   onSnapshot,
+  query,
+  orderBy,
+  limit,
   type Unsubscribe,
   type Firestore,
 } from 'firebase/firestore'
@@ -62,8 +65,18 @@ export async function deleteAllRectangles(): Promise<void> {
 export function subscribeToRectangles(
   callback: (rows: { rect: Rectangle; updatedAtMs: number }[]) => void
 ): Unsubscribe {
-  return onSnapshot(rectanglesCollection(), (snapshot) => {
-    const rows: { rect: Rectangle; updatedAtMs: number }[] = snapshot.docs.map((d) => {
+  const col = rectanglesCollection()
+  let source: any = col
+  try {
+    const hasQuery = typeof (query as unknown as Function) === 'function'
+    const hasOrderBy = typeof (orderBy as unknown as Function) === 'function'
+    const hasLimit = typeof (limit as unknown as Function) === 'function'
+    if (hasQuery && hasOrderBy && hasLimit) {
+      source = (query as any)(col, (orderBy as any)('updatedAt', 'asc'), (limit as any)(1000))
+    }
+  } catch {}
+  return onSnapshot(source, (snapshot: any) => {
+    const rows: { rect: Rectangle; updatedAtMs: number }[] = snapshot.docs.map((d: any) => {
       const data = d.data() as any
       const updatedAtMs = data && data.updatedAt && typeof data.updatedAt.toMillis === 'function' ? data.updatedAt.toMillis() : 0
       const rect: Rectangle = {

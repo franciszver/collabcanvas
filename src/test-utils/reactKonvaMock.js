@@ -2,18 +2,81 @@
 const React = require('react')
 
 function Stage(props) {
-  return React.createElement('div', { 'data-testid': 'Stage', ...props })
+  const wrapMouseMove = (handler) => (ev) => {
+    if (!handler) return
+    const stage = {
+      getPointerPosition: () => ({ x: ev.clientX || 0, y: ev.clientY || 0 }),
+      getStage: () => stage,
+    }
+    handler({ target: stage })
+  }
+  const wrapMouseDown = (handler) => (ev) => {
+    if (!handler) return
+    const stage = {
+      getPointerPosition: () => ({ x: ev.clientX || 0, y: ev.clientY || 0 }),
+      getStage: () => stage,
+    }
+    handler({ target: stage })
+  }
+  const wrapMouseUp = (handler) => (ev) => {
+    if (!handler) return
+    const stage = {
+      getPointerPosition: () => ({ x: ev.clientX || 0, y: ev.clientY || 0 }),
+      getStage: () => stage,
+    }
+    handler({ target: stage })
+  }
+  const wrapWheel = (handler) => (ev) => {
+    if (!handler) return
+    const stage = {
+      getPointerPosition: () => ({ x: ev.clientX || 0, y: ev.clientY || 0 }),
+      getStage: () => stage,
+    }
+    handler({ evt: { preventDefault: () => {}, deltaY: ev.deltaY || 1 }, target: stage })
+  }
+  const wrapClick = (handler) => (ev) => {
+    if (!handler) return
+    const stage = {
+      getPointerPosition: () => ({ x: ev.clientX || 0, y: ev.clientY || 0 }),
+      getStage: () => stage,
+    }
+    handler({ target: stage })
+  }
+  const { onMouseMove, onMouseDown, onMouseUp, onWheel, onClick, ...rest } = props
+  return React.createElement('div', {
+    'data-testid': 'Stage',
+    onMouseMove: wrapMouseMove(onMouseMove),
+    onMouseDown: wrapMouseDown(onMouseDown),
+    onMouseUp: wrapMouseUp(onMouseUp),
+    onWheel: wrapWheel(onWheel),
+    onClick: wrapClick(onClick),
+    ...rest,
+  })
 }
 function Layer(props) {
   return React.createElement('div', { 'data-testid': 'Layer', ...props })
 }
 function Rect(props) {
-  return React.createElement('div', { 'data-testid': 'Rect', ...props })
+  const { onDragStart, onDragMove, onDragEnd, ...rest } = props
+  const handleMouseDown = (ev) => {
+    if (onDragStart) onDragStart({ target: { x: () => props.x, y: () => props.y } })
+  }
+  const handleMouseMove = (ev) => {
+    if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleMouseUp = (ev) => {
+    if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  return React.createElement('div', { 'data-testid': 'Rect', onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
 }
 function Transformer(props) {
   return React.createElement('div', { 'data-testid': 'Transformer', ...props })
 }
 
-module.exports = { Stage, Layer, Rect, Transformer }
+function Text(props) {
+  return React.createElement('div', { 'data-testid': 'Text', ...props })
+}
+
+module.exports = { Stage, Layer, Rect, Transformer, Text }
 
 

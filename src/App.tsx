@@ -3,8 +3,8 @@ import { useAuth } from './contexts/AuthContext'
 import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
 import AppLayout from './components/Layout/AppLayout'
-import OnlineUsersDropdown from './components/Presence/OnlineUsersDropdown'
-import ClearAllButton from './components/Canvas/ClearAllButton'
+import ErrorBoundary from './components/Layout/ErrorBoundary'
+import DetailsDropdown from './components/Header/DetailsDropdown'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
 import { PresenceProvider } from './contexts/PresenceContext'
@@ -26,6 +26,7 @@ function App() {
         <PresenceProvider>
           <CanvasProvider>
             <AppLayout>
+              <ErrorBoundary>
               <div
                 style={{
                   display: 'flex',
@@ -44,12 +45,11 @@ function App() {
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>v{APP_VERSION}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <OnlineUsersDropdown />
-                  <ClearAllButton />
-                  <SignInButton />
+                  <DetailsDropdown />
                 </div>
               </div>
               <Canvas />
+              </ErrorBoundary>
             </AppLayout>
           </CanvasProvider>
         </PresenceProvider>
