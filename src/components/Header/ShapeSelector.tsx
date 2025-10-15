@@ -54,7 +54,7 @@ export default function ShapeSelector() {
       const width = isText ? 200 : 200
       const height = isText ? 300 : 100
       
-      await addRectangle({ 
+      const shapeData = { 
         id, 
         x: pos.x, 
         y: pos.y, 
@@ -64,8 +64,14 @@ export default function ShapeSelector() {
         type: type as any,
         text: isText ? 'Enter Text' : undefined,
         fontSize: isText ? 16 : undefined
-      })
+      }
+      
+      console.log('Creating shape:', shapeData)
+      await addRectangle(shapeData)
+      console.log('Shape created successfully')
       setIsOpen(false) // Close menu after creating shape
+    } catch (error) {
+      console.error('Failed to create shape:', error)
     } finally {
       setBusy(false)
     }

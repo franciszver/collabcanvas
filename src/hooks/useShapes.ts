@@ -39,7 +39,9 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
   useEffect(() => {
     if (!documentId || !user) return
 
+    console.log('Subscribing to shapes for document:', documentId)
     const unsubscribe = subscribeToShapes(documentId, (newShapes) => {
+      console.log('Received shapes from Firestore:', newShapes)
       setShapes(newShapes)
       setIsLoading(false)
       setError(null)
@@ -65,9 +67,13 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     if (!user) throw new Error('User not authenticated')
     
     try {
+      console.log('Adding shape to Firestore:', shape)
       const shapeDoc = rectangleToShape(shape, documentId, user.id)
+      console.log('Shape document:', shapeDoc)
       await createShape(shapeDoc)
+      console.log('Shape added to Firestore successfully')
     } catch (err) {
+      console.error('Failed to add shape to Firestore:', err)
       setError(err as Error)
       throw err
     }

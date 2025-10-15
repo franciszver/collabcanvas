@@ -123,7 +123,7 @@ export async function deleteAllShapes(documentId: string): Promise<void> {
 
 // Convert Rectangle to ShapeDocument
 export function rectangleToShape(rect: Rectangle, documentId: string, userId: string): Omit<ShapeDocument, 'createdAt' | 'updatedAt'> {
-  return {
+  const shape: any = {
     id: rect.id,
     type: rect.type || 'rect',
     x: rect.x,
@@ -133,12 +133,20 @@ export function rectangleToShape(rect: Rectangle, documentId: string, userId: st
     rotation: rect.rotation || 0,
     z: rect.z || 0,
     fill: rect.fill,
-    text: rect.text,
-    fontSize: rect.fontSize,
     createdBy: userId,
     updatedBy: userId,
     documentId,
   }
+  
+  // Only include text fields if they have values
+  if (rect.text !== undefined) {
+    shape.text = rect.text
+  }
+  if (rect.fontSize !== undefined) {
+    shape.fontSize = rect.fontSize
+  }
+  
+  return shape
 }
 
 // Convert ShapeDocument to Rectangle
