@@ -152,10 +152,6 @@ export default function Canvas() {
     if (selectedId) {
       const node = stage.findOne(`.rect-${selectedId}`)
       if (node) {
-        // Bring selected node to front before attaching transformer
-        if (node.moveToTop) {
-          node.moveToTop()
-        }
         tr.nodes([node])
         tr.getLayer()?.batchDraw()
       }
@@ -574,20 +570,28 @@ export default function Canvas() {
           />
           {/* TODO: Fix layer buttons - currently commented out due to z-index update issues
           <button
-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
-            title="Layer up"
-            aria-label="Layer up"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const maxZ = Math.max(...rectangles.map(r => r.z ?? 0));
+              updateRectangle(sel.id, { z: maxZ + 1 });
+            }}
+            title="Move to top layer"
+            aria-label="Move to top layer"
             style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
           >
-            Layer ↑
+            Top ↑
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
-            title="Layer down"
-            aria-label="Layer down"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const minZ = Math.min(...rectangles.map(r => r.z ?? 0));
+              updateRectangle(sel.id, { z: minZ - 1 });
+            }}
+            title="Move to bottom layer"
+            aria-label="Move to bottom layer"
             style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
           >
-            Layer ↓
+            Bottom ↓
           </button>
           */}
           {sel.type === 'text' && (
