@@ -54,6 +54,12 @@ export async function setUserOfflineRtdb(userId: string): Promise<void> {
   await update(presenceRef, { cursor: null, updatedAt: serverTimestamp() as any })
 }
 
+export async function removeUserPresenceRtdb(userId: string): Promise<void> {
+  const presenceRef = ref(rtdb(), `presence/${userId}`)
+  // completely remove user's presence data
+  await remove(presenceRef)
+}
+
 // Drag channel via RTDB
 export async function publishDragPositionsRtdb(
   entries: Array<[string, { x: number; y: number }]>,
