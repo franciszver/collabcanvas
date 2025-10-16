@@ -71,7 +71,20 @@ function Rect(props) {
     if (ev && ev.stopPropagation) ev.stopPropagation()
     if (onClick) onClick({ target: { x: () => props.x, y: () => props.y } })
   }
-  return React.createElement('div', { 'data-testid': 'Rect', onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onClick: handleClick, onTap, ...rest })
+  return React.createElement('div', { 
+    'data-testid': 'Rect', 
+    onMouseDown: handleMouseDown, 
+    onMouseMove: handleMouseMove, 
+    onMouseUp: handleMouseUp, 
+    onClick: handleClick, 
+    onTap,
+    x: props.x,
+    y: props.y,
+    width: props.width,
+    height: props.height,
+    fill: props.fill,
+    ...rest 
+  })
 }
 function Transformer(props) {
   return React.createElement('div', { 'data-testid': 'Transformer', ...props })

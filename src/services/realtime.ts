@@ -40,7 +40,20 @@ export function subscribeToPresenceRtdb(
 
 export async function updateCursorPositionRtdb(userId: string, pos: CursorPosition): Promise<void> {
   const presenceRef = ref(rtdb(), `presence/${userId}`)
-  await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+  
+  try {
+    await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+  } catch (error) {
+    console.warn('Failed to update cursor position, retrying...', error)
+    // Retry once after a short delay
+    setTimeout(async () => {
+      try {
+        await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+      } catch (retryError) {
+        console.error('Failed to update cursor position after retry:', retryError)
+      }
+    }, 100)
+  }
 }
 
 export async function setUserOnlineRtdb(userId: string, displayName: string | null): Promise<void> {
@@ -54,10 +67,42 @@ export async function setUserOfflineRtdb(userId: string): Promise<void> {
   await update(presenceRef, { cursor: null, updatedAt: serverTimestamp() as any })
 }
 
+<<<<<<< HEAD
 export async function removeUserPresenceRtdb(userId: string): Promise<void> {
   const presenceRef = ref(rtdb(), `presence/${userId}`)
   // completely remove user's presence data
   await remove(presenceRef)
+=======
+// Clean up stale cursor data (call periodically)
+export async function cleanupStaleCursorsRtdb(maxAgeMs: number = 30000): Promise<void> {
+  const presenceRef = ref(rtdb(), 'presence')
+  const now = Date.now()
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(presenceRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const updates: Record<string, any> = {}
+    
+    for (const [userId, userData] of Object.entries(data)) {
+      const user = userData as any
+      const updatedAt = typeof user.updatedAt === 'number' ? user.updatedAt : 0
+      
+      if (now - updatedAt > maxAgeMs) {
+        updates[`presence/${userId}/cursor`] = null
+        updates[`presence/${userId}/updatedAt`] = serverTimestamp()
+      }
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb()), updates)
+    }
+  } catch (error) {
+    console.warn('Failed to cleanup stale cursors:', error)
+  }
+>>>>>>> Dev
 }
 
 // Drag channel via RTDB

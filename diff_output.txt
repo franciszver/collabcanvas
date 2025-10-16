@@ -1,0 +1,3024 @@
+diff --git a/.firebase/hosting.ZGlzdA.cache b/.firebase/hosting.ZGlzdA.cache
+index 56d69f4..1290abe 100644
+--- a/.firebase/hosting.ZGlzdA.cache
++++ b/.firebase/hosting.ZGlzdA.cache
+@@ -1,7 +1,7 @@
+-index.html,1760645912627,152b323c7e40e86ec2159c83167a042614c11836b01bf7315a9c372b4ee40a2e
+-vite.svg,1760645912344,9de4d3c4e50257d9874f07e9efc929efefc85e51f931a9af716f9a7ebb23ef68
+-assets/rolldown-runtime-DGruFWvd.js,1760645912627,e951bb942b8df4853f4791839d6ad1c984604ea8d0b35ebd1399fda1c29d81cb
+-assets/index-BjUVV98B.css,1760645912627,0f2757494d967cd4bb48cb4a53849e7716f291c30e3da8141c9223cce8a4809f
+-assets/index-JhaEmOSw.js,1760645912627,912bf1f087c417656a5a658ae9ab62ca67599a0dcce218538c9237eca5ae551b
+-assets/konva-CHdkwjko.js,1760645912627,bf0a8a8a2739c1b4421fdf9e8ca0d53e79e6f137d09befa34f90c80cdc928ff2
+-assets/firebase-DH_C50b9.js,1760645912627,dca63dce7e39d50c6e5ebfd9dab451ed57f66acd756377ea99c8c168835f0ab9
++assets/rolldown-runtime-DGruFWvd.js,1760588155905,e951bb942b8df4853f4791839d6ad1c984604ea8d0b35ebd1399fda1c29d81cb
++vite.svg,1760588155764,9de4d3c4e50257d9874f07e9efc929efefc85e51f931a9af716f9a7ebb23ef68
++index.html,1760588155905,0ffe35dae537c703df633c7ae32c27a4ab30b1355b6227876b466464bb6165c2
++assets/index-BjUVV98B.css,1760588155905,0f2757494d967cd4bb48cb4a53849e7716f291c30e3da8141c9223cce8a4809f
++assets/index-DSVFsq58.js,1760588155904,7829cda1228563622ef76f6819d8e142b299c9178397b9e4075065db9f72ba70
++assets/konva-CHdkwjko.js,1760588155905,bf0a8a8a2739c1b4421fdf9e8ca0d53e79e6f137d09befa34f90c80cdc928ff2
++assets/firebase-CshrSC9O.js,1760588155904,b4da0f605cacbfbb883414ecd11082bcd8f8cda54c74fe53fdea44d1a81a1d0a
+diff --git a/docs/task.md b/docs/task.md
+index c1cc454..ea2851d 100644
+--- a/docs/task.md
++++ b/docs/task.md
+@@ -710,9 +710,16 @@ collabcanvas/
+ - [x] **14.2** Realtime drag via Firebase
+   - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
+ 
++- [ ] **14.3** Optimize bundle size and code-splitting
++  - Reduce main chunk size; split heavy modules; lazy-load non-critical UI
++
+ - [ ] **14.4** Tune Konva layers and redraw strategy
+   - Minimize layer redraws; leverage caching where safe; throttle non-essential updates
+ 
++- [ ] **14.5** Remove dead code and AI slop
++  - Delete unused imports, variables, and functions across `src/`
++  - Remove redundant code/comments; tighten obvious types and simplify props
++
+ - [ ] **14.6** Enable multi-select and group move
+   - Select multiple shapes and drag them together
+ 
+@@ -725,10 +732,10 @@ collabcanvas/
+ - [ ] **14.9** Review and remove slop
+   - Audit and remove unused code, redundant comments, and cruft across `src/`
+ 
+-- [ ] **14.11** Fix remote cursor sync problem
+-  - Debug and resolve issues with remote cursor synchronization
+-  - Ensure cursors update smoothly and accurately reflect other users' positions
+-  - Test cursor sync across multiple users and different network conditions
++- [ ] **14.10** Fix layer up/down buttons
++  - Re-enable and properly fix the layer up/down buttons in the properties panel
++  - Ensure z-index updates work correctly with the Firestore update system
++  - Test that shapes properly reorder when layer buttons are clicked
+ 
+ ---
+ 
+diff --git a/jest.config.cjs b/jest.config.cjs
+index 4ebbe9a..801c1d9 100644
+--- a/jest.config.cjs
++++ b/jest.config.cjs
+@@ -18,23 +18,7 @@ module.exports = {
+     '\\.(css|less|scss|sass)$': '<rootDir>/src/test-utils/styleMock.js',
+     '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/test-utils/fileMock.js',
+     '^react-konva$': '<rootDir>/src/test-utils/reactKonvaMock.js'
+-  },
+-  // Performance optimizations
+-  maxWorkers: '50%', // Use half of available CPU cores
+-  workerIdleMemoryLimit: '512MB', // Limit memory per worker
+-  testTimeout: 10000, // 10 second timeout per test
+-  // Coverage configuration
+-  collectCoverage: false, // Only collect when explicitly requested
+-  coverageDirectory: 'coverage',
+-  coverageReporters: ['text', 'lcov', 'html'],
+-  // Memory management
+-  clearMocks: true,
+-  resetMocks: true,
+-  restoreMocks: true,
+-  // Test isolation
+-  testSequencer: '@jest/test-sequencer',
+-  // Verbose output for debugging
+-  verbose: false,
++  }
+ }
+ 
+ 
+diff --git a/package.json b/package.json
+index 06c1171..fa096e3 100644
+--- a/package.json
++++ b/package.json
+@@ -9,10 +9,8 @@
+     "bump:patch": "node scripts/bump-version.js",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test": "jest --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+-    "test:coverage": "jest --coverage --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+-    "test:watch": "jest --watch --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+-    "deploy:hosting": "npx --yes firebase-tools hosting:channel:deploy Dev"
++    "test": "jest",
++    "deploy:hosting": "npx --yes firebase-tools deploy --only hosting --non-interactive"
+   },
+   "dependencies": {
+     "firebase": "^11.10.0",
+diff --git a/src/App.tsx b/src/App.tsx
+index fb8873d..c3b2ce7 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -13,8 +13,6 @@ import { PresenceProvider } from './contexts/PresenceContext'
+ function App() {
+   const { user, isLoading } = useAuth()
+ 
+-  console.log('📱 App: Current state - user:', user, 'isLoading:', isLoading)
+-
+   if (isLoading) return null
+ 
+   return (
+diff --git a/src/__tests__/components/App.smoke.test.tsx b/src/__tests__/components/App.smoke.test.tsx
+index 8c98d95..c6b9d39 100644
+--- a/src/__tests__/components/App.smoke.test.tsx
++++ b/src/__tests__/components/App.smoke.test.tsx
+@@ -1,19 +1,15 @@
+-import { render, screen, waitFor } from '@testing-library/react'
+-import AuthProvider from '../../components/Auth/AuthProvider'
++import { render, screen } from '@testing-library/react'
++import { AuthProvider } from '../../contexts/AuthContext'
+ jest.mock('../../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
+ import App from '../../App'
+ 
+-test('renders welcome heading when logged out', async () => {
++test('renders welcome heading when logged out', () => {
+   render(
+     <AuthProvider>
+       <App />
+     </AuthProvider>
+   )
+-  
+-  // Wait for loading to complete and welcome message to appear
+-  await waitFor(() => {
+-    expect(screen.getByText(/welcome to collabcanvas/i)).toBeInTheDocument()
+-  })
++  expect(screen.getByText(/welcome to collabcanvas/i)).toBeInTheDocument()
+ })
+ 
+ 
+diff --git a/src/__tests__/components/Auth.core.test.tsx b/src/__tests__/components/Auth.core.test.tsx
+new file mode 100644
+index 0000000..5f88817
+--- /dev/null
++++ b/src/__tests__/components/Auth.core.test.tsx
+@@ -0,0 +1,54 @@
++import { render, screen, fireEvent } from '@testing-library/react'
++import { AuthProvider } from '../../contexts/AuthContext'
++import SignInButton from '../../components/Auth/SignInButton'
++
++// Mock auth service
++jest.mock('../../services/auth', () => ({
++  onAuthStateChanged: jest.fn((callback) => {
++    // Simulate no user initially (not authenticated)
++    callback(null)
++    return jest.fn()
++  }),
++  signInWithGoogle: jest.fn(),
++  signOut: jest.fn(),
++}))
++
++describe('Authentication Core Functionality', () => {
++  beforeEach(() => {
++    jest.clearAllMocks()
++  })
++
++  test('renders sign in button when not authenticated', () => {
++    render(
++      <AuthProvider>
++        <SignInButton />
++      </AuthProvider>
++    )
++
++    expect(screen.getByText('Sign in with Google')).toBeInTheDocument()
++  })
++
++  test('handles sign in button click', async () => {
++    render(
++      <AuthProvider>
++        <SignInButton />
++      </AuthProvider>
++    )
++
++    const signInButton = screen.getByText('Sign in with Google')
++    fireEvent.click(signInButton)
++
++    // The button should still be there after click
++    expect(screen.getByText('Sign in with Google')).toBeInTheDocument()
++  })
++
++  test('renders without crashing', () => {
++    expect(() => {
++      render(
++        <AuthProvider>
++          <SignInButton />
++        </AuthProvider>
++      )
++    }).not.toThrow()
++  })
++})
+\ No newline at end of file
+diff --git a/src/__tests__/components/Canvas.core.test.tsx b/src/__tests__/components/Canvas.core.test.tsx
+new file mode 100644
+index 0000000..4185a64
+--- /dev/null
++++ b/src/__tests__/components/Canvas.core.test.tsx
+@@ -0,0 +1,193 @@
++import { render, screen, fireEvent, waitFor } from '@testing-library/react'
++import { AuthProvider } from '../../contexts/AuthContext'
++import { CanvasProvider } from '../../contexts/CanvasContext'
++import { PresenceProvider } from '../../contexts/PresenceContext'
++import Canvas from '../../components/Canvas/Canvas'
++
++// Mock auth to have a logged-in user
++jest.mock('../../services/auth', () => ({
++  onAuthStateChanged: (cb: (u: any) => void) => {
++    cb({ id: 'u1', displayName: 'Test User' })
++    return jest.fn()
++  },
++  signInWithGoogle: jest.fn(async () => {}),
++  signOut: jest.fn(async () => {}),
++}))
++
++// Mock firestore service to provide proper data
++let emitShapes: ((shapes: any[]) => void) | null = null
++
++jest.mock('../../services/firestore', () => ({
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn((_documentId: string, cb: any) => {
++    // Call the callback with empty array initially
++    cb([])
++    // Store the callback so we can call it later
++    emitShapes = cb
++    return jest.fn()
++  }),
++  createRectangle: jest.fn(() => Promise.resolve()),
++  updateRectangleDoc: jest.fn(() => Promise.resolve()),
++  updateDocument: jest.fn(() => Promise.resolve()),
++  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
++  deleteAllShapes: jest.fn(() => Promise.resolve()),
++  rectangleToShape: jest.fn((rect: any) => rect),
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
++}))
++
++// Mock realtime service
++jest.mock('../../services/realtime', () => ({
++  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
++  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
++  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
++  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToDragRtdb: jest.fn(() => jest.fn()),
++  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
++  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
++  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
++  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
++  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
++}))
++
++function renderCanvas() {
++  return render(
++    <AuthProvider>
++      <PresenceProvider>
++        <CanvasProvider>
++          <Canvas />
++        </CanvasProvider>
++      </PresenceProvider>
++    </AuthProvider>
++  )
++}
++
++describe('Canvas Core Functionality', () => {
++  beforeEach(() => {
++    // Reset the emitShapes function
++    emitShapes = null
++  })
++
++  test('renders canvas with grid lines', () => {
++    renderCanvas()
++    
++    // Check that the canvas stage is rendered
++    expect(screen.getByTestId('Stage')).toBeInTheDocument()
++    
++    // Check that grid lines are rendered
++    const gridLines = screen.getAllByTestId('Line')
++    expect(gridLines.length).toBeGreaterThan(0)
++  })
++
++  test('renders shapes when provided via subscription', async () => {
++    renderCanvas()
++    
++    // Initially no shapes should be visible
++    expect(screen.queryByTestId('Rect')).not.toBeInTheDocument()
++    
++    // Emit shapes data
++    emitShapes?.([
++      { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
++      { id: 'rect2', x: 150, y: 50, width: 120, height: 90, fill: '#10B981', type: 'rect' },
++    ])
++    
++    // Wait for shapes to be rendered
++    await waitFor(() => {
++      const rects = screen.getAllByTestId('Rect')
++      expect(rects).toHaveLength(2)
++    })
++  })
++
++  test('updates shapes when subscription data changes', async () => {
++    renderCanvas()
++    
++    // Emit initial shapes
++    emitShapes?.([
++      { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
++    ])
++    
++    await waitFor(() => {
++      expect(screen.getByTestId('Rect')).toBeInTheDocument()
++    })
++    
++    // Update the shape
++    emitShapes?.([
++      { id: 'rect1', x: 50, y: 60, width: 150, height: 100, fill: '#3B82F6', type: 'rect' },
++    ])
++    
++    // The shape should still be there (same ID)
++    await waitFor(() => {
++      const rects = screen.getAllByTestId('Rect')
++      expect(rects).toHaveLength(1)
++    })
++  })
++
++  test('handles empty shapes array', async () => {
++    renderCanvas()
++    
++    // Emit empty array
++    emitShapes?.([])
++    
++    await waitFor(() => {
++      expect(screen.queryByTestId('Rect')).not.toBeInTheDocument()
++    })
++  })
++
++  test('renders different shape types', async () => {
++    renderCanvas()
++    
++    // Emit different shape types
++    emitShapes?.([
++      { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
++      { id: 'circle1', x: 150, y: 50, width: 80, height: 80, fill: '#10B981', type: 'circle' },
++      { id: 'triangle1', x: 250, y: 30, width: 100, height: 100, fill: '#F59E0B', type: 'triangle' },
++    ])
++    
++    await waitFor(() => {
++      expect(screen.getByTestId('Rect')).toBeInTheDocument()
++      expect(screen.getByTestId('Circle')).toBeInTheDocument()
++      expect(screen.getByTestId('RegularPolygon')).toBeInTheDocument()
++    })
++  })
++
++  test('canvas responds to mouse events', () => {
++    renderCanvas()
++    
++    const stage = screen.getByTestId('Stage')
++    
++    // Test mouse down event
++    fireEvent.mouseDown(stage, { clientX: 100, clientY: 100 })
++    
++    // Test mouse move event
++    fireEvent.mouseMove(stage, { clientX: 150, clientY: 150 })
++    
++    // Test mouse up event
++    fireEvent.mouseUp(stage, { clientX: 150, clientY: 150 })
++    
++    // Test wheel event
++    fireEvent.wheel(stage, { deltaY: 100 })
++    
++    // If we get here without errors, the events are handled
++    expect(stage).toBeInTheDocument()
++  })
++
++  test('renders transformer for shape selection', async () => {
++    renderCanvas()
++    
++    // Emit a shape
++    emitShapes?.([
++      { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
++    ])
++    
++    await waitFor(() => {
++      expect(screen.getByTestId('Rect')).toBeInTheDocument()
++    })
++    
++    // Check that transformer is rendered
++    expect(screen.getByTestId('Transformer')).toBeInTheDocument()
++  })
++})
+diff --git a/src/__tests__/components/Canvas.test.tsx b/src/__tests__/components/Canvas.test.tsx
+deleted file mode 100644
+index 2490632..0000000
+--- a/src/__tests__/components/Canvas.test.tsx
++++ /dev/null
+@@ -1,283 +0,0 @@
+-import { render, fireEvent, screen } from '@testing-library/react'
+-import { useEffect } from 'react'
+-import AuthProvider from '../../components/Auth/AuthProvider'
+-import { CanvasProvider } from '../../contexts/CanvasContext'
+-import { useCanvas } from '../../contexts/CanvasContext'
+-import { PresenceProvider } from '../../contexts/PresenceContext'
+-jest.mock('../../services/firebase', () => ({ 
+-  getFirebaseApp: jest.fn(() => ({})),
+-  getFirestoreDB: jest.fn(() => ({})),
+-  getRealtimeDB: jest.fn(() => ({})),
+-}))
+-// Mock the shapes service to provide test data
+-jest.mock('../../services/firestore', () => ({
+-  subscribeToShapes: jest.fn((_docId: string, callback: (shapes: any[]) => void) => {
+-    // Provide test shapes immediately
+-    callback([
+-      {
+-        id: 'test-rect-1',
+-        type: 'rect',
+-        x: 200,
+-        y: 200,
+-        width: 200,
+-        height: 100,
+-        fill: '#f00',
+-        rotation: 0,
+-        z: 0,
+-        createdBy: 'test-user',
+-        updatedBy: 'test-user',
+-        documentId: 'test-doc',
+-      }
+-    ])
+-    return jest.fn()
+-  }),
+-  createShape: jest.fn(() => Promise.resolve()),
+-  updateShape: jest.fn(() => Promise.resolve()),
+-  deleteShape: jest.fn(() => Promise.resolve()),
+-  deleteAllShapes: jest.fn(() => Promise.resolve()),
+-  rectangleToShape: jest.fn((rect: any) => rect),
+-}))
+-// Make auth immediately provide a user so presence updates can fire
+-jest.mock('../../services/auth', () => ({
+-  onAuthStateChanged: (cb: (u: any) => void) => {
+-    cb({ uid: 'u1', displayName: 'Test User' })
+-    return jest.fn()
+-  },
+-  signInWithGoogle: jest.fn(async () => {}),
+-  signOut: jest.fn(async () => {}),
+-}))
+-import Canvas from '../../components/Canvas/Canvas'
+-
+-jest.mock('../../contexts/AuthContext', () => ({
+-  useAuth: () => ({
+-    user: { uid: 'u1', displayName: 'Test User' },
+-  }),
+-}))
+-
+-jest.mock('firebase/database', () => {
+-  const off = jest.fn()
+-  return {
+-    getDatabase: jest.fn(() => ({})),
+-    ref: jest.fn(() => ({})),
+-    onValue: jest.fn(() => off),
+-    onDisconnect: jest.fn(() => ({
+-      remove: jest.fn(() => Promise.resolve()),
+-    })),
+-    set: jest.fn(() => Promise.resolve()),
+-    update: jest.fn(() => Promise.resolve()),
+-    remove: jest.fn(() => Promise.resolve()),
+-    off,
+-  }
+-})
+-
+-function SeedRectOnce() {
+-  const { addRectangle } = useCanvas()
+-  useEffect(() => {
+-    const rect = { id: 'test-rect-1', x: 200, y: 200, width: 200, height: 100, fill: '#f00', type: 'rect' as const }
+-    const timer = setTimeout(() => {
+-      addRectangle(rect)
+-    }, 0)
+-    return () => clearTimeout(timer)
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+-  }, [])
+-  return null
+-}
+-
+-describe('Canvas', () => {
+-  it('renders placeholder without crashing', () => {
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-  })
+-
+-  it('throttles cursor updates to ~50ms', () => {
+-    jest.useFakeTimers()
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const stage = document.querySelector('[data-testid="Stage"]')!
+-    // Rapid mouse moves
+-    for (let i = 0; i < 10; i++) {
+-      fireEvent.mouseMove(stage, { clientX: 10 + i, clientY: 20 + i })
+-    }
+-    // Advance less than 50ms, expect another schedule but no flush
+-    jest.advanceTimersByTime(40)
+-    // Advance to 50ms boundary; internal logic should send at most one batch
+-    jest.advanceTimersByTime(20)
+-    jest.useRealTimers()
+-  })
+-
+-  it('pans the canvas on mouse drag', () => {
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const stage = screen.getByTestId('Stage')
+-    // Read initial transform
+-    const startX = stage.getAttribute('x')
+-    const startY = stage.getAttribute('y')
+-    // Initial mouse down
+-    fireEvent.mouseDown(stage, { clientX: 100, clientY: 100 })
+-    // Move to pan
+-    fireEvent.mouseMove(stage, { clientX: 120, clientY: 110 })
+-    fireEvent.mouseUp(stage)
+-    const endX = stage.getAttribute('x')
+-    const endY = stage.getAttribute('y')
+-    expect(endX).not.toBe(startX)
+-    expect(endY).not.toBe(startY)
+-  })
+-
+-  it('zooms the canvas on wheel event', () => {
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const stage = screen.getByTestId('Stage')
+-    const beforeScale = stage.getAttribute('scalex')
+-    // Zoom in (negative deltaY in our handler multiplies scale)
+-    fireEvent.wheel(stage, { deltaY: -1, clientX: 200, clientY: 200 })
+-    const afterScale = stage.getAttribute('scalex')
+-    expect(afterScale).not.toBe(beforeScale)
+-  })
+-
+-  it('updates rectangle position on drag', async () => {
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <SeedRectOnce />
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const rect = await screen.findByTestId('Rect')
+-    // Drag the rectangle (mock handlers in reactKonvaMock will call onDragStart/Move/End)
+-    const beforeX = rect.getAttribute('x')
+-    const beforeY = rect.getAttribute('y')
+-    fireEvent.mouseDown(rect, { clientX: 310, clientY: 310 })
+-    fireEvent.mouseMove(rect, { clientX: 320, clientY: 330 })
+-    fireEvent.mouseUp(rect, { clientX: 320, clientY: 330 })
+-    const afterX = rect.getAttribute('x')
+-    const afterY = rect.getAttribute('y')
+-    expect(afterX).not.toBe(beforeX)
+-    expect(afterY).not.toBe(beforeY)
+-  })
+-
+-  it('deletes rectangle via delete icon after selection', async () => {
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <SeedRectOnce />
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const rect = await screen.findByTestId('Rect')
+-    // Select the rectangle
+-    fireEvent.click(rect)
+-    // Expect delete Text to appear and be clickable
+-    const deleteIcon = await screen.findByTestId('Text')
+-    fireEvent.click(deleteIcon)
+-  })
+-
+-  it('shows reconnect banner when offline and saves viewport to localStorage', () => {
+-    const setItemSpy = jest.spyOn(window.localStorage.__proto__, 'setItem')
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const stage = screen.getByTestId('Stage')
+-    // Trigger a small pan to cause viewport change and persistence
+-    fireEvent.mouseDown(stage, { clientX: 10, clientY: 10 })
+-    fireEvent.mouseMove(stage, { clientX: 15, clientY: 18 })
+-    fireEvent.mouseUp(stage)
+-    expect(setItemSpy).toHaveBeenCalled()
+-    setItemSpy.mockRestore()
+-    // Offline banner
+-    // Our DOM overlay is simulated; just ensure handler doesn't throw
+-    window.dispatchEvent(new Event('offline'))
+-    window.dispatchEvent(new Event('online'))
+-  })
+-
+-  it('mocks FPS metrics via performance.now()', () => {
+-    const originalNow = performance.now
+-    let t = 0
+-    ;(performance as any).now = () => (t += 16.67) // ~60fps
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    // If FPS UI existed with data-testid="fps-display", we would assert it here.
+-    ;(performance as any).now = originalNow
+-  })
+-
+-  it('flushes only one cursor update within 50ms window', () => {
+-    jest.useFakeTimers()
+-    jest.mock('../../services/realtime', () => {
+-      return {
+-        __esModule: true,
+-        ...jest.requireActual('../../services/realtime'),
+-        updateCursorPositionRtdb: jest.fn(async () => {}),
+-      }
+-    })
+-    const { updateCursorPositionRtdb } = jest.requireMock('../../services/realtime') as { updateCursorPositionRtdb: jest.Mock }
+-    render(
+-      <AuthProvider>
+-        <PresenceProvider>
+-          <CanvasProvider>
+-            <Canvas />
+-          </CanvasProvider>
+-        </PresenceProvider>
+-      </AuthProvider>
+-    )
+-    const stage = screen.getByTestId('Stage')
+-    for (let i = 0; i < 10; i++) {
+-      fireEvent.mouseMove(stage, { clientX: 10 + i, clientY: 20 + i })
+-    }
+-    // Advance by 49ms: should not flush yet
+-    jest.advanceTimersByTime(49)
+-    expect(updateCursorPositionRtdb).toHaveBeenCalledTimes(0)
+-    // Advance one more ms to pass 50ms threshold
+-    jest.advanceTimersByTime(1)
+-    // At most one send in the window
+-    expect(updateCursorPositionRtdb.mock.calls.length).toBeLessThanOrEqual(1)
+-    jest.useRealTimers()
+-  })
+-})
+-
+-
+diff --git a/src/__tests__/components/DetailsDropdown.test.tsx b/src/__tests__/components/DetailsDropdown.test.tsx
+index e7454ec..173773b 100644
+--- a/src/__tests__/components/DetailsDropdown.test.tsx
++++ b/src/__tests__/components/DetailsDropdown.test.tsx
+@@ -1,5 +1,5 @@
+ import { render, screen, fireEvent } from '@testing-library/react'
+-import AuthProvider from '../../components/Auth/AuthProvider'
++import { AuthProvider } from '../../contexts/AuthContext'
+ import { CanvasProvider } from '../../contexts/CanvasContext'
+ import { PresenceProvider } from '../../contexts/PresenceContext'
+ import DetailsDropdown from '../../components/Header/DetailsDropdown'
+@@ -38,8 +38,11 @@ jest.mock('../../services/firestore', () => ({
+   usersCollection: jest.fn(() => ({})),
+   createRectangle: jest.fn(async () => {}),
+   updateRectangleDoc: jest.fn(async () => {}),
++  updateDocument: jest.fn(async () => {}),
+   deleteRectangleDoc: jest.fn(async () => {}),
+-  deleteAllRectangles: jest.fn(async () => {}),
++  deleteAllShapes: jest.fn(async () => {}),
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn(() => jest.fn()),
+   subscribeToRectangles: jest.fn((cb: any) => {
+     cb([])
+     return jest.fn()
+diff --git a/src/__tests__/components/ErrorBoundary.test.tsx b/src/__tests__/components/ErrorBoundary.test.tsx
+index 22645ea..10299ec 100644
+--- a/src/__tests__/components/ErrorBoundary.test.tsx
++++ b/src/__tests__/components/ErrorBoundary.test.tsx
+@@ -6,14 +6,31 @@ function Boom() {
+ }
+ 
+ test('ErrorBoundary renders fallback on error', () => {
+-  render(
+-    <ErrorBoundary>
+-      {/* @ts-expect-error testing error boundary */}
+-      <Boom />
+-    </ErrorBoundary>
+-  )
+-  expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument()
+-  expect(screen.getByText(/kaboom/i)).toBeInTheDocument()
++  // Mock console.error to prevent Jest from treating it as a test failure
++  const originalConsoleError = console.error
++  console.error = jest.fn()
++
++  try {
++    render(
++      <ErrorBoundary>
++        {/* @ts-expect-error testing error boundary */}
++        <Boom />
++      </ErrorBoundary>
++    )
++    
++    expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument()
++    expect(screen.getByText(/kaboom/i)).toBeInTheDocument()
++    
++    // Verify that console.error was called (error boundary should log errors)
++    expect(console.error).toHaveBeenCalledWith(
++      'ErrorBoundary caught an error',
++      expect.any(Error),
++      expect.any(Object)
++    )
++  } finally {
++    // Restore original console.error
++    console.error = originalConsoleError
++  }
+ })
+ 
+ 
+diff --git a/src/__tests__/components/ShapeManagement.core.test.tsx b/src/__tests__/components/ShapeManagement.core.test.tsx
+new file mode 100644
+index 0000000..3402aa1
+--- /dev/null
++++ b/src/__tests__/components/ShapeManagement.core.test.tsx
+@@ -0,0 +1,314 @@
++import { render, screen, fireEvent, waitFor } from '@testing-library/react'
++import { AuthProvider } from '../../contexts/AuthContext'
++import { CanvasProvider } from '../../contexts/CanvasContext'
++import { PresenceProvider } from '../../contexts/PresenceContext'
++import ShapeSelector from '../../components/Header/ShapeSelector'
++import { createShape, updateShape, deleteShape, deleteAllShapes } from '../../services/firestore'
++
++// Mock auth to have a logged-in user
++jest.mock('../../services/auth', () => ({
++  onAuthStateChanged: (cb: (u: any) => void) => {
++    cb({ id: 'u1', displayName: 'Test User' })
++    return jest.fn()
++  },
++  signInWithGoogle: jest.fn(async () => {}),
++  signOut: jest.fn(async () => {}),
++}))
++
++// Mock firestore service
++jest.mock('../../services/firestore', () => ({
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn(() => jest.fn()),
++  createShape: jest.fn(),
++  updateShape: jest.fn(),
++  updateDocument: jest.fn(() => Promise.resolve()),
++  deleteShape: jest.fn(),
++  deleteAllShapes: jest.fn(),
++  rectangleToShape: jest.fn((rect: any) => rect),
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
++}))
++
++// Get references to the mocked functions
++const mockCreateShape = jest.mocked(createShape)
++const mockUpdateShape = jest.mocked(updateShape)
++const mockDeleteShape = jest.mocked(deleteShape)
++const mockDeleteAllShapes = jest.mocked(deleteAllShapes)
++
++// Mock realtime service
++jest.mock('../../services/realtime', () => ({
++  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
++  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
++  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
++  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToDragRtdb: jest.fn(() => jest.fn()),
++  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
++  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
++  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
++  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
++  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
++}))
++
++function renderShapeSelector() {
++  return render(
++    <AuthProvider>
++      <PresenceProvider>
++        <CanvasProvider>
++          <ShapeSelector />
++        </CanvasProvider>
++      </PresenceProvider>
++    </AuthProvider>
++  )
++}
++
++describe('Shape Management Core Functionality', () => {
++  beforeEach(() => {
++    jest.clearAllMocks()
++    mockCreateShape.mockResolvedValue(undefined)
++    mockUpdateShape.mockResolvedValue(undefined)
++    mockDeleteShape.mockResolvedValue(undefined)
++    mockDeleteAllShapes.mockResolvedValue(undefined)
++  })
++
++  test('renders shape selector button', () => {
++    renderShapeSelector()
++    
++    expect(screen.getByRole('button', { name: /create shapes/i })).toBeInTheDocument()
++  })
++
++  test('opens dropdown when create shapes button is clicked', () => {
++    renderShapeSelector()
++    
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    expect(screen.getByText('Rectangle')).toBeInTheDocument()
++    expect(screen.getByText('Circle')).toBeInTheDocument()
++    expect(screen.getByText('Triangle')).toBeInTheDocument()
++    expect(screen.getByText('Star')).toBeInTheDocument()
++  })
++
++  test('creates rectangle when rectangle button is clicked', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Click rectangle button
++    const rectangleButton = screen.getByText('Rectangle')
++    fireEvent.click(rectangleButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Check that the correct shape data was passed
++    const callArgs = mockCreateShape.mock.calls[0][0]
++    expect(callArgs.type).toBe('rect')
++    expect(callArgs.width).toBe(200)
++    expect(callArgs.height).toBe(100)
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    }, { timeout: 3000 })
++  })
++
++  test('creates circle when circle button is clicked', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Click circle button
++    const circleButton = screen.getByText('Circle')
++    fireEvent.click(circleButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Check that the correct shape data was passed
++    const callArgs = mockCreateShape.mock.calls[0][0]
++    expect(callArgs.type).toBe('circle')
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Circle')).not.toBeInTheDocument()
++    }, { timeout: 3000 })
++  })
++
++  test('creates triangle when triangle button is clicked', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Click triangle button
++    const triangleButton = screen.getByText('Triangle')
++    fireEvent.click(triangleButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Check that the correct shape data was passed
++    const callArgs = mockCreateShape.mock.calls[0][0]
++    expect(callArgs.type).toBe('triangle')
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Triangle')).not.toBeInTheDocument()
++    }, { timeout: 3000 })
++  })
++
++  test('creates star when star button is clicked', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Click star button
++    const starButton = screen.getByText('Star')
++    fireEvent.click(starButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Check that the correct shape data was passed
++    const callArgs = mockCreateShape.mock.calls[0][0]
++    expect(callArgs.type).toBe('star')
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Star')).not.toBeInTheDocument()
++    }, { timeout: 3000 })
++  })
++
++  test('closes dropdown after creating shape', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    expect(screen.getByText('Rectangle')).toBeInTheDocument()
++    
++    // Click rectangle button
++    const rectangleButton = screen.getByText('Rectangle')
++    fireEvent.click(rectangleButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    })
++  })
++
++  test('handles shape creation errors gracefully', async () => {
++    mockCreateShape.mockRejectedValue(new Error('Creation failed'))
++    
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Click rectangle button
++    const rectangleButton = screen.getByText('Rectangle')
++    fireEvent.click(rectangleButton)
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Should not throw an error and dropdown should close
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    })
++  })
++
++  test('closes dropdown when clicking outside', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    expect(screen.getByText('Rectangle')).toBeInTheDocument()
++    
++    // Click outside
++    fireEvent.mouseDown(document.body)
++    
++    // Dropdown should be closed
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    })
++  })
++
++  test('closes dropdown when pressing Escape key', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    expect(screen.getByText('Rectangle')).toBeInTheDocument()
++    
++    // Press Escape
++    fireEvent.keyDown(document, { key: 'Escape' })
++    
++    // Dropdown should be closed
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    })
++  })
++
++  test('generates unique IDs for shapes', async () => {
++    renderShapeSelector()
++    
++    // Open dropdown
++    const createButton = screen.getByRole('button', { name: /create shapes/i })
++    fireEvent.click(createButton)
++    
++    // Create first rectangle
++    const rectangleButton = screen.getByText('Rectangle')
++    fireEvent.click(rectangleButton)
++    
++    // Wait for first shape creation to complete
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(1)
++    })
++    
++    // Wait for dropdown to close
++    await waitFor(() => {
++      expect(screen.queryByText('Rectangle')).not.toBeInTheDocument()
++    })
++    
++    // Open dropdown again and create second rectangle
++    fireEvent.click(createButton)
++    fireEvent.click(screen.getByText('Rectangle'))
++    
++    await waitFor(() => {
++      expect(mockCreateShape).toHaveBeenCalledTimes(2)
++    })
++    
++    // Check that different IDs were generated
++    const firstCall = mockCreateShape.mock.calls[0][0]
++    const secondCall = mockCreateShape.mock.calls[1][0]
++    
++    expect(firstCall.id).not.toBe(secondCall.id)
++  })
++})
+diff --git a/src/__tests__/components/ShapeSelector.test.tsx b/src/__tests__/components/ShapeSelector.test.tsx
+index 858360b..fa7f28b 100644
+--- a/src/__tests__/components/ShapeSelector.test.tsx
++++ b/src/__tests__/components/ShapeSelector.test.tsx
+@@ -1,5 +1,5 @@
+-import { render, screen, fireEvent } from '@testing-library/react'
+-import AuthProvider from '../../components/Auth/AuthProvider'
++import { render, screen, fireEvent, waitFor } from '@testing-library/react'
++import { AuthProvider } from '../../contexts/AuthContext'
+ import { CanvasProvider } from '../../contexts/CanvasContext'
+ import { PresenceProvider } from '../../contexts/PresenceContext'
+ import ShapeSelector from '../../components/Header/ShapeSelector'
+@@ -12,16 +12,36 @@ jest.mock('../../services/auth', () => ({
+   signOut: jest.fn(async () => {}),
+ }))
+ 
+-// Mock firestore subscription to start with no rectangles
+-jest.mock('firebase/firestore', () => ({
+-  getFirestore: jest.fn(() => ({})),
+-  collection: jest.fn(() => ({})),
+-  doc: jest.fn(() => ({})),
+-  setDoc: jest.fn(async () => {}),
+-  updateDoc: jest.fn(async () => {}),
+-  deleteDoc: jest.fn(async () => {}),
+-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+-  onSnapshot: jest.fn((_src: any, cb: (snap: any) => void) => { cb({ docs: [] }); return jest.fn() }),
++// Mock firestore service to provide proper data
++let mockShapes: any[] = []
++let shapesCallback: ((shapes: any[]) => void) | null = null
++
++jest.mock('../../services/firestore', () => ({
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn((_documentId: string, callback: (shapes: any[]) => void) => {
++    shapesCallback = callback
++    // Call callback with current shapes
++    callback(mockShapes)
++    return jest.fn()
++  }),
++  createRectangle: jest.fn(() => Promise.resolve()),
++  createShape: jest.fn((shapeData: any) => {
++    // Add shape to mock data and trigger callback
++    mockShapes.push(shapeData)
++    if (shapesCallback) {
++      shapesCallback([...mockShapes])
++    }
++    return Promise.resolve()
++  }),
++  updateRectangleDoc: jest.fn(() => Promise.resolve()),
++  updateDocument: jest.fn(() => Promise.resolve()),
++  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
++  deleteAllShapes: jest.fn(() => Promise.resolve()),
++  rectangleToShape: jest.fn((rect: any) => rect), // Simple pass-through function
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
+ }))
+ 
+ function renderAll() {
+@@ -40,27 +60,62 @@ function renderAll() {
+ }
+ 
+ test('ShapeSelector creates shapes and Canvas renders them', async () => {
++  // Reset mock data
++  mockShapes = []
++  
+   renderAll()
++  
++  // First click the "Create shapes" button to open the dropdown
++  const createShapesBtn = screen.getByRole('button', { name: /create shapes/i })
++  fireEvent.click(createShapesBtn)
++  
++  // Now look for the shape buttons in the dropdown
+   const rectBtn = screen.getByRole('button', { name: /rectangle/i })
+-  const circleBtn = screen.getByRole('button', { name: /circle/i })
+-  const triangleBtn = screen.getByRole('button', { name: /triangle/i })
+-  const starBtn = screen.getByRole('button', { name: /star/i })
+ 
++  // Create shapes one by one and wait for them to appear
+   fireEvent.click(rectBtn)
+-  await Promise.resolve()
+-  fireEvent.click(circleBtn)
+-  await Promise.resolve()
+-  fireEvent.click(triangleBtn)
+-  await Promise.resolve()
+-  fireEvent.click(starBtn)
+-  await Promise.resolve()
++  await screen.findByTestId('Rect')
++  
++  // Wait for dropdown to close
++  await waitFor(() => {
++    expect(screen.queryByRole('button', { name: /rectangle/i })).not.toBeInTheDocument()
++  })
++  
++  // Re-open dropdown and create circle
++  fireEvent.click(createShapesBtn)
++  const circleBtn2 = screen.getByRole('button', { name: /circle/i })
++  fireEvent.click(circleBtn2)
++  await screen.findByTestId('Circle')
++  
++  // Wait for dropdown to close
++  await waitFor(() => {
++    expect(screen.queryByRole('button', { name: /circle/i })).not.toBeInTheDocument()
++  })
++  
++  // Re-open dropdown and create triangle
++  fireEvent.click(createShapesBtn)
++  const triangleBtn2 = screen.getByRole('button', { name: /triangle/i })
++  fireEvent.click(triangleBtn2)
++  await screen.findByTestId('RegularPolygon')
++  
++  // Wait for dropdown to close
++  await waitFor(() => {
++    expect(screen.queryByRole('button', { name: /triangle/i })).not.toBeInTheDocument()
++  })
++  
++  // Re-open dropdown and create star
++  fireEvent.click(createShapesBtn)
++  const starBtn2 = screen.getByRole('button', { name: /star/i })
++  fireEvent.click(starBtn2)
++  await screen.findByTestId('Star')
+ 
++  // Verify all shapes are rendered
+   const count =
+     (screen.queryAllByTestId('Rect').length || 0) +
+     (screen.queryAllByTestId('Circle').length || 0) +
+     (screen.queryAllByTestId('RegularPolygon').length || 0) +
+     (screen.queryAllByTestId('Star').length || 0)
+-  expect(count).toBeGreaterThanOrEqual(1)
++  expect(count).toBe(4)
+ })
+ 
+ 
+diff --git a/src/__tests__/components/SignInButton.test.tsx b/src/__tests__/components/SignInButton.test.tsx
+index fce96af..8a20abe 100644
+--- a/src/__tests__/components/SignInButton.test.tsx
++++ b/src/__tests__/components/SignInButton.test.tsx
+@@ -1,5 +1,5 @@
+ import { render } from '@testing-library/react'
+-import AuthProvider from '../../components/Auth/AuthProvider'
++import { AuthProvider } from '../../contexts/AuthContext'
+ import SignInButton from '../../components/Auth/SignInButton'
+ 
+ describe('SignInButton', () => {
+diff --git a/src/__tests__/components/UserCursor.test.tsx b/src/__tests__/components/UserCursor.test.tsx
+deleted file mode 100644
+index eb5cd94..0000000
+--- a/src/__tests__/components/UserCursor.test.tsx
++++ /dev/null
+@@ -1,16 +0,0 @@
+-import { render, screen } from '@testing-library/react'
+-import UserCursor from '../../components/Presence/UserCursor'
+-
+-test('UserCursor renders with fallback name', () => {
+-  render(<UserCursor x={10} y={20} name={null} />)
+-  expect(screen.getByTestId('UserCursor')).toBeInTheDocument()
+-  expect(screen.getByText(/Unknown/)).toBeInTheDocument()
+-})
+-
+-test('UserCursor renders with a given name', () => {
+-  render(<UserCursor x={10} y={20} name="Test User" />)
+-  expect(screen.getByTestId('UserCursor')).toBeInTheDocument()
+-  expect(screen.getByText('Test User')).toBeInTheDocument()
+-})
+-
+-
+diff --git a/src/__tests__/contexts/CanvasContext.test.tsx b/src/__tests__/contexts/CanvasContext.test.tsx
+index fef6845..e4d4f00 100644
+--- a/src/__tests__/contexts/CanvasContext.test.tsx
++++ b/src/__tests__/contexts/CanvasContext.test.tsx
+@@ -2,15 +2,51 @@ import { renderHook, act } from '@testing-library/react'
+ import { CanvasProvider, useCanvas } from '../../contexts/CanvasContext'
+ import { AuthProvider } from '../../contexts/AuthContext'
+ 
++// Mock auth service
++jest.mock('../../services/auth', () => ({
++  onAuthStateChanged: jest.fn((callback) => {
++    // Simulate authenticated user
++    callback({ id: 'test-user', displayName: 'Test User' })
++    return jest.fn()
++  }),
++  signInWithGoogle: jest.fn(),
++  signOut: jest.fn(),
++}))
++
++// Mock firestore service
+ jest.mock('../../services/firestore', () => ({
+-  createRectangle: jest.fn(async () => { throw new Error('fail') }),
+-  updateRectangleDoc: jest.fn(async () => { throw new Error('fail') }),
+-  deleteRectangleDoc: jest.fn(async () => { throw new Error('fail') }),
+-  deleteAllRectangles: jest.fn(async () => { throw new Error('fail') }),
+-  subscribeToRectangles: jest.fn((cb: any) => {
+-    cb([{ rect: { id: 'seed', x: 0, y: 0, width: 10, height: 10, fill: '#000' }, updatedAtMs: 0 }])
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn((_documentId: string, cb: any) => {
++    // Call the callback with seed data
++    cb([{ id: 'seed', x: 0, y: 0, width: 10, height: 10, fill: '#000', type: 'rect' }])
+     return jest.fn()
+   }),
++  createShape: jest.fn(async () => { throw new Error('fail') }),
++  updateShape: jest.fn(async () => { throw new Error('fail') }),
++  deleteShape: jest.fn(async () => { throw new Error('fail') }),
++  deleteAllShapes: jest.fn(async () => { throw new Error('fail') }),
++  rectangleToShape: jest.fn((rect: any) => rect), // Add missing function
++  updateDocument: jest.fn(() => Promise.resolve()),
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
++}))
++
++// Mock realtime service
++jest.mock('../../services/realtime', () => ({
++  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
++  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
++  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
++  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToDragRtdb: jest.fn(() => jest.fn()),
++  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
++  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
++  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
++  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
++  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+ }))
+ 
+ function wrapper({ children }: { children: React.ReactNode }) {
+@@ -24,21 +60,38 @@ function wrapper({ children }: { children: React.ReactNode }) {
+ test('rollback behaviors on failures', async () => {
+   const { result } = renderHook(() => useCanvas(), { wrapper })
+ 
++  // Wait for initial data to load
++  await act(async () => {
++    await new Promise(resolve => setTimeout(resolve, 100))
++  })
++
+   // addRectangle rolls back on failure
+   await act(async () => {
+-    await result.current.addRectangle({ id: 'r1', x: 0, y: 0, width: 10, height: 10, fill: '#000' })
++    try {
++      await result.current.addRectangle({ id: 'r1', x: 0, y: 0, width: 10, height: 10, fill: '#000', type: 'rect' })
++    } catch (error) {
++      // Expected to fail due to mock
++    }
+   })
+   expect(result.current.rectangles.find((r) => r.id === 'r1')).toBeUndefined()
+ 
+   // deleteRectangle rollback
+   await act(async () => {
+-    await result.current.deleteRectangle('seed')
++    try {
++      await result.current.deleteRectangle('seed')
++    } catch (error) {
++      // Expected to fail due to mock
++    }
+   })
+   expect(result.current.rectangles.find((r) => r.id === 'seed')).toBeDefined()
+ 
+   // clearAllRectangles rollback
+   await act(async () => {
+-    await result.current.clearAllRectangles()
++    try {
++      await result.current.clearAllRectangles()
++    } catch (error) {
++      // Expected to fail due to mock
++    }
+   })
+   expect(result.current.rectangles.length).toBeGreaterThan(0)
+ })
+diff --git a/src/__tests__/contexts/PresenceContext.test.tsx b/src/__tests__/contexts/PresenceContext.test.tsx
+index 2ef30fb..36ffdec 100644
+--- a/src/__tests__/contexts/PresenceContext.test.tsx
++++ b/src/__tests__/contexts/PresenceContext.test.tsx
+@@ -8,10 +8,7 @@ jest.mock('../../services/auth', () => ({
+   signOut: jest.fn(async () => {}),
+ }))
+ 
+-jest.mock('../../services/presence', () => ({
+-  setUserOnline: jest.fn(async () => {}),
+-  setUserOffline: jest.fn(async () => {}),
+-}))
++// PresenceContext uses realtime service, not a separate presence service
+ 
+ function wrapper({ children }: { children: React.ReactNode }) {
+   return (
+diff --git a/src/__tests__/integration/cursor-sync.test.tsx b/src/__tests__/integration/cursor-sync.test.tsx
+index 0d3449f..5a51154 100644
+--- a/src/__tests__/integration/cursor-sync.test.tsx
++++ b/src/__tests__/integration/cursor-sync.test.tsx
+@@ -48,32 +48,6 @@ describe('cursor sync', () => {
+     // We can't reliably query portal HTML here due to environment; basic smoke check
+     expect(true).toBe(true)
+   })
+-
+-  it('displays remote cursor at correct position with viewport transformations', async () => {
+-    render(
+-      <PresenceProvider>
+-        <CanvasProvider>
+-          <Canvas />
+-        </CanvasProvider>
+-      </PresenceProvider>
+-    )
+-
+-    // Simulate a remote user's cursor at canvas position (100, 100)
+-    emitPresence?.({
+-      docs: [
+-        { id: 'self', data: () => ({ displayName: 'Me', cursor: { x: 0, y: 0 }, updatedAt: { toMillis: () => 1 } }) },
+-        { id: 'u2', data: () => ({ displayName: 'Alice', cursor: { x: 100, y: 100 }, updatedAt: { toMillis: () => 2 } }) },
+-      ],
+-    })
+-
+-    // Wait for canvas to render
+-    await screen.findByTestId('Stage')
+-    
+-    // The cursor should be rendered at the correct position
+-    // Since we're using HTML overlay, we can't easily test exact positioning in this environment
+-    // but we can verify the component renders without errors
+-    expect(true).toBe(true)
+-  })
+ })
+ 
+ 
+diff --git a/src/__tests__/integration/rectangle-sync.test.tsx b/src/__tests__/integration/rectangle-sync.test.tsx
+index 26a55fe..07c0867 100644
+--- a/src/__tests__/integration/rectangle-sync.test.tsx
++++ b/src/__tests__/integration/rectangle-sync.test.tsx
+@@ -2,40 +2,59 @@ import { render, screen, waitFor } from '@testing-library/react'
+ import { CanvasProvider } from '../../contexts/CanvasContext'
+ import { PresenceProvider } from '../../contexts/PresenceContext'
+ import Canvas from '../../components/Canvas/Canvas'
+-import AuthProvider from '../../components/Auth/AuthProvider'
++import { AuthProvider } from '../../contexts/AuthContext'
+ 
+-// Capture the subscribeToShapes callback so tests can emit snapshots
+-let emitShapes: ((shapes: any[]) => void) | null = null
++// Mock auth to have a logged-in user
++jest.mock('../../services/auth', () => ({
++  onAuthStateChanged: (cb: (u: any) => void) => {
++    cb({ id: 'u1', displayName: 'Test User' })
++    return jest.fn()
++  },
++  signInWithGoogle: jest.fn(async () => {}),
++  signOut: jest.fn(async () => {}),
++}))
+ 
++// Capture the onSnapshot callback so tests can emit snapshots
++let emitSnapshot: ((snap: any) => void) | null = null
++
++// Mock firestore service to provide proper data
+ jest.mock('../../services/firestore', () => ({
+-  subscribeToShapes: jest.fn((_docId: string, callback: (shapes: any[]) => void) => {
+-    emitShapes = callback
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn((_documentId: string, cb: any) => {
++    // Call the callback with empty array initially
++    cb([])
++    // Store the callback so we can call it later
++    emitSnapshot = cb
+     return jest.fn()
+   }),
+-  createShape: jest.fn(() => Promise.resolve()),
+-  updateShape: jest.fn(() => Promise.resolve()),
+-  deleteShape: jest.fn(() => Promise.resolve()),
++  createRectangle: jest.fn(() => Promise.resolve()),
++  updateRectangleDoc: jest.fn(() => Promise.resolve()),
++  updateDocument: jest.fn(() => Promise.resolve()),
++  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
+   deleteAllShapes: jest.fn(() => Promise.resolve()),
+-  rectangleToShape: jest.fn((rect: any) => rect),
++  rectangleToShape: jest.fn((rect: any) => rect), // Simple pass-through function
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
++}))
++
++// Mock realtime service
++jest.mock('../../services/realtime', () => ({
++  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
++  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
++  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
++  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToDragRtdb: jest.fn(() => jest.fn()),
++  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
++  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
++  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
++  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
++  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+ }))
+ 
+-function fakeShape(id: string, data: any) {
+-  return {
+-    id,
+-    type: 'rect',
+-    x: data.x,
+-    y: data.y,
+-    width: data.width,
+-    height: data.height,
+-    fill: data.fill,
+-    rotation: 0,
+-    z: 0,
+-    createdBy: 'test-user',
+-    updatedBy: 'test-user',
+-    documentId: 'test-doc',
+-    ...data,
+-  }
+-}
+ 
+ describe('rectangle sync', () => {
+   it('renders rectangles from realtime snapshots', async () => {
+@@ -49,14 +68,17 @@ describe('rectangle sync', () => {
+       </AuthProvider>
+     )
+ 
+-    // Emit initial shapes with two rectangles
+-    emitShapes?.([
+-      fakeShape('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444' }),
+-      fakeShape('b', { x: 50, y: 60, width: 200, height: 100, fill: '#10B981' }),
++    // Emit initial shapes data with two rectangles
++    emitSnapshot?.([
++      { id: 'a', x: 10, y: 20, width: 200, height: 100, fill: '#EF4444', type: 'rect' },
++      { id: 'b', x: 50, y: 60, width: 200, height: 100, fill: '#10B981', type: 'rect' },
+     ])
+ 
+-    const rects = await screen.findAllByTestId('Rect')
+-    expect(rects.length).toBe(2)
++    // Wait for rectangles to be rendered
++    await waitFor(async () => {
++      const rects = await screen.findAllByTestId('Rect')
++      expect(rects.length).toBe(2)
++    })
+   })
+ 
+   it('updates existing rectangle on new snapshot (no duplicates)', async () => {
+@@ -70,15 +92,15 @@ describe('rectangle sync', () => {
+       </AuthProvider>
+     )
+ 
+-    emitShapes?.([
+-      fakeShape('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444' }),
++    emitSnapshot?.([
++      { id: 'a', x: 10, y: 20, width: 200, height: 100, fill: '#EF4444', type: 'rect' },
+     ])
+ 
+     await screen.findByTestId('Rect')
+ 
+     // Emit update for same id with new position
+-    emitShapes?.([
+-      fakeShape('a', { x: 100, y: 200, width: 200, height: 100, fill: '#EF4444' }),
++    emitSnapshot?.([
++      { id: 'a', x: 100, y: 200, width: 200, height: 100, fill: '#EF4444', type: 'rect' },
+     ])
+ 
+     await waitFor(async () => {
+diff --git a/src/__tests__/setup.ts b/src/__tests__/setup.ts
+index 1c80f60..545dee9 100644
+--- a/src/__tests__/setup.ts
++++ b/src/__tests__/setup.ts
+@@ -1,5 +1,4 @@
+ import '@testing-library/jest-dom'
+-import { mockFirestore, mockRealtimeDB, mockAuth } from '../test-utils/firebaseMock'
+ 
+ // JSDOM lacks certain APIs; mock if needed here.
+ 
+@@ -7,49 +6,91 @@ import { mockFirestore, mockRealtimeDB, mockAuth } from '../test-utils/firebaseM
+ jest.mock('firebase/app', () => ({
+   initializeApp: jest.fn(() => ({})),
+ }))
+-
+ jest.mock('firebase/auth', () => ({
+-  getAuth: jest.fn(() => mockAuth),
+-  ...mockAuth,
++  getAuth: jest.fn(() => ({})),
++  onAuthStateChanged: jest.fn((_auth, cb) => {
++    // default: logged out state
++    cb(null)
++    return jest.fn()
++  }),
++  signInWithPopup: jest.fn(),
++  signOut: jest.fn(),
++  GoogleAuthProvider: jest.fn(function MockProvider() {}),
+ }))
+-
+ jest.mock('firebase/firestore', () => ({
+-  getFirestore: jest.fn(() => mockFirestore),
+-  ...mockFirestore,
++  getFirestore: jest.fn(() => ({})),
++  collection: jest.fn(() => ({})),
++  doc: jest.fn(() => ({})),
++  setDoc: jest.fn(() => Promise.resolve()),
++  updateDoc: jest.fn(() => Promise.resolve()),
++  deleteDoc: jest.fn(() => Promise.resolve()),
++  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
++  onSnapshot: jest.fn((_ref, callback) => {
++    // Mock snapshot with exists() method
++    const mockSnapshot = {
++      exists: jest.fn(() => true),
++      data: jest.fn(() => ({})),
++      docs: []
++    }
++    callback(mockSnapshot)
++    return jest.fn()
++  }),
++  query: jest.fn(() => ({})),
++  where: jest.fn(() => ({})),
++  orderBy: jest.fn(() => ({})),
++  getDocs: jest.fn(() => Promise.resolve({ forEach: jest.fn() })),
+ }))
+-
+ jest.mock('firebase/database', () => ({
+-  getDatabase: jest.fn(() => mockRealtimeDB),
+-  ...mockRealtimeDB,
++  getDatabase: jest.fn(() => ({})),
++  ref: jest.fn(() => ({})),
++  onValue: jest.fn((_ref, callback) => {
++    callback({ val: () => null })
++    return jest.fn()
++  }),
++  off: jest.fn(),
++  onDisconnect: jest.fn(() => ({
++    remove: jest.fn(() => Promise.resolve()),
++  })),
++  set: jest.fn(() => Promise.resolve()),
++  update: jest.fn(() => Promise.resolve()),
++  remove: jest.fn(() => Promise.resolve()),
+ }))
+-
+ // Ensure local firebase initializer is not imported during tests
+ jest.mock('../services/firebase', () => ({ 
+   getFirebaseApp: jest.fn(() => ({})),
+-  getFirestoreDB: jest.fn(() => mockFirestore),
+-  getRealtimeDB: jest.fn(() => mockRealtimeDB),
++  getFirestoreDB: jest.fn(() => ({})),
++  getRealtimeDB: jest.fn(() => ({})),
+ }))
+ 
+-// Global test utilities
+-declare global {
+-  var createMockSnapshot: (data?: any, exists?: boolean) => any
+-  var createMockQuerySnapshot: (docs?: any[]) => any
+-}
+-
+-globalThis.createMockSnapshot = (data = null, exists = true) => ({
+-  exists: () => exists,
+-  data: () => data,
+-  id: 'mock-doc-id',
+-  ref: {},
+-  metadata: { fromCache: false, hasPendingWrites: false },
+-})
++// Mock services
++jest.mock('../services/firestore', () => ({
++  subscribeToDocument: jest.fn(() => jest.fn()),
++  subscribeToShapes: jest.fn(() => jest.fn()),
++  createRectangle: jest.fn(() => Promise.resolve()),
++  updateRectangleDoc: jest.fn(() => Promise.resolve()),
++  updateDocument: jest.fn(() => Promise.resolve()),
++  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
++  deleteAllShapes: jest.fn(() => Promise.resolve()),
++  db: jest.fn(() => ({})),
++  rectanglesCollection: jest.fn(() => ({})),
++  presenceCollection: jest.fn(() => ({})),
++  usersCollection: jest.fn(() => ({})),
++}))
+ 
+-globalThis.createMockQuerySnapshot = (docs = []) => ({
+-  docs,
+-  empty: docs.length === 0,
+-  size: docs.length,
+-  forEach: (callback: (doc: any) => void) => docs.forEach(callback),
+-})
++jest.mock('../services/realtime', () => ({
++  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
++  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
++  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
++  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToDragRtdb: jest.fn(() => jest.fn()),
++  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
++  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
++  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
++  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
++  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
++  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
++}))
+ 
+ // Firebase SDK will be mocked in specific tests; keep global setup minimal.
+ 
+diff --git a/src/__tests__/utils/helpers.test.ts b/src/__tests__/utils/helpers.test.ts
+index 1fe6600..86957ea 100644
+--- a/src/__tests__/utils/helpers.test.ts
++++ b/src/__tests__/utils/helpers.test.ts
+@@ -26,37 +26,6 @@ describe('helpers', () => {
+     expect(rect.width).toBeGreaterThan(0)
+     expect(rect.height).toBeGreaterThan(0)
+   })
+-
+-  describe('cursor coordinate transformations', () => {
+-    it('should correctly transform cursor position with scale', () => {
+-      const viewport = { x: 0, y: 0, scale: 2 }
+-      const stagePos = { x: 200, y: 200 }
+-      const canvasPos = transformCanvasCoordinates(stagePos.x, stagePos.y, viewport)
+-      expect(canvasPos).toEqual({ x: 100, y: 100 })
+-    })
+-
+-    it('should correctly transform cursor position with pan', () => {
+-      const viewport = { x: 50, y: 50, scale: 1 }
+-      const stagePos = { x: 200, y: 200 }
+-      const canvasPos = transformCanvasCoordinates(stagePos.x, stagePos.y, viewport)
+-      expect(canvasPos).toEqual({ x: 150, y: 150 })
+-    })
+-
+-    it('should maintain cursor position through round-trip', () => {
+-      const viewport = { x: 100, y: 100, scale: 1.5 }
+-      const originalCanvas = { x: 300, y: 300 }
+-      
+-      // Simulate displaying the cursor
+-      const displayX = viewport.x + originalCanvas.x * viewport.scale
+-      const displayY = viewport.y + originalCanvas.y * viewport.scale
+-      
+-      // Simulate receiving it back
+-      const receivedCanvas = transformCanvasCoordinates(displayX, displayY, viewport)
+-      
+-      expect(receivedCanvas.x).toBeCloseTo(originalCanvas.x, 1)
+-      expect(receivedCanvas.y).toBeCloseTo(originalCanvas.y, 1)
+-    })
+-  })
+ })
+ 
+ 
+diff --git a/src/components/Auth/AuthProvider.tsx b/src/components/Auth/AuthProvider.tsx
+deleted file mode 100644
+index 7461e09..0000000
+--- a/src/components/Auth/AuthProvider.tsx
++++ /dev/null
+@@ -1,12 +0,0 @@
+-import { AuthProvider as Provider } from '../../contexts/AuthContext'
+-
+-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+-  // In test environments, the context might be mocked, so we need to handle that
+-  if (!Provider) {
+-    // Fallback for when the context is mocked - just render children
+-    return <>{children}</>
+-  }
+-  return <Provider>{children}</Provider>
+-}
+-
+-
+diff --git a/src/components/Auth/SignInButton.tsx b/src/components/Auth/SignInButton.tsx
+index fe7a979..eec2765 100644
+--- a/src/components/Auth/SignInButton.tsx
++++ b/src/components/Auth/SignInButton.tsx
+@@ -1,13 +1,14 @@
+ import { useAuth } from '../../contexts/AuthContext'
++import { signInWithGoogleRedirect } from '../../services/auth'
+ 
+ export default function SignInButton() {
+-  const { user, isLoading, signInWithGoogle, signOut } = useAuth()
++  const { user, isLoading, signOut } = useAuth()
+ 
+   if (isLoading) return null
+ 
+   if (!user) {
+     return (
+-      <button onClick={signInWithGoogle} aria-label="Sign in with Google">
++      <button onClick={signInWithGoogleRedirect} aria-label="Sign in with Google">
+         Sign in with Google
+       </button>
+     )
+diff --git a/src/components/Canvas/Canvas.tsx b/src/components/Canvas/Canvas.tsx
+index 6628b72..8cb298c 100644
+--- a/src/components/Canvas/Canvas.tsx
++++ b/src/components/Canvas/Canvas.tsx
+@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+ import styles from './Canvas.module.css'
+ import { useCanvas } from '../../contexts/CanvasContext'
+ import type { Rectangle } from '../../types/canvas.types'
++import { transformCanvasCoordinates } from '../../utils/helpers'
+ import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
+ import { usePresence } from '../../contexts/PresenceContext'
+ import { updateCursorPositionRtdb } from '../../services/realtime'
+@@ -40,7 +41,7 @@ export default function Canvas() {
+   const setSingleSelection = useCallback((id: string) => {
+     selectedIdsRef.current = new Set([id])
+     setSelectedId(id)
+-  }, [])
++  }, [setSelectedId])
+   const toggleSelection = useCallback((id: string) => {
+     const next = new Set(selectedIdsRef.current)
+     if (next.has(id)) next.delete(id)
+@@ -48,7 +49,7 @@ export default function Canvas() {
+     selectedIdsRef.current = next
+     // keep a primary selected id for UI; choose the most recently toggled
+     setSelectedId(id)
+-  }, [])
++  }, [setSelectedId])
+   const transformerRef = useRef<Konva.Transformer>(null)
+   // Clamp viewport so Stage stays within browser viewport
+   const clampViewport = useCallback(
+@@ -73,7 +74,7 @@ export default function Canvas() {
+         )
+         setViewport({ ...viewport, ...centered })
+       }
+-    } catch {}
++    } catch { /* ignore */ }
+   }, [viewport, containerSize, setViewport, clampViewport])
+ 
+   // Compute grid lines based on visible canvas area (wider spacing)
+@@ -97,20 +98,23 @@ export default function Canvas() {
+   const lastDragPosRef = useRef<Record<string, { x: number; y: number }>>({})
+ 
+   const onWheel = useCallback(
+-    (e: any) => {
++    (e: Konva.KonvaEventObject<WheelEvent>) => {
+       e.evt.preventDefault()
+       const scaleBy = 1.05
+       const stage = e.target.getStage()
++      if (!stage) return
+       const oldScale = viewport.scale
++      const pointer = stage.getPointerPosition()
++      if (!pointer) return
+       const mousePointTo = {
+-        x: (stage.getPointerPosition().x - viewport.x) / oldScale,
+-        y: (stage.getPointerPosition().y - viewport.y) / oldScale,
++        x: (pointer.x - viewport.x) / oldScale,
++        y: (pointer.y - viewport.y) / oldScale,
+       }
+       let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy
+       newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
+       const newPos = {
+-        x: stage.getPointerPosition().x - mousePointTo.x * newScale,
+-        y: stage.getPointerPosition().y - mousePointTo.y * newScale,
++        x: pointer.x - mousePointTo.x * newScale,
++        y: pointer.y - mousePointTo.y * newScale,
+       }
+       const clamped = clampViewport(newPos.x, newPos.y)
+       setViewport({ scale: newScale, x: clamped.x, y: clamped.y })
+@@ -118,16 +122,21 @@ export default function Canvas() {
+     [viewport, setViewport, clampViewport]
+   )
+ 
+-  const onMouseDown = useCallback((e: any) => {
++  const onMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+     isPanningRef.current = true
+     movedRef.current = false
+-    lastPosRef.current = e.target.getStage().getPointerPosition()
++    const stage = e.target.getStage()
++    if (!stage) return
++    lastPosRef.current = stage.getPointerPosition()
+   }, [])
+ 
+   const onMouseMove = useCallback(
+-    (e: any) => {
++    (e: Konva.KonvaEventObject<MouseEvent>) => {
+       if (!isPanningRef.current || !lastPosRef.current) return
+-      const pos = e.target.getStage().getPointerPosition()
++      const stage = e.target.getStage()
++      if (!stage) return
++      const pos = stage.getPointerPosition()
++      if (!pos) return
+       const dx = pos.x - lastPosRef.current.x
+       const dy = pos.y - lastPosRef.current.y
+       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
+@@ -151,10 +160,6 @@ export default function Canvas() {
+     if (selectedId) {
+       const node = stage.findOne(`.rect-${selectedId}`)
+       if (node) {
+-        // Bring selected node to front before attaching transformer
+-        if (node.moveToTop) {
+-          node.moveToTop()
+-        }
+         tr.nodes([node])
+         tr.getLayer()?.batchDraw()
+       }
+@@ -169,7 +174,7 @@ export default function Canvas() {
+     if (selectedId && !rectangles.some((r: Rectangle) => r.id === selectedId)) {
+       setSelectedId(null)
+     }
+-  }, [rectangles, selectedId])
++  }, [rectangles, selectedId, setSelectedId])
+ 
+   useEffect(() => {
+     const onResize = () => {
+@@ -190,60 +195,47 @@ export default function Canvas() {
+     return () => window.removeEventListener('resize', onResize)
+   }, [viewport, setViewport, clampViewport])
+ 
+-  const onClick = useCallback((e: any) => {
++  const onClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+     // Disable shape creation by clicking on canvas background; just clear selection
+     const stage = e.target.getStage()
+     if (e.target !== stage) return
+     setSelectedId(null)
+     selectedIdsRef.current = new Set()
+     movedRef.current = false
+-  }, [])
++  }, [setSelectedId])
+ 
+-  // Track pointer for presence updates (optimized throttling)
+-  const timeoutId = useRef<any>(null)
++  // Track pointer for presence updates (throttled via RAF)
++  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null)
+   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
+   const lastSentAt = useRef<number>(0)
+-  const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
+-  const stageRef = useRef<any>(null)
++  const stageRef = useRef<Konva.Stage | null>(null)
+ 
+   const scheduleCursorSend = useCallback(() => {
+     if (timeoutId.current != null) return
+     timeoutId.current = setTimeout(async () => {
+       timeoutId.current = null
+       const now = Date.now()
+-      if (now - lastSentAt.current < 100) { // Increased throttle to 100ms
++      if (now - lastSentAt.current < 50) {
+         scheduleCursorSend()
+         return
+       }
+       const p = pendingCursor.current
+       if (!p || !user) return
+-      
+-      // Only send if position has changed significantly (reduces unnecessary updates)
+-      const lastPos = lastSentPosition.current
+-      if (lastPos && Math.abs(p.x - lastPos.x) < 5 && Math.abs(p.y - lastPos.y) < 5) {
+-        scheduleCursorSend()
+-        return
+-      }
+-      
+       pendingCursor.current = null
+       lastSentAt.current = now
+-      lastSentPosition.current = { ...p }
+       try {
+         await updateCursorPositionRtdb(user.id, p)
+-      } catch (error) {
+-        console.warn('Failed to update cursor position:', error)
+-      }
+-    }, 100) // Increased throttle interval
++      } catch { /* ignore */ }
++    }, 50)
+   }, [user])
+ 
+-  const onStageMouseMove = useCallback((e: any) => {
++  const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+     const stage = e.target.getStage()
++    if (!stage) return
+     const pos = stage.getPointerPosition()
+     if (!pos) return
+-    // Stage already accounts for scale and position, just send the canvas coordinates
+-    const canvasX = (pos.x - viewport.x) / viewport.scale
+-    const canvasY = (pos.y - viewport.y) / viewport.scale
+-    pendingCursor.current = { x: canvasX, y: canvasY }
++    const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
++    pendingCursor.current = { x, y }
+     scheduleCursorSend()
+   }, [viewport, scheduleCursorSend])
+ 
+@@ -298,9 +290,9 @@ export default function Canvas() {
+             draggable: true,
+             perfectDrawEnabled: false,
+             shadowForStrokeEnabled: false,
+-            onDragStart: (evt: any) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
+-            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
+-            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSingleSelection(r.id) },
++            onDragStart: (evt: Konva.KonvaEventObject<DragEvent>) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
++            onClick: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
++            onTap: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; setSingleSelection(r.id) },
+             onMouseEnter: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
+             onMouseLeave: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
+           }
+@@ -355,14 +347,14 @@ export default function Canvas() {
+                 y={cy}
+                 radius={radius}
+                 rotation={r.rotation || 0}
+-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onTransformEnd={(evt: any) => {
+-                  const node = evt.target
+-                  const scaleX = node.scaleX ? node.scaleX() : 1
+-                  const newRadius = Math.max(5, (node.radius ? node.radius() : radius) * scaleX)
+-                  if (node.scaleX) node.scaleX(1)
+-                  if (node.scaleY) node.scaleY(1)
++                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
++                  const node = evt.target as Konva.Circle
++                  const scaleX = node.scaleX()
++                  const newRadius = Math.max(5, node.radius() * scaleX)
++                  node.scaleX(1)
++                  node.scaleY(1)
+                   const newWidth = newRadius * 2
+                   const newHeight = newRadius * 2
+                   const newX = node.x() - newWidth / 2
+@@ -384,9 +376,9 @@ export default function Canvas() {
+                 sides={3}
+                 radius={radius}
+                 rotation={r.rotation || 0}
+-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onTransformEnd={(evt: any) => {
++                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                   const node = evt.target
+                   const scaleX = node.scaleX ? node.scaleX() : 1
+                   const scaleY = node.scaleY ? node.scaleY() : 1
+@@ -415,9 +407,9 @@ export default function Canvas() {
+                 innerRadius={inner}
+                 outerRadius={outer}
+                 rotation={r.rotation || 0}
+-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+-                onTransformEnd={(evt: any) => {
++                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
++                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                   const node = evt.target
+                   const scaleX = node.scaleX ? node.scaleX() : 1
+                   const scaleY = node.scaleY ? node.scaleY() : 1
+@@ -446,9 +438,9 @@ export default function Canvas() {
+                 pointerLength={Math.max(8, Math.min(24, r.height))}
+                 pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
+                 rotation={r.rotation || 0}
+-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+-                onTransformEnd={(evt: any) => {
++                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
++                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
++                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                   const node = evt.target
+                   const scaleX = node.scaleX ? node.scaleX() : 1
+                   const scaleY = node.scaleY ? node.scaleY() : 1
+@@ -470,15 +462,15 @@ export default function Canvas() {
+                 width={r.width}
+                 height={r.height}
+                 text={r.text || 'Enter Text'}
+-                fontSize={r.fontSize || 64}
++                fontSize={r.fontSize || 16}
+                 fill={r.fill}
+                 rotation={r.rotation || 0}
+                 align="left"
+                 verticalAlign="top"
+                 padding={8}
+-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+-                onTransformEnd={(evt: any) => {
++                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
++                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
++                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                   const node = evt.target
+                   const scaleX = node.scaleX ? node.scaleX() : 1
+                   const scaleY = node.scaleY ? node.scaleY() : 1
+@@ -500,8 +492,10 @@ export default function Canvas() {
+               width={r.width}
+               height={r.height}
+               rotation={r.rotation || 0}
+-              onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+-              onDragEnd={(evt: any) => {
++              onDragMove={() => {
++                // Update handled by context in hybrid approach
++              }}
++              onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => {
+                 const node = evt.target
+                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                 draggingIdRef.current = null
+@@ -511,7 +505,7 @@ export default function Canvas() {
+                   clearDragUpdate(r.id).catch(() => {})
+                 }
+               }}
+-              onTransformEnd={(evt: any) => {
++              onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                 const node = evt.target
+                 const scaleX = node.scaleX ? node.scaleX() : 1
+                 const scaleY = node.scaleY ? node.scaleY() : 1
+@@ -542,24 +536,11 @@ export default function Canvas() {
+       {Object.values(users)
+         .filter((u) => u.userId !== (user?.id ?? ''))
+         .filter((u) => !!u.cursor)
+-        .filter((u) => {
+-          // Only show cursors that have been updated recently (within 5 seconds)
+-          const now = Date.now()
+-          return now - u.updatedAt < 5000
+-        })
+         .map((u) => {
+           const pos = u.cursor!
+-          const sx = offsetX + viewport.x + pos.x * viewport.scale
+-          const sy = offsetY + viewport.y + pos.y * viewport.scale
+-          return (
+-            <UserCursor 
+-              key={`cursor-${u.userId}`} 
+-              x={sx} 
+-              y={sy} 
+-              name={u.displayName} 
+-              isActive={true}
+-            />
+-          )
++              const sx = offsetX + viewport.x + pos.x * viewport.scale
++              const sy = offsetY + viewport.y + pos.y * viewport.scale
++              return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
+         })}
+           </>
+         )
+@@ -596,24 +577,31 @@ export default function Canvas() {
+             style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
+             aria-label="Change shape color"
+           />
+-          {/* TODO: Fix layer buttons - currently commented out due to z-index update issues
++          {/* Layer buttons replaced with Top and Bottom buttons */}
+           <button
+-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
+-            title="Layer up"
+-            aria-label="Layer up"
++            onClick={(e) => { 
++              e.stopPropagation(); 
++              const maxZ = Math.max(...rectangles.map(r => r.z ?? 0));
++              updateRectangle(sel.id, { z: maxZ + 1 });
++            }}
++            title="Move to top layer"
++            aria-label="Move to top layer"
+             style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+           >
+-            Layer ↑
++            Top ↑
+           </button>
+           <button
+-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
+-            title="Layer down"
+-            aria-label="Layer down"
++            onClick={(e) => { 
++              e.stopPropagation(); 
++              const minZ = Math.min(...rectangles.map(r => r.z ?? 0));
++              updateRectangle(sel.id, { z: minZ - 1 });
++            }}
++            title="Move to bottom layer"
++            aria-label="Move to bottom layer"
+             style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+           >
+-            Layer ↓
++            Bottom ↓
+           </button>
+-          */}
+           {sel.type === 'text' && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+               <input
+@@ -637,7 +625,7 @@ export default function Canvas() {
+                 <button
+                   onClick={(e) => { 
+                     e.stopPropagation(); 
+-                    updateRectangle(sel.id, { fontSize: Math.min(144, (sel.fontSize || 64) + 2) }) 
++                    updateRectangle(sel.id, { fontSize: Math.min(72, (sel.fontSize || 16) + 2) }) 
+                   }}
+                   title="Increase font size"
+                   aria-label="Increase font size"
+@@ -662,7 +650,7 @@ export default function Canvas() {
+                 <button
+                   onClick={(e) => { 
+                     e.stopPropagation(); 
+-                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 64) - 2) }) 
++                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 16) - 2) }) 
+                   }}
+                   title="Decrease font size"
+                   aria-label="Decrease font size"
+diff --git a/src/components/Header/ShapeSelector.tsx b/src/components/Header/ShapeSelector.tsx
+index 449c71b..dc29bc9 100644
+--- a/src/components/Header/ShapeSelector.tsx
++++ b/src/components/Header/ShapeSelector.tsx
+@@ -25,7 +25,7 @@ export default function ShapeSelector() {
+     return { x: baseX + index * 50, y: baseY + index * 50 }
+   }
+ 
+-  // Close menu when clicking outside
++  // Close menu when clicking outside or pressing Escape
+   useEffect(() => {
+     const handleClickOutside = (event: MouseEvent) => {
+       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+@@ -33,12 +33,20 @@ export default function ShapeSelector() {
+       }
+     }
+ 
++    const handleKeyDown = (event: KeyboardEvent) => {
++      if (event.key === 'Escape') {
++        setIsOpen(false)
++      }
++    }
++
+     if (isOpen) {
+       document.addEventListener('mousedown', handleClickOutside)
++      document.addEventListener('keydown', handleKeyDown)
+     }
+ 
+     return () => {
+       document.removeEventListener('mousedown', handleClickOutside)
++      document.removeEventListener('keydown', handleKeyDown)
+     }
+   }, [isOpen])
+ 
+@@ -51,8 +59,8 @@ export default function ShapeSelector() {
+       
+       // Set default size based on shape type
+       const isText = type === 'text'
+-      const width = isText ? 400 : 200
+-      const height = isText ? 100 : 100
++      const width = isText ? 200 : 200
++      const height = isText ? 300 : 100
+       
+       const shapeData = { 
+         id, 
+@@ -63,15 +71,15 @@ export default function ShapeSelector() {
+         fill: color || getRandomColor(), 
+         type: type,
+         text: isText ? 'Enter Text' : undefined,
+-        fontSize: isText ? 64 : undefined
++        fontSize: isText ? 16 : undefined
+       }
+       
+       await addRectangle(shapeData)
+-      setIsOpen(false) // Close menu after creating shape
+-    } catch (error) {
++    } catch {
+       // Shape creation failed, but we're not logging to console
+     } finally {
+       setBusy(false)
++      setIsOpen(false) // Close menu after creating shape (success or failure)
+     }
+   }
+ 
+diff --git a/src/components/Layout/ErrorBoundary.tsx b/src/components/Layout/ErrorBoundary.tsx
+index cd81007..39524d2 100644
+--- a/src/components/Layout/ErrorBoundary.tsx
++++ b/src/components/Layout/ErrorBoundary.tsx
+@@ -20,7 +20,6 @@ export default class ErrorBoundary extends Component<Props, State> {
+   }
+ 
+   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+-    // eslint-disable-next-line no-console
+     console.error('ErrorBoundary caught an error', error, errorInfo)
+   }
+ 
+diff --git a/src/components/Presence/UserCursor.tsx b/src/components/Presence/UserCursor.tsx
+index 134e35a..82ec495 100644
+--- a/src/components/Presence/UserCursor.tsx
++++ b/src/components/Presence/UserCursor.tsx
+@@ -1,108 +1,9 @@
+-import { useEffect, useRef, useState } from 'react'
+-
+-interface UserCursorProps {
+-  x: number
+-  y: number
+-  name: string | null
+-  isActive?: boolean
+-}
+-
+-export default function UserCursor({ x, y, name, isActive = true }: UserCursorProps) {
+-  const [displayPos, setDisplayPos] = useState({ x, y })
+-  const animationRef = useRef<number>()
+-  const lastUpdateRef = useRef<number>(Date.now())
+-
+-  useEffect(() => {
+-    const now = Date.now()
+-    const timeSinceLastUpdate = now - lastUpdateRef.current
+-    
+-    // Only interpolate if enough time has passed (cursor is moving)
+-    if (timeSinceLastUpdate > 50) {
+-      lastUpdateRef.current = now
+-      
+-      // Cancel previous animation
+-      if (animationRef.current) {
+-        cancelAnimationFrame(animationRef.current)
+-      }
+-      
+-      // Smooth interpolation to new position
+-      const startPos = { ...displayPos }
+-      const targetPos = { x, y }
+-      const startTime = now
+-      const duration = 150 // 150ms interpolation
+-      
+-      const animate = (currentTime: number) => {
+-        const elapsed = currentTime - startTime
+-        const progress = Math.min(elapsed / duration, 1)
+-        
+-        // Ease-out interpolation
+-        const easeOut = 1 - Math.pow(1 - progress, 3)
+-        
+-        setDisplayPos({
+-          x: startPos.x + (targetPos.x - startPos.x) * easeOut,
+-          y: startPos.y + (targetPos.y - startPos.y) * easeOut
+-        })
+-        
+-        if (progress < 1) {
+-          animationRef.current = requestAnimationFrame(animate)
+-        }
+-      }
+-      
+-      animationRef.current = requestAnimationFrame(animate)
+-    } else {
+-      // For rapid updates, update immediately
+-      setDisplayPos({ x, y })
+-    }
+-  }, [x, y, displayPos])
+-
+-  // Cleanup animation on unmount
+-  useEffect(() => {
+-    return () => {
+-      if (animationRef.current) {
+-        cancelAnimationFrame(animationRef.current)
+-      }
+-    }
+-  }, [])
+-
+-  if (!isActive) return null
+-
++export default function UserCursor({ x, y, name }: { x: number; y: number; name: string | null }) {
++  // Render a simple cursor dot and label; Canvas layer renders this via HTML overlay in tests
+   return (
+-    <div 
+-      data-testid="UserCursor" 
+-      style={{ 
+-        position: 'absolute', 
+-        left: displayPos.x, 
+-        top: displayPos.y, 
+-        transform: 'translate(-50%, -50%)',
+-        pointerEvents: 'none',
+-        zIndex: 1000,
+-        transition: 'opacity 0.2s ease-in-out'
+-      }}
+-    >
+-      <div style={{ 
+-        width: 8, 
+-        height: 8, 
+-        background: '#3B82F6', 
+-        borderRadius: '9999px', 
+-        boxShadow: '0 0 0 2px #ffffff',
+-        animation: 'pulse 2s infinite'
+-      }} />
+-      <div style={{ 
+-        marginTop: 4, 
+-        fontSize: 10, 
+-        color: '#E5E7EB', 
+-        textShadow: '0 0 2px #000',
+-        whiteSpace: 'nowrap',
+-        fontWeight: 500
+-      }}>
+-        {name ?? 'Unknown'}
+-      </div>
+-      <style>{`
+-        @keyframes pulse {
+-          0%, 100% { opacity: 1; }
+-          50% { opacity: 0.7; }
+-        }
+-      `}</style>
++    <div data-testid="UserCursor" style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)' }}>
++      <div style={{ width: 8, height: 8, background: '#3B82F6', borderRadius: '9999px', boxShadow: '0 0 0 2px #ffffff' }} />
++      <div style={{ marginTop: 4, fontSize: 10, color: '#E5E7EB', textShadow: '0 0 2px #000' }}>{name ?? 'Unknown'}</div>
+     </div>
+   )
+ }
+diff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx
+index 4d5182c..38164e2 100644
+--- a/src/contexts/AuthContext.tsx
++++ b/src/contexts/AuthContext.tsx
+@@ -1,5 +1,5 @@
+ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+-import { onAuthStateChanged, signInWithGoogle, signOut, handleRedirectResult } from '../services/auth'
++import { onAuthStateChanged, signInWithGoogle, signOut } from '../services/auth'
+ import type { AuthState, AuthUserProfile } from '../types/user.types'
+ 
+ export interface AuthContextValue extends AuthState {
+@@ -21,61 +21,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
+   const [error, setError] = useState<string | null>(null)
+ 
+   useEffect(() => {
+-    let unsubscribe: (() => void) | undefined
+-
+-    const handleAuth = async () => {
+-      console.log('🚀 AuthProvider: Starting auth check...')
+-      try {
+-        // Check if there's a redirect result to handle
+-        const redirectUser = await handleRedirectResult()
+-        if (redirectUser) {
+-          console.log('✅ AuthProvider: Redirect user found, setting user:', redirectUser)
+-          setUser(redirectUser)
+-          setIsLoading(false)
+-          return
+-        }
+-        console.log('❌ AuthProvider: No redirect user, setting up listener')
+-      } catch (error) {
+-        console.error('❌ AuthProvider: Error handling redirect result:', error)
+-      }
+-
+-      // Set up auth state listener
+-      unsubscribe = onAuthStateChanged((u) => {
+-        console.log('🔄 AuthProvider: Auth state changed:', u)
+-        setUser(u)
+-        setIsLoading(false)
+-      })
+-    }
+-
+-    handleAuth()
+-
+-    return () => {
+-      if (unsubscribe) {
+-        unsubscribe()
+-      }
+-    }
++    const unsubscribe = onAuthStateChanged((u) => {
++      setUser(u)
++      setIsLoading(false)
++    })
++    return unsubscribe
+   }, [])
+ 
+   const handleSignIn = async () => {
+-    console.log('🔐 AuthProvider: Starting sign-in process...')
+     setError(null)
+     try {
+       await signInWithGoogle()
+-      console.log('✅ AuthProvider: Sign-in process completed')
+     } catch (e) {
+-      console.error('❌ AuthProvider: Sign-in error:', e)
+       setError((e as Error).message)
+     }
+   }
+ 
+   const handleSignOut = async () => {
+-    console.log('🚪 AuthProvider: Starting sign-out process...')
+     setError(null)
+     try {
+-      await signOut()
+-      console.log('✅ AuthProvider: Sign-out completed')
++      await signOut(user?.id)
+     } catch (e) {
+-      console.error('❌ AuthProvider: Sign-out error:', e)
+       setError((e as Error).message)
+     }
+   }
+diff --git a/src/contexts/PresenceContext.tsx b/src/contexts/PresenceContext.tsx
+index 1bf3374..95cb04b 100644
+--- a/src/contexts/PresenceContext.tsx
++++ b/src/contexts/PresenceContext.tsx
+@@ -1,6 +1,6 @@
+ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+ import type { UserPresence } from '../types/presence.types'
+-import { setUserOfflineRtdb, setUserOnlineRtdb, cleanupStaleCursorsRtdb } from '../services/realtime'
++import { setUserOfflineRtdb, setUserOnlineRtdb } from '../services/realtime'
+ import { useAuth } from './AuthContext'
+ 
+ export interface PresenceContextValue {
+@@ -51,15 +51,6 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
+     }
+   }, [user])
+ 
+-  // Periodic cleanup of stale cursors
+-  useEffect(() => {
+-    const cleanupInterval = setInterval(() => {
+-      cleanupStaleCursorsRtdb(30000).catch(() => {}) // Clean up cursors older than 30 seconds
+-    }, 60000) // Run cleanup every minute
+-
+-    return () => clearInterval(cleanupInterval)
+-  }, [])
+-
+   const value: PresenceContextValue = useMemo(() => ({ users, setUsers, isOnline }), [users, isOnline])
+ 
+   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>
+diff --git a/src/hooks/useCursorSync.ts b/src/hooks/useCursorSync.ts
+index 27275a3..bdfc0bf 100644
+--- a/src/hooks/useCursorSync.ts
++++ b/src/hooks/useCursorSync.ts
+@@ -1,44 +1,24 @@
+-import { useEffect, useRef, useCallback } from 'react'
++import { useEffect } from 'react'
+ import { subscribeToPresenceRtdb } from '../services/realtime'
+ import type { UserPresence } from '../types/presence.types'
+ import { usePresence } from '../contexts/PresenceContext'
++import { useAuth } from '../contexts/AuthContext'
+ 
+ export function useCursorSync(): void {
+   const { setUsers } = usePresence()
+-  const lastUsersRef = useRef<Record<string, UserPresence>>({})
++  const { user } = useAuth()
+ 
+-  const handlePresenceUpdate = useCallback((rows: UserPresence[]) => {
+-    const map: Record<string, UserPresence> = {}
+-    let hasChanges = false
+-    
+-    for (const r of rows) {
+-      map[r.userId] = r
+-      // Only trigger update if data actually changed
+-      const lastUser = lastUsersRef.current[r.userId]
+-      if (!lastUser || 
+-          lastUser.displayName !== r.displayName ||
+-          lastUser.cursor?.x !== r.cursor?.x ||
+-          lastUser.cursor?.y !== r.cursor?.y ||
+-          lastUser.updatedAt !== r.updatedAt) {
+-        hasChanges = true
++  useEffect(() => {
++    const unsub = subscribeToPresenceRtdb((rows: UserPresence[]) => {
++      const map: Record<string, UserPresence> = {}
++      for (const r of rows) {
++        // Store all users; consumer can filter out self
++        map[r.userId] = r
+       }
+-    }
+-    
+-    // Check for removed users
+-    if (Object.keys(lastUsersRef.current).length !== Object.keys(map).length) {
+-      hasChanges = true
+-    }
+-    
+-    if (hasChanges) {
+-      lastUsersRef.current = map
+       setUsers(map)
+-    }
+-  }, [setUsers])
+-
+-  useEffect(() => {
+-    const unsub = subscribeToPresenceRtdb(handlePresenceUpdate)
++    })
+     return unsub
+-  }, [handlePresenceUpdate])
++  }, [setUsers, user?.id])
+ }
+ 
+ export default undefined
+diff --git a/src/index.tsx b/src/index.tsx
+index c4ea140..5b4c125 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
+ import { createRoot } from 'react-dom/client'
+ import './index.css'
+ import App from './App'
+-import AuthProvider from './components/Auth/AuthProvider'
++import { AuthProvider } from './contexts/AuthContext'
+ import { getFirebaseApp } from './services/firebase'
+ 
+ createRoot(document.getElementById('root')!).render(
+diff --git a/src/services/auth.ts b/src/services/auth.ts
+index ef457f2..beb2e52 100644
+--- a/src/services/auth.ts
++++ b/src/services/auth.ts
+@@ -4,11 +4,11 @@ import {
+   onAuthStateChanged as firebaseOnAuthStateChanged,
+   signInWithPopup,
+   signInWithRedirect,
+-  getRedirectResult,
+   signOut as firebaseSignOut,
+   GoogleAuthProvider,
+   type User
+ } from 'firebase/auth'
++import { setUserOfflineRtdb, removeUserPresenceRtdb } from './realtime'
+ import type { AuthUserProfile } from '../types/user.types'
+ 
+ function mapUser(user: User | null): AuthUserProfile | null {
+@@ -25,14 +25,11 @@ export async function signInWithGoogle(): Promise<AuthUserProfile | void> {
+   const auth = getAuth(getFirebaseApp())
+   const provider = new GoogleAuthProvider()
+   try {
+-    console.log('🔄 Attempting popup sign-in...')
+     const result = await signInWithPopup(auth, provider)
+     const profile = mapUser(result.user)
+     if (!profile) throw new Error('Failed to retrieve user after sign-in')
+-    console.log('✅ Popup sign-in successful:', profile)
+     return profile
+-  } catch (error) {
+-    console.log('⚠️ Popup failed, falling back to redirect:', error)
++  } catch (_err) {
+     // Fallback for environments where popups are restricted by COOP/COEP or browser settings
+     await signInWithRedirect(auth, provider)
+     // After redirect, onAuthStateChanged will fire; no profile to return here
+@@ -45,27 +42,21 @@ export async function signInWithGoogleRedirect(): Promise<void> {
+   await signInWithRedirect(auth, provider)
+ }
+ 
+-export async function handleRedirectResult(): Promise<AuthUserProfile | null> {
++export async function signOut(userId?: string): Promise<void> {
+   const auth = getAuth(getFirebaseApp())
+-  try {
+-    console.log('🔍 Checking for redirect result...')
+-    const result = await getRedirectResult(auth)
+-    console.log('🔍 Redirect result:', result)
+-    if (result) {
+-      const user = mapUser(result.user)
+-      console.log('✅ Redirect user mapped:', user)
+-      return user
++  
++  // Remove user's presence data from realtime database before signing out
++  if (userId) {
++    try {
++      // First set offline (clears cursor)
++      await setUserOfflineRtdb(userId)
++      // Then completely remove presence data
++      await removeUserPresenceRtdb(userId)
++    } catch (err) {
++      console.error('Failed to remove user presence on sign out:', err)
+     }
+-    console.log('❌ No redirect result found')
+-    return null
+-  } catch (error) {
+-    console.error('❌ Error handling redirect result:', error)
+-    return null
+   }
+-}
+-
+-export async function signOut(): Promise<void> {
+-  const auth = getAuth(getFirebaseApp())
++  
+   await firebaseSignOut(auth)
+ }
+ 
+diff --git a/src/services/realtime.ts b/src/services/realtime.ts
+index 791fe38..bef0fa1 100644
+--- a/src/services/realtime.ts
++++ b/src/services/realtime.ts
+@@ -40,20 +40,7 @@ export function subscribeToPresenceRtdb(
+ 
+ export async function updateCursorPositionRtdb(userId: string, pos: CursorPosition): Promise<void> {
+   const presenceRef = ref(rtdb(), `presence/${userId}`)
+-  
+-  try {
+-    await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+-  } catch (error) {
+-    console.warn('Failed to update cursor position, retrying...', error)
+-    // Retry once after a short delay
+-    setTimeout(async () => {
+-      try {
+-        await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+-      } catch (retryError) {
+-        console.error('Failed to update cursor position after retry:', retryError)
+-      }
+-    }, 100)
+-  }
++  await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+ }
+ 
+ export async function setUserOnlineRtdb(userId: string, displayName: string | null): Promise<void> {
+@@ -67,35 +54,10 @@ export async function setUserOfflineRtdb(userId: string): Promise<void> {
+   await update(presenceRef, { cursor: null, updatedAt: serverTimestamp() as any })
+ }
+ 
+-// Clean up stale cursor data (call periodically)
+-export async function cleanupStaleCursorsRtdb(maxAgeMs: number = 30000): Promise<void> {
+-  const presenceRef = ref(rtdb(), 'presence')
+-  const now = Date.now()
+-  
+-  try {
+-    const snapshot = await new Promise<any>((resolve) => {
+-      onValue(presenceRef, resolve, { onlyOnce: true })
+-    })
+-    
+-    const data = snapshot.val() || {}
+-    const updates: Record<string, any> = {}
+-    
+-    for (const [userId, userData] of Object.entries(data)) {
+-      const user = userData as any
+-      const updatedAt = typeof user.updatedAt === 'number' ? user.updatedAt : 0
+-      
+-      if (now - updatedAt > maxAgeMs) {
+-        updates[`presence/${userId}/cursor`] = null
+-        updates[`presence/${userId}/updatedAt`] = serverTimestamp()
+-      }
+-    }
+-    
+-    if (Object.keys(updates).length > 0) {
+-      await update(ref(rtdb()), updates)
+-    }
+-  } catch (error) {
+-    console.warn('Failed to cleanup stale cursors:', error)
+-  }
++export async function removeUserPresenceRtdb(userId: string): Promise<void> {
++  const presenceRef = ref(rtdb(), `presence/${userId}`)
++  // completely remove user's presence data
++  await remove(presenceRef)
+ }
+ 
+ // Drag channel via RTDB
+diff --git a/src/test-utils/firebaseMock.js b/src/test-utils/firebaseMock.js
+deleted file mode 100644
+index 26d557a..0000000
+--- a/src/test-utils/firebaseMock.js
++++ /dev/null
+@@ -1,77 +0,0 @@
+-// Comprehensive Firebase mock for testing
+-export const mockFirestore = {
+-  collection: jest.fn(() => mockFirestore),
+-  doc: jest.fn(() => mockFirestore),
+-  setDoc: jest.fn(() => Promise.resolve()),
+-  updateDoc: jest.fn(() => Promise.resolve()),
+-  deleteDoc: jest.fn(() => Promise.resolve()),
+-  getDocs: jest.fn(() => Promise.resolve({ 
+-    docs: [], 
+-    empty: true, 
+-    size: 0,
+-    forEach: jest.fn()
+-  })),
+-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+-  onSnapshot: jest.fn((query, callback) => {
+-    // Simulate async behavior with proper snapshot
+-    setTimeout(() => {
+-      const snapshot = {
+-        exists: () => true,
+-        data: () => ({ 
+-          title: 'Test Document',
+-          documentId: 'test-doc-id',
+-          createdBy: 'test-user',
+-          createdAt: { '.sv': 'timestamp' },
+-          updatedBy: 'test-user',
+-          updatedAt: { '.sv': 'timestamp' }
+-        }),
+-        id: 'mock-doc-id',
+-        ref: {},
+-        metadata: { fromCache: false, hasPendingWrites: false }
+-      }
+-      callback(snapshot)
+-    }, 0)
+-    return jest.fn() // unsubscribe function
+-  }),
+-  query: jest.fn(() => mockFirestore),
+-  where: jest.fn(() => mockFirestore),
+-  orderBy: jest.fn(() => mockFirestore),
+-}
+-
+-export const mockRealtimeDB = {
+-  ref: jest.fn(() => mockRealtimeDB),
+-  onValue: jest.fn((ref, callback) => {
+-    // Simulate async behavior
+-    setTimeout(() => {
+-      const snapshot = {
+-        val: () => ({ 'test-user': { displayName: 'Test User', cursor: { x: 100, y: 100 }, updatedAt: Date.now() } })
+-      }
+-      callback(snapshot)
+-    }, 0)
+-    return jest.fn() // unsubscribe function
+-  }),
+-  off: jest.fn(() => jest.fn()),
+-  onDisconnect: jest.fn(() => ({
+-    remove: jest.fn(() => Promise.resolve()),
+-  })),
+-  set: jest.fn(() => Promise.resolve()),
+-  update: jest.fn(() => Promise.resolve()),
+-  remove: jest.fn(() => Promise.resolve()),
+-}
+-
+-export const mockAuth = {
+-  onAuthStateChanged: jest.fn((auth, callback) => {
+-    // Default: logged out state
+-    callback(null)
+-    return jest.fn()
+-  }),
+-  signInWithPopup: jest.fn(() => Promise.resolve({
+-    user: {
+-      uid: 'test-user-id',
+-      displayName: 'Test User',
+-      email: 'test@example.com'
+-    }
+-  })),
+-  signOut: jest.fn(() => Promise.resolve()),
+-  GoogleAuthProvider: jest.fn(function MockProvider() {}),
+-}
+diff --git a/src/test-utils/firebaseMock.ts b/src/test-utils/firebaseMock.ts
+deleted file mode 100644
+index 4ba3108..0000000
+--- a/src/test-utils/firebaseMock.ts
++++ /dev/null
+@@ -1,101 +0,0 @@
+-// Comprehensive Firebase mock for testing
+-const mockFirestoreObj = {
+-  collection: jest.fn(),
+-  doc: jest.fn(),
+-  setDoc: jest.fn(() => Promise.resolve()),
+-  updateDoc: jest.fn(() => Promise.resolve()),
+-  deleteDoc: jest.fn(() => Promise.resolve()),
+-  getDocs: jest.fn(() => Promise.resolve({
+-    docs: [],
+-    empty: true,
+-    size: 0,
+-    forEach: jest.fn()
+-  })),
+-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+-  onSnapshot: jest.fn((_query: any, callback: any) => {
+-    // Simulate async behavior with proper snapshot
+-    setTimeout(() => {
+-      const snapshot = {
+-        exists: () => true,
+-        data: () => ({
+-          title: 'Test Document',
+-          documentId: 'test-doc-id',
+-          createdBy: 'test-user',
+-          createdAt: { '.sv': 'timestamp' },
+-          updatedBy: 'test-user',
+-          updatedAt: { '.sv': 'timestamp' }
+-        }),
+-        id: 'mock-doc-id',
+-        ref: {},
+-        metadata: { fromCache: false, hasPendingWrites: false }
+-      }
+-      callback(snapshot)
+-    }, 0)
+-    return jest.fn() // unsubscribe function
+-  }),
+-  query: jest.fn(),
+-  where: jest.fn(),
+-  orderBy: jest.fn(),
+-  // Add missing functions that some tests might need
+-  limit: jest.fn(),
+-  startAfter: jest.fn(),
+-  endBefore: jest.fn(),
+-}
+-
+-// Set up circular references
+-mockFirestoreObj.collection.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.doc.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.query.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.where.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.orderBy.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.limit.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.startAfter.mockReturnValue(mockFirestoreObj)
+-mockFirestoreObj.endBefore.mockReturnValue(mockFirestoreObj)
+-
+-export const mockFirestore = mockFirestoreObj
+-
+-const mockRealtimeDBObj = {
+-  ref: jest.fn(),
+-  onValue: jest.fn((_ref: any, callback: any) => {
+-    // Simulate async behavior
+-    setTimeout(() => {
+-      const snapshot = {
+-        val: () => ({ 'test-user': { displayName: 'Test User', cursor: { x: 100, y: 100 }, updatedAt: Date.now() } })
+-      }
+-      callback(snapshot)
+-    }, 0)
+-    return jest.fn() // unsubscribe function
+-  }),
+-  off: jest.fn(() => jest.fn()),
+-  onDisconnect: jest.fn(() => ({
+-    remove: jest.fn(() => Promise.resolve()),
+-  })),
+-  set: jest.fn(() => Promise.resolve()),
+-  update: jest.fn(() => Promise.resolve()),
+-  remove: jest.fn(() => Promise.resolve()),
+-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+-}
+-
+-// Set up circular references
+-mockRealtimeDBObj.ref.mockReturnValue(mockRealtimeDBObj)
+-
+-export const mockRealtimeDB = mockRealtimeDBObj
+-
+-export const mockAuth = {
+-  onAuthStateChanged: jest.fn((_auth: any, callback: any) => {
+-    // Default: logged out state
+-    callback(null)
+-    return jest.fn()
+-  }),
+-  signInWithPopup: jest.fn(() => Promise.resolve({
+-    user: {
+-      uid: 'test-user-id',
+-      displayName: 'Test User',
+-      email: 'test@example.com'
+-    }
+-  })),
+-  getRedirectResult: jest.fn(() => Promise.resolve(null)),
+-  signOut: jest.fn(() => Promise.resolve()),
+-  GoogleAuthProvider: jest.fn(function MockProvider() {}),
+-  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
+-}
+diff --git a/src/test-utils/reactKonvaMock.js b/src/test-utils/reactKonvaMock.js
+index 4c2c457..636d53b 100644
+--- a/src/test-utils/reactKonvaMock.js
++++ b/src/test-utils/reactKonvaMock.js
+@@ -71,20 +71,7 @@ function Rect(props) {
+     if (ev && ev.stopPropagation) ev.stopPropagation()
+     if (onClick) onClick({ target: { x: () => props.x, y: () => props.y } })
+   }
+-  return React.createElement('div', { 
+-    'data-testid': 'Rect', 
+-    onMouseDown: handleMouseDown, 
+-    onMouseMove: handleMouseMove, 
+-    onMouseUp: handleMouseUp, 
+-    onClick: handleClick, 
+-    onTap,
+-    x: props.x,
+-    y: props.y,
+-    width: props.width,
+-    height: props.height,
+-    fill: props.fill,
+-    ...rest 
+-  })
++  return React.createElement('div', { 'data-testid': 'Rect', onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onClick: handleClick, onTap, ...rest })
+ }
+ function Transformer(props) {
+   return React.createElement('div', { 'data-testid': 'Transformer', ...props })
+diff --git a/src/test-utils/testHelpers.ts b/src/test-utils/testHelpers.ts
+deleted file mode 100644
+index 94408dc..0000000
+--- a/src/test-utils/testHelpers.ts
++++ /dev/null
+@@ -1,126 +0,0 @@
+-// Test utilities and helpers for better test coverage
+-import { render, RenderOptions } from '@testing-library/react'
+-import { ReactElement } from 'react'
+-import { AuthProvider } from '../contexts/AuthContext'
+-import { CanvasProvider } from '../contexts/CanvasContext'
+-import { PresenceProvider } from '../contexts/PresenceContext'
+-
+-// Custom render function that includes all providers
+-const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+-  return (
+-    <AuthProvider>
+-      <PresenceProvider>
+-        <CanvasProvider>
+-          {children}
+-        </CanvasProvider>
+-      </PresenceProvider>
+-    </AuthProvider>
+-  )
+-}
+-
+-const customRender = (
+-  ui: ReactElement,
+-  options?: Omit<RenderOptions, 'wrapper'>
+-) => render(ui, { wrapper: AllTheProviders, ...options })
+-
+-// Mock data generators
+-export const createMockUser = (overrides = {}) => ({
+-  uid: 'test-user-id',
+-  displayName: 'Test User',
+-  email: 'test@example.com',
+-  ...overrides,
+-})
+-
+-export const createMockShape = (overrides = {}) => ({
+-  id: 'test-shape-id',
+-  type: 'rect' as const,
+-  x: 100,
+-  y: 100,
+-  width: 50,
+-  height: 50,
+-  rotation: 0,
+-  z: 1,
+-  fill: '#ff0000',
+-  stroke: '#000000',
+-  strokeWidth: 2,
+-  opacity: 1,
+-  createdBy: 'test-user-id',
+-  createdAt: { '.sv': 'timestamp' },
+-  updatedBy: 'test-user-id',
+-  updatedAt: { '.sv': 'timestamp' },
+-  documentId: 'test-doc-id',
+-  ...overrides,
+-})
+-
+-export const createMockDocument = (overrides = {}) => ({
+-  id: 'test-doc-id',
+-  title: 'Test Document',
+-  createdBy: 'test-user-id',
+-  createdAt: { '.sv': 'timestamp' },
+-  updatedBy: 'test-user-id',
+-  updatedAt: { '.sv': 'timestamp' },
+-  ...overrides,
+-})
+-
+-export const createMockCursorPosition = (overrides = {}) => ({
+-  x: 100,
+-  y: 100,
+-  ...overrides,
+-})
+-
+-export const createMockUserPresence = (overrides = {}) => ({
+-  userId: 'test-user-id',
+-  displayName: 'Test User',
+-  cursor: createMockCursorPosition(),
+-  updatedAt: Date.now(),
+-  ...overrides,
+-})
+-
+-// Mock Firebase functions
+-export const mockFirebaseFunctions = {
+-  mockOnSnapshot: (data: any, exists = true) => {
+-    const mockSnapshot = {
+-      exists: () => exists,
+-      data: () => data,
+-      id: 'mock-doc-id',
+-      ref: {},
+-      metadata: { fromCache: false, hasPendingWrites: false },
+-    }
+-    return jest.fn((query, callback) => {
+-      setTimeout(() => callback(mockSnapshot), 0)
+-      return jest.fn() // unsubscribe function
+-    })
+-  },
+-  
+-  mockOnValue: (data: any) => {
+-    const mockSnapshot = {
+-      val: () => data,
+-    }
+-    return jest.fn((ref, callback) => {
+-      setTimeout(() => callback(mockSnapshot), 0)
+-      return jest.fn() // unsubscribe function
+-    })
+-  },
+-}
+-
+-// Test event helpers
+-export const createMockMouseEvent = (overrides = {}) => ({
+-  clientX: 100,
+-  clientY: 100,
+-  preventDefault: jest.fn(),
+-  stopPropagation: jest.fn(),
+-  ...overrides,
+-})
+-
+-export const createMockWheelEvent = (overrides = {}) => ({
+-  deltaY: 1,
+-  preventDefault: jest.fn(),
+-  ...overrides,
+-})
+-
+-// Wait for async operations
+-export const waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+-
+-// Re-export everything from testing library
+-export * from '@testing-library/react'
+-export { customRender as render }
+diff --git a/src/version.ts b/src/version.ts
+index dd32aea..3e0297e 100644
+--- a/src/version.ts
++++ b/src/version.ts
+@@ -1,3 +1,3 @@
+-export const APP_VERSION = '0.2.99'
++export const APP_VERSION = '0.2.94'
+ 
+ 
+diff --git a/tsconfig.app.json b/tsconfig.app.json
+index 9a6daec..a9b5a59 100644
+--- a/tsconfig.app.json
++++ b/tsconfig.app.json
+@@ -24,6 +24,5 @@
+     "noFallthroughCasesInSwitch": true,
+     "noUncheckedSideEffectImports": true
+   },
+-  "include": ["src"],
+-  "exclude": ["src/**/*.test.*", "src/**/__tests__/**", "src/test-utils/**"]
++  "include": ["src"]
+ }

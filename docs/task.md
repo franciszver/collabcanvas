@@ -710,15 +710,8 @@ collabcanvas/
 - [x] **14.2** Realtime drag via Firebase
   - Track and broadcast in-progress drag positions using Firebase Realtime Database; render peers' movement smoothly
 
-- [ ] **14.3** Optimize bundle size and code-splitting
-  - Reduce main chunk size; split heavy modules; lazy-load non-critical UI
-
 - [ ] **14.4** Tune Konva layers and redraw strategy
   - Minimize layer redraws; leverage caching where safe; throttle non-essential updates
-
-- [ ] **14.5** Remove dead code and AI slop
-  - Delete unused imports, variables, and functions across `src/`
-  - Remove redundant code/comments; tighten obvious types and simplify props
 
 - [ ] **14.6** Enable multi-select and group move
   - Select multiple shapes and drag them together
@@ -732,10 +725,10 @@ collabcanvas/
 - [ ] **14.9** Review and remove slop
   - Audit and remove unused code, redundant comments, and cruft across `src/`
 
-- [ ] **14.10** Fix layer up/down buttons
-  - Re-enable and properly fix the layer up/down buttons in the properties panel
-  - Ensure z-index updates work correctly with the Firestore update system
-  - Test that shapes properly reorder when layer buttons are clicked
+- [ ] **14.11** Fix remote cursor sync problem
+  - Debug and resolve issues with remote cursor synchronization
+  - Ensure cursors update smoothly and accurately reflect other users' positions
+  - Test cursor sync across multiple users and different network conditions
 
 ---
 

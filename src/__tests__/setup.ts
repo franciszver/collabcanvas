@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import { mockFirestore, mockRealtimeDB, mockAuth } from '../test-utils/firebaseMock'
 
 // JSDOM lacks certain APIs; mock if needed here.
 
@@ -6,18 +7,14 @@ import '@testing-library/jest-dom'
 jest.mock('firebase/app', () => ({
   initializeApp: jest.fn(() => ({})),
 }))
+
 jest.mock('firebase/auth', () => ({
-  getAuth: jest.fn(() => ({})),
-  onAuthStateChanged: jest.fn((_auth, cb) => {
-    // default: logged out state
-    cb(null)
-    return jest.fn()
-  }),
-  signInWithPopup: jest.fn(),
-  signOut: jest.fn(),
-  GoogleAuthProvider: jest.fn(function MockProvider() {}),
+  getAuth: jest.fn(() => mockAuth),
+  ...mockAuth,
 }))
+
 jest.mock('firebase/firestore', () => ({
+<<<<<<< HEAD
   getFirestore: jest.fn(() => ({})),
   collection: jest.fn(() => ({})),
   doc: jest.fn(() => ({})),
@@ -39,8 +36,14 @@ jest.mock('firebase/firestore', () => ({
   where: jest.fn(() => ({})),
   orderBy: jest.fn(() => ({})),
   getDocs: jest.fn(() => Promise.resolve({ forEach: jest.fn() })),
+=======
+  getFirestore: jest.fn(() => mockFirestore),
+  ...mockFirestore,
+>>>>>>> Dev
 }))
+
 jest.mock('firebase/database', () => ({
+<<<<<<< HEAD
   getDatabase: jest.fn(() => ({})),
   ref: jest.fn(() => ({})),
   onValue: jest.fn((_ref, callback) => {
@@ -54,14 +57,20 @@ jest.mock('firebase/database', () => ({
   set: jest.fn(() => Promise.resolve()),
   update: jest.fn(() => Promise.resolve()),
   remove: jest.fn(() => Promise.resolve()),
+=======
+  getDatabase: jest.fn(() => mockRealtimeDB),
+  ...mockRealtimeDB,
+>>>>>>> Dev
 }))
+
 // Ensure local firebase initializer is not imported during tests
 jest.mock('../services/firebase', () => ({ 
   getFirebaseApp: jest.fn(() => ({})),
-  getFirestoreDB: jest.fn(() => ({})),
-  getRealtimeDB: jest.fn(() => ({})),
+  getFirestoreDB: jest.fn(() => mockFirestore),
+  getRealtimeDB: jest.fn(() => mockRealtimeDB),
 }))
 
+<<<<<<< HEAD
 // Mock services
 jest.mock('../services/firestore', () => ({
   subscribeToDocument: jest.fn(() => jest.fn()),
@@ -91,6 +100,28 @@ jest.mock('../services/realtime', () => ({
   clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
   removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
 }))
+=======
+// Global test utilities
+declare global {
+  var createMockSnapshot: (data?: any, exists?: boolean) => any
+  var createMockQuerySnapshot: (docs?: any[]) => any
+}
+
+globalThis.createMockSnapshot = (data = null, exists = true) => ({
+  exists: () => exists,
+  data: () => data,
+  id: 'mock-doc-id',
+  ref: {},
+  metadata: { fromCache: false, hasPendingWrites: false },
+})
+
+globalThis.createMockQuerySnapshot = (docs = []) => ({
+  docs,
+  empty: docs.length === 0,
+  size: docs.length,
+  forEach: (callback: (doc: any) => void) => docs.forEach(callback),
+})
+>>>>>>> Dev
 
 // Firebase SDK will be mocked in specific tests; keep global setup minimal.
 

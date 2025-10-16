@@ -26,6 +26,37 @@ describe('helpers', () => {
     expect(rect.width).toBeGreaterThan(0)
     expect(rect.height).toBeGreaterThan(0)
   })
+
+  describe('cursor coordinate transformations', () => {
+    it('should correctly transform cursor position with scale', () => {
+      const viewport = { x: 0, y: 0, scale: 2 }
+      const stagePos = { x: 200, y: 200 }
+      const canvasPos = transformCanvasCoordinates(stagePos.x, stagePos.y, viewport)
+      expect(canvasPos).toEqual({ x: 100, y: 100 })
+    })
+
+    it('should correctly transform cursor position with pan', () => {
+      const viewport = { x: 50, y: 50, scale: 1 }
+      const stagePos = { x: 200, y: 200 }
+      const canvasPos = transformCanvasCoordinates(stagePos.x, stagePos.y, viewport)
+      expect(canvasPos).toEqual({ x: 150, y: 150 })
+    })
+
+    it('should maintain cursor position through round-trip', () => {
+      const viewport = { x: 100, y: 100, scale: 1.5 }
+      const originalCanvas = { x: 300, y: 300 }
+      
+      // Simulate displaying the cursor
+      const displayX = viewport.x + originalCanvas.x * viewport.scale
+      const displayY = viewport.y + originalCanvas.y * viewport.scale
+      
+      // Simulate receiving it back
+      const receivedCanvas = transformCanvasCoordinates(displayX, displayY, viewport)
+      
+      expect(receivedCanvas.x).toBeCloseTo(originalCanvas.x, 1)
+      expect(receivedCanvas.y).toBeCloseTo(originalCanvas.y, 1)
+    })
+  })
 })
 
 

@@ -59,8 +59,8 @@ export default function ShapeSelector() {
       
       // Set default size based on shape type
       const isText = type === 'text'
-      const width = isText ? 200 : 200
-      const height = isText ? 300 : 100
+      const width = isText ? 400 : 200
+      const height = isText ? 100 : 100
       
       const shapeData = { 
         id, 
@@ -71,7 +71,7 @@ export default function ShapeSelector() {
         fill: color || getRandomColor(), 
         type: type,
         text: isText ? 'Enter Text' : undefined,
-        fontSize: isText ? 16 : undefined
+        fontSize: isText ? 64 : undefined
       }
       
       await addRectangle(shapeData)

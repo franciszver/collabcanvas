@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
-import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
 import { updateCursorPositionRtdb } from '../../services/realtime'
@@ -204,29 +203,54 @@ export default function Canvas() {
     movedRef.current = false
   }, [setSelectedId])
 
+<<<<<<< HEAD
   // Track pointer for presence updates (throttled via RAF)
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
   const stageRef = useRef<Konva.Stage | null>(null)
+=======
+  // Track pointer for presence updates (optimized throttling)
+  const timeoutId = useRef<any>(null)
+  const pendingCursor = useRef<{ x: number; y: number } | null>(null)
+  const lastSentAt = useRef<number>(0)
+  const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
+  const stageRef = useRef<any>(null)
+>>>>>>> Dev
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
     timeoutId.current = setTimeout(async () => {
       timeoutId.current = null
       const now = Date.now()
-      if (now - lastSentAt.current < 50) {
+      if (now - lastSentAt.current < 100) { // Increased throttle to 100ms
         scheduleCursorSend()
         return
       }
       const p = pendingCursor.current
       if (!p || !user) return
+      
+      // Only send if position has changed significantly (reduces unnecessary updates)
+      const lastPos = lastSentPosition.current
+      if (lastPos && Math.abs(p.x - lastPos.x) < 5 && Math.abs(p.y - lastPos.y) < 5) {
+        scheduleCursorSend()
+        return
+      }
+      
       pendingCursor.current = null
       lastSentAt.current = now
+      lastSentPosition.current = { ...p }
       try {
         await updateCursorPositionRtdb(user.id, p)
+<<<<<<< HEAD
       } catch { /* ignore */ }
     }, 50)
+=======
+      } catch (error) {
+        console.warn('Failed to update cursor position:', error)
+      }
+    }, 100) // Increased throttle interval
+>>>>>>> Dev
   }, [user])
 
   const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -234,8 +258,10 @@ export default function Canvas() {
     if (!stage) return
     const pos = stage.getPointerPosition()
     if (!pos) return
-    const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
-    pendingCursor.current = { x, y }
+    // Stage already accounts for scale and position, just send the canvas coordinates
+    const canvasX = (pos.x - viewport.x) / viewport.scale
+    const canvasY = (pos.y - viewport.y) / viewport.scale
+    pendingCursor.current = { x: canvasX, y: canvasY }
     scheduleCursorSend()
   }, [viewport, scheduleCursorSend])
 
@@ -462,7 +488,7 @@ export default function Canvas() {
                 width={r.width}
                 height={r.height}
                 text={r.text || 'Enter Text'}
-                fontSize={r.fontSize || 16}
+                fontSize={r.fontSize || 64}
                 fill={r.fill}
                 rotation={r.rotation || 0}
                 align="left"
@@ -492,10 +518,15 @@ export default function Canvas() {
               width={r.width}
               height={r.height}
               rotation={r.rotation || 0}
+<<<<<<< HEAD
               onDragMove={() => {
                 // Update handled by context in hybrid approach
               }}
               onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => {
+=======
+              onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+              onDragEnd={(evt: any) => {
+>>>>>>> Dev
                 const node = evt.target
                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 draggingIdRef.current = null
@@ -536,11 +567,24 @@ export default function Canvas() {
       {Object.values(users)
         .filter((u) => u.userId !== (user?.id ?? ''))
         .filter((u) => !!u.cursor)
+        .filter((u) => {
+          // Only show cursors that have been updated recently (within 5 seconds)
+          const now = Date.now()
+          return now - u.updatedAt < 5000
+        })
         .map((u) => {
           const pos = u.cursor!
-              const sx = offsetX + viewport.x + pos.x * viewport.scale
-              const sy = offsetY + viewport.y + pos.y * viewport.scale
-              return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
+          const sx = offsetX + viewport.x + pos.x * viewport.scale
+          const sy = offsetY + viewport.y + pos.y * viewport.scale
+          return (
+            <UserCursor 
+              key={`cursor-${u.userId}`} 
+              x={sx} 
+              y={sy} 
+              name={u.displayName} 
+              isActive={true}
+            />
+          )
         })}
           </>
         )
@@ -625,7 +669,7 @@ export default function Canvas() {
                 <button
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.min(72, (sel.fontSize || 16) + 2) }) 
+                    updateRectangle(sel.id, { fontSize: Math.min(144, (sel.fontSize || 64) + 2) }) 
                   }}
                   title="Increase font size"
                   aria-label="Increase font size"
@@ -650,7 +694,7 @@ export default function Canvas() {
                 <button
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 16) - 2) }) 
+                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 64) - 2) }) 
                   }}
                   title="Decrease font size"
                   aria-label="Decrease font size"
