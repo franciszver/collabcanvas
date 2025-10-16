@@ -8,6 +8,7 @@ import {
   GoogleAuthProvider,
   type User
 } from 'firebase/auth'
+import { setUserOfflineRtdb, removeUserPresenceRtdb } from './realtime'
 import type { AuthUserProfile } from '../types/user.types'
 
 function mapUser(user: User | null): AuthUserProfile | null {
@@ -41,8 +42,21 @@ export async function signInWithGoogleRedirect(): Promise<void> {
   await signInWithRedirect(auth, provider)
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut(userId?: string): Promise<void> {
   const auth = getAuth(getFirebaseApp())
+  
+  // Remove user's presence data from realtime database before signing out
+  if (userId) {
+    try {
+      // First set offline (clears cursor)
+      await setUserOfflineRtdb(userId)
+      // Then completely remove presence data
+      await removeUserPresenceRtdb(userId)
+    } catch (err) {
+      console.error('Failed to remove user presence on sign out:', err)
+    }
+  }
+  
   await firebaseSignOut(auth)
 }
 

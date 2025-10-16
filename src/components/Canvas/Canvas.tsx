@@ -41,7 +41,7 @@ export default function Canvas() {
   const setSingleSelection = useCallback((id: string) => {
     selectedIdsRef.current = new Set([id])
     setSelectedId(id)
-  }, [])
+  }, [setSelectedId])
   const toggleSelection = useCallback((id: string) => {
     const next = new Set(selectedIdsRef.current)
     if (next.has(id)) next.delete(id)
@@ -49,7 +49,7 @@ export default function Canvas() {
     selectedIdsRef.current = next
     // keep a primary selected id for UI; choose the most recently toggled
     setSelectedId(id)
-  }, [])
+  }, [setSelectedId])
   const transformerRef = useRef<Konva.Transformer>(null)
   // Clamp viewport so Stage stays within browser viewport
   const clampViewport = useCallback(
@@ -74,7 +74,7 @@ export default function Canvas() {
         )
         setViewport({ ...viewport, ...centered })
       }
-    } catch {}
+    } catch { /* ignore */ }
   }, [viewport, containerSize, setViewport, clampViewport])
 
   // Compute grid lines based on visible canvas area (wider spacing)
@@ -98,20 +98,23 @@ export default function Canvas() {
   const lastDragPosRef = useRef<Record<string, { x: number; y: number }>>({})
 
   const onWheel = useCallback(
-    (e: any) => {
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
       e.evt.preventDefault()
       const scaleBy = 1.05
       const stage = e.target.getStage()
+      if (!stage) return
       const oldScale = viewport.scale
+      const pointer = stage.getPointerPosition()
+      if (!pointer) return
       const mousePointTo = {
-        x: (stage.getPointerPosition().x - viewport.x) / oldScale,
-        y: (stage.getPointerPosition().y - viewport.y) / oldScale,
+        x: (pointer.x - viewport.x) / oldScale,
+        y: (pointer.y - viewport.y) / oldScale,
       }
       let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy
       newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
       const newPos = {
-        x: stage.getPointerPosition().x - mousePointTo.x * newScale,
-        y: stage.getPointerPosition().y - mousePointTo.y * newScale,
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
       }
       const clamped = clampViewport(newPos.x, newPos.y)
       setViewport({ scale: newScale, x: clamped.x, y: clamped.y })
@@ -119,16 +122,21 @@ export default function Canvas() {
     [viewport, setViewport, clampViewport]
   )
 
-  const onMouseDown = useCallback((e: any) => {
+  const onMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     isPanningRef.current = true
     movedRef.current = false
-    lastPosRef.current = e.target.getStage().getPointerPosition()
+    const stage = e.target.getStage()
+    if (!stage) return
+    lastPosRef.current = stage.getPointerPosition()
   }, [])
 
   const onMouseMove = useCallback(
-    (e: any) => {
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (!isPanningRef.current || !lastPosRef.current) return
-      const pos = e.target.getStage().getPointerPosition()
+      const stage = e.target.getStage()
+      if (!stage) return
+      const pos = stage.getPointerPosition()
+      if (!pos) return
       const dx = pos.x - lastPosRef.current.x
       const dy = pos.y - lastPosRef.current.y
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
@@ -166,7 +174,7 @@ export default function Canvas() {
     if (selectedId && !rectangles.some((r: Rectangle) => r.id === selectedId)) {
       setSelectedId(null)
     }
-  }, [rectangles, selectedId])
+  }, [rectangles, selectedId, setSelectedId])
 
   useEffect(() => {
     const onResize = () => {
@@ -187,20 +195,20 @@ export default function Canvas() {
     return () => window.removeEventListener('resize', onResize)
   }, [viewport, setViewport, clampViewport])
 
-  const onClick = useCallback((e: any) => {
+  const onClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     // Disable shape creation by clicking on canvas background; just clear selection
     const stage = e.target.getStage()
     if (e.target !== stage) return
     setSelectedId(null)
     selectedIdsRef.current = new Set()
     movedRef.current = false
-  }, [])
+  }, [setSelectedId])
 
   // Track pointer for presence updates (throttled via RAF)
-  const timeoutId = useRef<any>(null)
+  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
-  const stageRef = useRef<any>(null)
+  const stageRef = useRef<Konva.Stage | null>(null)
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
@@ -217,12 +225,13 @@ export default function Canvas() {
       lastSentAt.current = now
       try {
         await updateCursorPositionRtdb(user.id, p)
-      } catch {}
+      } catch { /* ignore */ }
     }, 50)
   }, [user])
 
-  const onStageMouseMove = useCallback((e: any) => {
+  const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage()
+    if (!stage) return
     const pos = stage.getPointerPosition()
     if (!pos) return
     const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
@@ -281,9 +290,9 @@ export default function Canvas() {
             draggable: true,
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
-            onDragStart: (evt: any) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
-            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
-            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSingleSelection(r.id) },
+            onDragStart: (evt: Konva.KonvaEventObject<DragEvent>) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
+            onClick: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
+            onTap: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; setSingleSelection(r.id) },
             onMouseEnter: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
             onMouseLeave: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
           }
@@ -338,14 +347,14 @@ export default function Canvas() {
                 y={cy}
                 radius={radius}
                 rotation={r.rotation || 0}
-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: any) => {
-                  const node = evt.target
-                  const scaleX = node.scaleX ? node.scaleX() : 1
-                  const newRadius = Math.max(5, (node.radius ? node.radius() : radius) * scaleX)
-                  if (node.scaleX) node.scaleX(1)
-                  if (node.scaleY) node.scaleY(1)
+                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                  const node = evt.target as Konva.Circle
+                  const scaleX = node.scaleX()
+                  const newRadius = Math.max(5, node.radius() * scaleX)
+                  node.scaleX(1)
+                  node.scaleY(1)
                   const newWidth = newRadius * 2
                   const newHeight = newRadius * 2
                   const newX = node.x() - newWidth / 2
@@ -367,9 +376,9 @@ export default function Canvas() {
                 sides={3}
                 radius={radius}
                 rotation={r.rotation || 0}
-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: any) => {
+                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1
                   const scaleY = node.scaleY ? node.scaleY() : 1
@@ -398,9 +407,9 @@ export default function Canvas() {
                 innerRadius={inner}
                 outerRadius={outer}
                 rotation={r.rotation || 0}
-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: any) => {
+                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1
                   const scaleY = node.scaleY ? node.scaleY() : 1
@@ -429,9 +438,9 @@ export default function Canvas() {
                 pointerLength={Math.max(8, Math.min(24, r.height))}
                 pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
                 rotation={r.rotation || 0}
-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
-                onTransformEnd={(evt: any) => {
+                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1
                   const scaleY = node.scaleY ? node.scaleY() : 1
@@ -459,9 +468,9 @@ export default function Canvas() {
                 align="left"
                 verticalAlign="top"
                 padding={8}
-                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
-                onTransformEnd={(evt: any) => {
+                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1
                   const scaleY = node.scaleY ? node.scaleY() : 1
@@ -486,7 +495,7 @@ export default function Canvas() {
               onDragMove={() => {
                 // Update handled by context in hybrid approach
               }}
-              onDragEnd={(evt: any) => {
+              onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => {
                 const node = evt.target
                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 draggingIdRef.current = null
@@ -496,7 +505,7 @@ export default function Canvas() {
                   clearDragUpdate(r.id).catch(() => {})
                 }
               }}
-              onTransformEnd={(evt: any) => {
+              onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                 const node = evt.target
                 const scaleX = node.scaleX ? node.scaleX() : 1
                 const scaleY = node.scaleY ? node.scaleY() : 1
@@ -568,7 +577,7 @@ export default function Canvas() {
             style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
             aria-label="Change shape color"
           />
-          {/* TODO: Fix layer buttons - currently commented out due to z-index update issues
+          {/* Layer buttons replaced with Top and Bottom buttons */}
           <button
             onClick={(e) => { 
               e.stopPropagation(); 
@@ -593,7 +602,6 @@ export default function Canvas() {
           >
             Bottom ↓
           </button>
-          */}
           {sel.type === 'text' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input

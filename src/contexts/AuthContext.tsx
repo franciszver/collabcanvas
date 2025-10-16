@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleSignOut = async () => {
     setError(null)
     try {
-      await signOut()
+      await signOut(user?.id)
     } catch (e) {
       setError((e as Error).message)
     }

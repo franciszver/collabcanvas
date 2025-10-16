@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import AuthProvider from '../../components/Auth/AuthProvider'
+import { AuthProvider } from '../../contexts/AuthContext'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import DetailsDropdown from '../../components/Header/DetailsDropdown'
@@ -38,8 +38,11 @@ jest.mock('../../services/firestore', () => ({
   usersCollection: jest.fn(() => ({})),
   createRectangle: jest.fn(async () => {}),
   updateRectangleDoc: jest.fn(async () => {}),
+  updateDocument: jest.fn(async () => {}),
   deleteRectangleDoc: jest.fn(async () => {}),
-  deleteAllRectangles: jest.fn(async () => {}),
+  deleteAllShapes: jest.fn(async () => {}),
+  subscribeToDocument: jest.fn(() => jest.fn()),
+  subscribeToShapes: jest.fn(() => jest.fn()),
   subscribeToRectangles: jest.fn((cb: any) => {
     cb([])
     return jest.fn()

@@ -25,7 +25,7 @@ export default function ShapeSelector() {
     return { x: baseX + index * 50, y: baseY + index * 50 }
   }
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -33,12 +33,20 @@ export default function ShapeSelector() {
       }
     }
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen])
 
@@ -67,11 +75,11 @@ export default function ShapeSelector() {
       }
       
       await addRectangle(shapeData)
-      setIsOpen(false) // Close menu after creating shape
-    } catch (error) {
+    } catch {
       // Shape creation failed, but we're not logging to console
     } finally {
       setBusy(false)
+      setIsOpen(false) // Close menu after creating shape (success or failure)
     }
   }
 
