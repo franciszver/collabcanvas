@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
-import { transformCanvasCoordinates } from '../../utils/helpers'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
 import { updateCursorPositionRtdb } from '../../services/realtime'
@@ -229,8 +228,10 @@ export default function Canvas() {
     const stage = e.target.getStage()
     const pos = stage.getPointerPosition()
     if (!pos) return
-    const { x, y } = transformCanvasCoordinates(pos.x, pos.y, viewport)
-    pendingCursor.current = { x, y }
+    // Stage already accounts for scale and position, just send the canvas coordinates
+    const canvasX = (pos.x - viewport.x) / viewport.scale
+    const canvasY = (pos.y - viewport.y) / viewport.scale
+    pendingCursor.current = { x: canvasX, y: canvasY }
     scheduleCursorSend()
   }, [viewport, scheduleCursorSend])
 

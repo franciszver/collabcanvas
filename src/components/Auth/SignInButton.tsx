@@ -1,14 +1,13 @@
 import { useAuth } from '../../contexts/AuthContext'
-import { signInWithGoogleRedirect } from '../../services/auth'
 
 export default function SignInButton() {
-  const { user, isLoading, signOut } = useAuth()
+  const { user, isLoading, signInWithGoogle, signOut } = useAuth()
 
   if (isLoading) return null
 
   if (!user) {
     return (
-      <button onClick={signInWithGoogleRedirect} aria-label="Sign in with Google">
+      <button onClick={signInWithGoogle} aria-label="Sign in with Google">
         Sign in with Google
       </button>
     )

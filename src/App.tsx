@@ -13,6 +13,8 @@ import { PresenceProvider } from './contexts/PresenceContext'
 function App() {
   const { user, isLoading } = useAuth()
 
+  console.log('📱 App: Current state - user:', user, 'isLoading:', isLoading)
+
   if (isLoading) return null
 
   return (
