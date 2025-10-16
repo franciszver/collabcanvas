@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import AuthProvider from '../../components/Auth/AuthProvider'
+import { AuthProvider } from '../../contexts/AuthContext'
 jest.mock('../../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
 import App from '../../App'
 

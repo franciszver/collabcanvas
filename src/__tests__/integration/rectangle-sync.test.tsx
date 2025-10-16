@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import Canvas from '../../components/Canvas/Canvas'
-import AuthProvider from '../../components/Auth/AuthProvider'
+import { AuthProvider } from '../../contexts/AuthContext'
 
 // Capture the onSnapshot callback so tests can emit snapshots
 let emitSnapshot: ((snap: any) => void) | null = null

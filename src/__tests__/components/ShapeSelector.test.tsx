@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import AuthProvider from '../../components/Auth/AuthProvider'
+import { AuthProvider } from '../../contexts/AuthContext'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import ShapeSelector from '../../components/Header/ShapeSelector'

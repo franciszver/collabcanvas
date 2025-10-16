@@ -68,7 +68,7 @@ export default function ShapeSelector() {
       
       await addRectangle(shapeData)
       setIsOpen(false) // Close menu after creating shape
-    } catch (error) {
+    } catch {
       // Shape creation failed, but we're not logging to console
     } finally {
       setBusy(false)
