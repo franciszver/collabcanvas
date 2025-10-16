@@ -151,10 +151,6 @@ export default function Canvas() {
     if (selectedId) {
       const node = stage.findOne(`.rect-${selectedId}`)
       if (node) {
-        // Bring selected node to front before attaching transformer
-        if (node.moveToTop) {
-          node.moveToTop()
-        }
         tr.nodes([node])
         tr.getLayer()?.batchDraw()
       }
@@ -285,8 +281,8 @@ export default function Canvas() {
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
             onDragStart: (evt: any) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
-            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
-            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSingleSelection(r.id) },
+            onClick: (evt: any) => { evt.cancelBubble = true; if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
+            onTap: (evt: any) => { evt.cancelBubble = true; setSingleSelection(r.id) },
             onMouseEnter: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
             onMouseLeave: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
           }
@@ -572,20 +568,28 @@ export default function Canvas() {
             aria-label="Change shape color"
           />
           <button
-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: (sel.z ?? 0) + 1 }) }}
-            title="Layer up"
-            aria-label="Layer up"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const maxZ = Math.max(...rectangles.map(r => r.z ?? 0));
+              updateRectangle(sel.id, { z: maxZ + 1 });
+            }}
+            title="Move to top layer"
+            aria-label="Move to top layer"
             style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
           >
-            Layer ↑
+            Top ↑
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); updateRectangle(sel.id, { z: Math.max(0, (sel.z ?? 0) - 1) }) }}
-            title="Layer down"
-            aria-label="Layer down"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const minZ = Math.min(...rectangles.map(r => r.z ?? 0));
+              updateRectangle(sel.id, { z: minZ - 1 });
+            }}
+            title="Move to bottom layer"
+            aria-label="Move to bottom layer"
             style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
           >
-            Layer ↓
+            Bottom ↓
           </button>
           {sel.type === 'text' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
