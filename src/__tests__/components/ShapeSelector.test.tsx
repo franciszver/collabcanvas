@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import AuthProvider from '../../components/Auth/AuthProvider'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { AuthProvider } from '../../contexts/AuthContext'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
 import ShapeSelector from '../../components/Header/ShapeSelector'
@@ -12,16 +12,36 @@ jest.mock('../../services/auth', () => ({
   signOut: jest.fn(async () => {}),
 }))
 
-// Mock firestore subscription to start with no rectangles
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
-  collection: jest.fn(() => ({})),
-  doc: jest.fn(() => ({})),
-  setDoc: jest.fn(async () => {}),
-  updateDoc: jest.fn(async () => {}),
-  deleteDoc: jest.fn(async () => {}),
-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
-  onSnapshot: jest.fn((_src: any, cb: (snap: any) => void) => { cb({ docs: [] }); return jest.fn() }),
+// Mock firestore service to provide proper data
+let mockShapes: any[] = []
+let shapesCallback: ((shapes: any[]) => void) | null = null
+
+jest.mock('../../services/firestore', () => ({
+  subscribeToDocument: jest.fn(() => jest.fn()),
+  subscribeToShapes: jest.fn((_documentId: string, callback: (shapes: any[]) => void) => {
+    shapesCallback = callback
+    // Call callback with current shapes
+    callback(mockShapes)
+    return jest.fn()
+  }),
+  createRectangle: jest.fn(() => Promise.resolve()),
+  createShape: jest.fn((shapeData: any) => {
+    // Add shape to mock data and trigger callback
+    mockShapes.push(shapeData)
+    if (shapesCallback) {
+      shapesCallback([...mockShapes])
+    }
+    return Promise.resolve()
+  }),
+  updateRectangleDoc: jest.fn(() => Promise.resolve()),
+  updateDocument: jest.fn(() => Promise.resolve()),
+  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
+  deleteAllShapes: jest.fn(() => Promise.resolve()),
+  rectangleToShape: jest.fn((rect: any) => rect), // Simple pass-through function
+  db: jest.fn(() => ({})),
+  rectanglesCollection: jest.fn(() => ({})),
+  presenceCollection: jest.fn(() => ({})),
+  usersCollection: jest.fn(() => ({})),
 }))
 
 function renderAll() {
@@ -40,27 +60,62 @@ function renderAll() {
 }
 
 test('ShapeSelector creates shapes and Canvas renders them', async () => {
+  // Reset mock data
+  mockShapes = []
+  
   renderAll()
+  
+  // First click the "Create shapes" button to open the dropdown
+  const createShapesBtn = screen.getByRole('button', { name: /create shapes/i })
+  fireEvent.click(createShapesBtn)
+  
+  // Now look for the shape buttons in the dropdown
   const rectBtn = screen.getByRole('button', { name: /rectangle/i })
-  const circleBtn = screen.getByRole('button', { name: /circle/i })
-  const triangleBtn = screen.getByRole('button', { name: /triangle/i })
-  const starBtn = screen.getByRole('button', { name: /star/i })
 
+  // Create shapes one by one and wait for them to appear
   fireEvent.click(rectBtn)
-  await Promise.resolve()
-  fireEvent.click(circleBtn)
-  await Promise.resolve()
-  fireEvent.click(triangleBtn)
-  await Promise.resolve()
-  fireEvent.click(starBtn)
-  await Promise.resolve()
+  await screen.findByTestId('Rect')
+  
+  // Wait for dropdown to close
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: /rectangle/i })).not.toBeInTheDocument()
+  })
+  
+  // Re-open dropdown and create circle
+  fireEvent.click(createShapesBtn)
+  const circleBtn2 = screen.getByRole('button', { name: /circle/i })
+  fireEvent.click(circleBtn2)
+  await screen.findByTestId('Circle')
+  
+  // Wait for dropdown to close
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: /circle/i })).not.toBeInTheDocument()
+  })
+  
+  // Re-open dropdown and create triangle
+  fireEvent.click(createShapesBtn)
+  const triangleBtn2 = screen.getByRole('button', { name: /triangle/i })
+  fireEvent.click(triangleBtn2)
+  await screen.findByTestId('RegularPolygon')
+  
+  // Wait for dropdown to close
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: /triangle/i })).not.toBeInTheDocument()
+  })
+  
+  // Re-open dropdown and create star
+  fireEvent.click(createShapesBtn)
+  const starBtn2 = screen.getByRole('button', { name: /star/i })
+  fireEvent.click(starBtn2)
+  await screen.findByTestId('Star')
 
+  // Verify all shapes are rendered
   const count =
     (screen.queryAllByTestId('Rect').length || 0) +
     (screen.queryAllByTestId('Circle').length || 0) +
     (screen.queryAllByTestId('RegularPolygon').length || 0) +
     (screen.queryAllByTestId('Star').length || 0)
-  expect(count).toBeGreaterThanOrEqual(1)
+  expect(count).toBe(4)
 })
 
 

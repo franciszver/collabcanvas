@@ -8,10 +8,7 @@ jest.mock('../../services/auth', () => ({
   signOut: jest.fn(async () => {}),
 }))
 
-jest.mock('../../services/presence', () => ({
-  setUserOnline: jest.fn(async () => {}),
-  setUserOffline: jest.fn(async () => {}),
-}))
+// PresenceContext uses realtime service, not a separate presence service
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (
