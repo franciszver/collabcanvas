@@ -39,7 +39,9 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
   useEffect(() => {
     if (!documentId || !user) return
 
+    console.log('Subscribing to shapes for document:', documentId)
     const unsubscribe = subscribeToShapes(documentId, (newShapes) => {
+      console.log('Received shapes from Firestore:', newShapes)
       setShapes(newShapes)
       setIsLoading(false)
       setError(null)
@@ -65,9 +67,13 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     if (!user) throw new Error('User not authenticated')
     
     try {
+      console.log('Adding shape to Firestore:', shape)
       const shapeDoc = rectangleToShape(shape, documentId, user.id)
+      console.log('Shape document:', shapeDoc)
       await createShape(shapeDoc)
+      console.log('Shape added to Firestore successfully')
     } catch (err) {
+      console.error('Failed to add shape to Firestore:', err)
       setError(err as Error)
       throw err
     }
@@ -77,10 +83,20 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     if (!user) throw new Error('User not authenticated')
     
     try {
-      await updateShape(id, {
-        ...updates,
-        updatedBy: user.id,
-      })
+      // Convert Rectangle updates to ShapeDocument updates
+      const shapeUpdates: any = {}
+      if (updates.type !== undefined) shapeUpdates.type = updates.type
+      if (updates.x !== undefined) shapeUpdates.x = updates.x
+      if (updates.y !== undefined) shapeUpdates.y = updates.y
+      if (updates.width !== undefined) shapeUpdates.width = updates.width
+      if (updates.height !== undefined) shapeUpdates.height = updates.height
+      if (updates.rotation !== undefined) shapeUpdates.rotation = updates.rotation
+      if (updates.z !== undefined) shapeUpdates.z = updates.z
+      if (updates.fill !== undefined) shapeUpdates.fill = updates.fill
+      if (updates.text !== undefined) shapeUpdates.text = updates.text
+      if (updates.fontSize !== undefined) shapeUpdates.fontSize = updates.fontSize
+      
+      await updateShape(id, shapeUpdates)
     } catch (err) {
       setError(err as Error)
       throw err

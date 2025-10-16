@@ -1,4 +1,5 @@
 import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow, Text } from 'react-konva'
+import type Konva from 'konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
 import { useCanvas } from '../../contexts/CanvasContext'
@@ -49,7 +50,7 @@ export default function Canvas() {
     // keep a primary selected id for UI; choose the most recently toggled
     setSelectedId(id)
   }, [])
-  const transformerRef = useRef<any>(null)
+  const transformerRef = useRef<Konva.Transformer>(null)
   // Clamp viewport so Stage stays within browser viewport
   const clampViewport = useCallback(
     (x: number, y: number) => {
@@ -273,7 +274,7 @@ export default function Canvas() {
           const livePos = liveDragPositions[r.id]
           const baseX = draggingIdRef.current === r.id || isSelected ? r.x : livePos ? livePos.x : r.x
           const baseY = draggingIdRef.current === r.id || isSelected ? r.y : livePos ? livePos.y : r.y
-          const commonProps: any = {
+          const commonProps = {
             key: `shape-${r.id}`,
             name: `rect-${r.id}`,
             fill: r.fill,
@@ -281,12 +282,12 @@ export default function Canvas() {
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
             onDragStart: (evt: any) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
-            onClick: (evt: any) => { evt.cancelBubble = true; if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
-            onTap: (evt: any) => { evt.cancelBubble = true; setSingleSelection(r.id) },
-            onMouseEnter: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
-            onMouseLeave: (evt: any) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
+            onClick: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
+            onTap: (evt: any) => { evt.cancelBubble = true; const node = evt.target; if (node && node.moveToTop) { node.moveToTop(); node.getLayer()?.batchDraw() } setSingleSelection(r.id) },
+            onMouseEnter: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
+            onMouseLeave: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
           }
-          const handleDragMove = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
+          const handleDragMove = (node: Konva.Node, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
             const cx = node.x()
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
@@ -298,7 +299,7 @@ export default function Canvas() {
               publishDragUpdate(r.id, { x, y }).catch(console.error)
             }
           }
-          const handleDragEnd = (node: any, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
+          const handleDragEnd = (node: Konva.Node, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
             const cx = node.x()
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
@@ -567,6 +568,7 @@ export default function Canvas() {
             style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
             aria-label="Change shape color"
           />
+          {/* TODO: Fix layer buttons - currently commented out due to z-index update issues
           <button
             onClick={(e) => { 
               e.stopPropagation(); 
@@ -591,6 +593,7 @@ export default function Canvas() {
           >
             Bottom ↓
           </button>
+          */}
           {sel.type === 'text' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input

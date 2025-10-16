@@ -27,8 +27,23 @@ jest.mock('firebase/firestore', () => ({
   serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
   onSnapshot: jest.fn(() => jest.fn()),
 }))
+jest.mock('firebase/database', () => ({
+  getDatabase: jest.fn(() => ({})),
+  ref: jest.fn(() => ({})),
+  onValue: jest.fn(() => jest.fn()),
+  onDisconnect: jest.fn(() => ({
+    remove: jest.fn(() => Promise.resolve()),
+  })),
+  set: jest.fn(() => Promise.resolve()),
+  update: jest.fn(() => Promise.resolve()),
+  remove: jest.fn(() => Promise.resolve()),
+}))
 // Ensure local firebase initializer is not imported during tests
-jest.mock('../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
+jest.mock('../services/firebase', () => ({ 
+  getFirebaseApp: jest.fn(() => ({})),
+  getFirestoreDB: jest.fn(() => ({})),
+  getRealtimeDB: jest.fn(() => ({})),
+}))
 
 // Firebase SDK will be mocked in specific tests; keep global setup minimal.
 

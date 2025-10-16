@@ -4,7 +4,11 @@ import AuthProvider from '../../components/Auth/AuthProvider'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { useCanvas } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
-jest.mock('../../services/firebase', () => ({ getFirebaseApp: jest.fn(() => ({})) }))
+jest.mock('../../services/firebase', () => ({ 
+  getFirebaseApp: jest.fn(() => ({})),
+  getFirestoreDB: jest.fn(() => ({})),
+  getRealtimeDB: jest.fn(() => ({})),
+}))
 // Make Firestore listener immediately emit empty snapshot (so loading overlay clears)
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({})),
@@ -14,15 +18,22 @@ jest.mock('firebase/firestore', () => ({
   updateDoc: jest.fn(() => Promise.resolve()),
   deleteDoc: jest.fn(() => Promise.resolve()),
   serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
+  where: jest.fn(),
+  orderBy: jest.fn(),
+  query: jest.fn(),
   onSnapshot: jest.fn((_src: any, cb: (snap: any) => void) => {
-    cb({ docs: [] })
+    cb({ 
+      docs: [],
+      exists: () => true,
+      data: () => ({}),
+    })
     return jest.fn()
   }),
 }))
 // Make auth immediately provide a user so presence updates can fire
 jest.mock('../../services/auth', () => ({
   onAuthStateChanged: (cb: (u: any) => void) => {
-    cb({ id: 'u1', displayName: 'Test User' })
+    cb({ uid: 'u1', displayName: 'Test User' })
     return jest.fn()
   },
   signInWithGoogle: jest.fn(async () => {}),
@@ -30,12 +41,34 @@ jest.mock('../../services/auth', () => ({
 }))
 import Canvas from '../../components/Canvas/Canvas'
 
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { uid: 'u1', displayName: 'Test User' },
+  }),
+}))
+
+jest.mock('firebase/database', () => {
+  const off = jest.fn()
+  return {
+    getDatabase: jest.fn(() => ({})),
+    ref: jest.fn(() => ({})),
+    onValue: jest.fn(() => off),
+    onDisconnect: jest.fn(() => ({
+      remove: jest.fn(() => Promise.resolve()),
+    })),
+    set: jest.fn(() => Promise.resolve()),
+    update: jest.fn(() => Promise.resolve()),
+    remove: jest.fn(() => Promise.resolve()),
+    off,
+  }
+})
+
 function SeedRectOnce() {
-  const { setRectangles } = useCanvas()
+  const { addRectangle } = useCanvas()
   useEffect(() => {
     const rect = { id: 'test-rect-1', x: 200, y: 200, width: 200, height: 100, fill: '#f00', type: 'rect' as const }
     const timer = setTimeout(() => {
-      setRectangles([rect])
+      addRectangle(rect)
     }, 0)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,14 +241,14 @@ describe('Canvas', () => {
 
   it('flushes only one cursor update within 50ms window', () => {
     jest.useFakeTimers()
-    jest.mock('../../services/presence', () => {
+    jest.mock('../../services/realtime', () => {
       return {
         __esModule: true,
-        ...jest.requireActual('../../services/presence'),
-        updateCursorPosition: jest.fn(async () => {}),
+        ...jest.requireActual('../../services/realtime'),
+        updateCursorPositionRtdb: jest.fn(async () => {}),
       }
     })
-    const { updateCursorPosition } = jest.requireMock('../../services/presence') as { updateCursorPosition: jest.Mock }
+    const { updateCursorPositionRtdb } = jest.requireMock('../../services/realtime') as { updateCursorPositionRtdb: jest.Mock }
     render(
       <AuthProvider>
         <PresenceProvider>
@@ -231,11 +264,11 @@ describe('Canvas', () => {
     }
     // Advance by 49ms: should not flush yet
     jest.advanceTimersByTime(49)
-    expect(updateCursorPosition).toHaveBeenCalledTimes(0)
+    expect(updateCursorPositionRtdb).toHaveBeenCalledTimes(0)
     // Advance one more ms to pass 50ms threshold
     jest.advanceTimersByTime(1)
     // At most one send in the window
-    expect(updateCursorPosition.mock.calls.length).toBeLessThanOrEqual(1)
+    expect(updateCursorPositionRtdb.mock.calls.length).toBeLessThanOrEqual(1)
     jest.useRealTimers()
   })
 })
