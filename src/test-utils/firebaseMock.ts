@@ -5,9 +5,9 @@ const mockFirestoreObj = {
   setDoc: jest.fn(() => Promise.resolve()),
   updateDoc: jest.fn(() => Promise.resolve()),
   deleteDoc: jest.fn(() => Promise.resolve()),
-  getDocs: jest.fn(() => Promise.resolve({ 
-    docs: [], 
-    empty: true, 
+  getDocs: jest.fn(() => Promise.resolve({
+    docs: [],
+    empty: true,
     size: 0,
     forEach: jest.fn()
   })),
@@ -17,7 +17,7 @@ const mockFirestoreObj = {
     setTimeout(() => {
       const snapshot = {
         exists: () => true,
-        data: () => ({ 
+        data: () => ({
           title: 'Test Document',
           documentId: 'test-doc-id',
           createdBy: 'test-user',
@@ -36,6 +36,10 @@ const mockFirestoreObj = {
   query: jest.fn(),
   where: jest.fn(),
   orderBy: jest.fn(),
+  // Add missing functions that some tests might need
+  limit: jest.fn(),
+  startAfter: jest.fn(),
+  endBefore: jest.fn(),
 }
 
 // Set up circular references
@@ -44,6 +48,9 @@ mockFirestoreObj.doc.mockReturnValue(mockFirestoreObj)
 mockFirestoreObj.query.mockReturnValue(mockFirestoreObj)
 mockFirestoreObj.where.mockReturnValue(mockFirestoreObj)
 mockFirestoreObj.orderBy.mockReturnValue(mockFirestoreObj)
+mockFirestoreObj.limit.mockReturnValue(mockFirestoreObj)
+mockFirestoreObj.startAfter.mockReturnValue(mockFirestoreObj)
+mockFirestoreObj.endBefore.mockReturnValue(mockFirestoreObj)
 
 export const mockFirestore = mockFirestoreObj
 
@@ -66,6 +73,7 @@ const mockRealtimeDBObj = {
   set: jest.fn(() => Promise.resolve()),
   update: jest.fn(() => Promise.resolve()),
   remove: jest.fn(() => Promise.resolve()),
+  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
 }
 
 // Set up circular references
@@ -86,6 +94,8 @@ export const mockAuth = {
       email: 'test@example.com'
     }
   })),
+  getRedirectResult: jest.fn(() => Promise.resolve(null)),
   signOut: jest.fn(() => Promise.resolve()),
   GoogleAuthProvider: jest.fn(function MockProvider() {}),
+  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
 }

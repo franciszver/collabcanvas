@@ -470,7 +470,7 @@ export default function Canvas() {
                 width={r.width}
                 height={r.height}
                 text={r.text || 'Enter Text'}
-                fontSize={r.fontSize || 32}
+                fontSize={r.fontSize || 64}
                 fill={r.fill}
                 rotation={r.rotation || 0}
                 align="left"
@@ -637,7 +637,7 @@ export default function Canvas() {
                 <button
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.min(72, (sel.fontSize || 16) + 2) }) 
+                    updateRectangle(sel.id, { fontSize: Math.min(144, (sel.fontSize || 64) + 2) }) 
                   }}
                   title="Increase font size"
                   aria-label="Increase font size"
@@ -662,7 +662,7 @@ export default function Canvas() {
                 <button
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 16) - 2) }) 
+                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 64) - 2) }) 
                   }}
                   title="Decrease font size"
                   aria-label="Decrease font size"

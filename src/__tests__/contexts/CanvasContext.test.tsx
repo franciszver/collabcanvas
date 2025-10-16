@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { CanvasProvider, useCanvas } from '../../contexts/CanvasContext'
+import { AuthProvider } from '../../contexts/AuthContext'
 
 jest.mock('../../services/firestore', () => ({
   createRectangle: jest.fn(async () => { throw new Error('fail') }),
@@ -13,7 +14,11 @@ jest.mock('../../services/firestore', () => ({
 }))
 
 function wrapper({ children }: { children: React.ReactNode }) {
-  return <CanvasProvider>{children}</CanvasProvider>
+  return (
+    <AuthProvider>
+      <CanvasProvider>{children}</CanvasProvider>
+    </AuthProvider>
+  )
 }
 
 test('rollback behaviors on failures', async () => {

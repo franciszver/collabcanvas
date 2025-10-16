@@ -9,26 +9,33 @@ jest.mock('../../services/firebase', () => ({
   getFirestoreDB: jest.fn(() => ({})),
   getRealtimeDB: jest.fn(() => ({})),
 }))
-// Make Firestore listener immediately emit empty snapshot (so loading overlay clears)
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
-  collection: jest.fn(() => ({})),
-  doc: jest.fn(() => ({})),
-  setDoc: jest.fn(() => Promise.resolve()),
-  updateDoc: jest.fn(() => Promise.resolve()),
-  deleteDoc: jest.fn(() => Promise.resolve()),
-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
-  where: jest.fn(),
-  orderBy: jest.fn(),
-  query: jest.fn(),
-  onSnapshot: jest.fn((_src: any, cb: (snap: any) => void) => {
-    cb({ 
-      docs: [],
-      exists: () => true,
-      data: () => ({}),
-    })
+// Mock the shapes service to provide test data
+jest.mock('../../services/firestore', () => ({
+  subscribeToShapes: jest.fn((_docId: string, callback: (shapes: any[]) => void) => {
+    // Provide test shapes immediately
+    callback([
+      {
+        id: 'test-rect-1',
+        type: 'rect',
+        x: 200,
+        y: 200,
+        width: 200,
+        height: 100,
+        fill: '#f00',
+        rotation: 0,
+        z: 0,
+        createdBy: 'test-user',
+        updatedBy: 'test-user',
+        documentId: 'test-doc',
+      }
+    ])
     return jest.fn()
   }),
+  createShape: jest.fn(() => Promise.resolve()),
+  updateShape: jest.fn(() => Promise.resolve()),
+  deleteShape: jest.fn(() => Promise.resolve()),
+  deleteAllShapes: jest.fn(() => Promise.resolve()),
+  rectangleToShape: jest.fn((rect: any) => rect),
 }))
 // Make auth immediately provide a user so presence updates can fire
 jest.mock('../../services/auth', () => ({

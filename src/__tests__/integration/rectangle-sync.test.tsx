@@ -4,32 +4,37 @@ import { PresenceProvider } from '../../contexts/PresenceContext'
 import Canvas from '../../components/Canvas/Canvas'
 import AuthProvider from '../../components/Auth/AuthProvider'
 
-// Capture the onSnapshot callback so tests can emit snapshots
-let emitSnapshot: ((snap: any) => void) | null = null
+// Capture the subscribeToShapes callback so tests can emit snapshots
+let emitShapes: ((shapes: any[]) => void) | null = null
 
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
-  collection: jest.fn(() => ({})),
-  doc: jest.fn(() => ({})),
-  setDoc: jest.fn(() => Promise.resolve()),
-  updateDoc: jest.fn(() => Promise.resolve()),
-  deleteDoc: jest.fn(() => Promise.resolve()),
-  serverTimestamp: jest.fn(() => ({ '.sv': 'timestamp' })),
-  onSnapshot: jest.fn((_col: any, cb: (snap: any) => void) => {
-    emitSnapshot = cb
+jest.mock('../../services/firestore', () => ({
+  subscribeToShapes: jest.fn((_docId: string, callback: (shapes: any[]) => void) => {
+    emitShapes = callback
     return jest.fn()
   }),
+  createShape: jest.fn(() => Promise.resolve()),
+  updateShape: jest.fn(() => Promise.resolve()),
+  deleteShape: jest.fn(() => Promise.resolve()),
+  deleteAllShapes: jest.fn(() => Promise.resolve()),
+  rectangleToShape: jest.fn((rect: any) => rect),
 }))
 
-function fakeDoc(id: string, data: any) {
+function fakeShape(id: string, data: any) {
   return {
     id,
-    data: () => data,
+    type: 'rect',
+    x: data.x,
+    y: data.y,
+    width: data.width,
+    height: data.height,
+    fill: data.fill,
+    rotation: 0,
+    z: 0,
+    createdBy: 'test-user',
+    updatedBy: 'test-user',
+    documentId: 'test-doc',
+    ...data,
   }
-}
-
-function updatedAt(ms: number) {
-  return { toMillis: () => ms }
 }
 
 describe('rectangle sync', () => {
@@ -44,13 +49,11 @@ describe('rectangle sync', () => {
       </AuthProvider>
     )
 
-    // Emit initial snapshot with two rectangles
-    emitSnapshot?.({
-      docs: [
-        fakeDoc('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444', updatedAt: updatedAt(10) }),
-        fakeDoc('b', { x: 50, y: 60, width: 200, height: 100, fill: '#10B981', updatedAt: updatedAt(12) }),
-      ],
-    })
+    // Emit initial shapes with two rectangles
+    emitShapes?.([
+      fakeShape('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444' }),
+      fakeShape('b', { x: 50, y: 60, width: 200, height: 100, fill: '#10B981' }),
+    ])
 
     const rects = await screen.findAllByTestId('Rect')
     expect(rects.length).toBe(2)
@@ -67,20 +70,16 @@ describe('rectangle sync', () => {
       </AuthProvider>
     )
 
-    emitSnapshot?.({
-      docs: [
-        fakeDoc('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444', updatedAt: updatedAt(10) }),
-      ],
-    })
+    emitShapes?.([
+      fakeShape('a', { x: 10, y: 20, width: 200, height: 100, fill: '#EF4444' }),
+    ])
 
     await screen.findByTestId('Rect')
 
     // Emit update for same id with new position
-    emitSnapshot?.({
-      docs: [
-        fakeDoc('a', { x: 100, y: 200, width: 200, height: 100, fill: '#EF4444', updatedAt: updatedAt(20) }),
-      ],
-    })
+    emitShapes?.([
+      fakeShape('a', { x: 100, y: 200, width: 200, height: 100, fill: '#EF4444' }),
+    ])
 
     await waitFor(async () => {
       const rects = await screen.findAllByTestId('Rect')
