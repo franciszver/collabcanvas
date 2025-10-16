@@ -83,10 +83,20 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     if (!user) throw new Error('User not authenticated')
     
     try {
-      await updateShape(id, {
-        ...updates,
-        updatedBy: user.id,
-      })
+      // Convert Rectangle updates to ShapeDocument updates
+      const shapeUpdates: any = {}
+      if (updates.type !== undefined) shapeUpdates.type = updates.type
+      if (updates.x !== undefined) shapeUpdates.x = updates.x
+      if (updates.y !== undefined) shapeUpdates.y = updates.y
+      if (updates.width !== undefined) shapeUpdates.width = updates.width
+      if (updates.height !== undefined) shapeUpdates.height = updates.height
+      if (updates.rotation !== undefined) shapeUpdates.rotation = updates.rotation
+      if (updates.z !== undefined) shapeUpdates.z = updates.z
+      if (updates.fill !== undefined) shapeUpdates.fill = updates.fill
+      if (updates.text !== undefined) shapeUpdates.text = updates.text
+      if (updates.fontSize !== undefined) shapeUpdates.fontSize = updates.fontSize
+      
+      await updateShape(id, shapeUpdates)
     } catch (err) {
       setError(err as Error)
       throw err

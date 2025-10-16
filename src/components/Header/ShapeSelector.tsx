@@ -12,7 +12,7 @@ const SHAPES = [
 ] as const
 
 export default function ShapeSelector() {
-  const { rectangles, addRectangle } = useCanvas() as any
+  const { rectangles, addRectangle } = useCanvas()
   const [busy, setBusy] = useState(false)
   const [color, setColor] = useState<string>('#60A5FA')
   const [isOpen, setIsOpen] = useState(false)
@@ -42,7 +42,7 @@ export default function ShapeSelector() {
     }
   }, [isOpen])
 
-  const createShape = async (type: string) => {
+  const createShape = async (type: typeof SHAPES[number]['key']) => {
     if (busy) return
     setBusy(true)
     try {
@@ -61,17 +61,15 @@ export default function ShapeSelector() {
         width, 
         height, 
         fill: color || getRandomColor(), 
-        type: type as any,
+        type: type,
         text: isText ? 'Enter Text' : undefined,
         fontSize: isText ? 16 : undefined
       }
       
-      console.log('Creating shape:', shapeData)
       await addRectangle(shapeData)
-      console.log('Shape created successfully')
       setIsOpen(false) // Close menu after creating shape
     } catch (error) {
-      console.error('Failed to create shape:', error)
+      // Shape creation failed, but we're not logging to console
     } finally {
       setBusy(false)
     }

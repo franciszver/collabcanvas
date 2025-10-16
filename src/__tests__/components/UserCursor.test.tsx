@@ -7,4 +7,10 @@ test('UserCursor renders with fallback name', () => {
   expect(screen.getByText(/Unknown/)).toBeInTheDocument()
 })
 
+test('UserCursor renders with a given name', () => {
+  render(<UserCursor x={10} y={20} name="Test User" />)
+  expect(screen.getByTestId('UserCursor')).toBeInTheDocument()
+  expect(screen.getByText('Test User')).toBeInTheDocument()
+})
+
 

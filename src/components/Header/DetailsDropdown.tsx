@@ -6,7 +6,7 @@ import { generateRectId, getRandomColor, transformCanvasCoordinates } from '../.
 
 export default function DetailsDropdown() {
   const { onlineUsers, onlineCount } = usePresence()
-  const { rectangles, clearAllRectangles, isLoading, addRectangle, viewport } = useCanvas() as any
+  const { rectangles, clearAllRectangles, isLoading, addRectangle, viewport } = useCanvas()
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -130,7 +130,7 @@ export default function DetailsDropdown() {
                   for (let i = 0; i < need; i++) {
                     const id = generateRectId()
                     const pos = randomCanvasPosition()
-                    const t = types[Math.floor(Math.random() * types.length)] as any
+                    const t = types[Math.floor(Math.random() * types.length)]
                     const fill = getRandomColor()
                     const w = t === 'rect' ? 200 : t === 'arrow' ? 220 : 120
                     const h = t === 'rect' ? 100 : t === 'arrow' ? 20 : 120

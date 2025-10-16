@@ -732,6 +732,11 @@ collabcanvas/
 - [ ] **14.9** Review and remove slop
   - Audit and remove unused code, redundant comments, and cruft across `src/`
 
+- [ ] **14.10** Fix layer up/down buttons
+  - Re-enable and properly fix the layer up/down buttons in the properties panel
+  - Ensure z-index updates work correctly with the Firestore update system
+  - Test that shapes properly reorder when layer buttons are clicked
+
 ---
 
 ***
