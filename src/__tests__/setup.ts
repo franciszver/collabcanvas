@@ -68,6 +68,7 @@ jest.mock('../services/firestore', () => ({
   subscribeToShapes: jest.fn(() => jest.fn()),
   createRectangle: jest.fn(() => Promise.resolve()),
   updateRectangleDoc: jest.fn(() => Promise.resolve()),
+  updateDocument: jest.fn(() => Promise.resolve()),
   deleteRectangleDoc: jest.fn(() => Promise.resolve()),
   deleteAllShapes: jest.fn(() => Promise.resolve()),
   db: jest.fn(() => ({})),

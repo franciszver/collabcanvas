@@ -4,6 +4,16 @@ import { PresenceProvider } from '../../contexts/PresenceContext'
 import Canvas from '../../components/Canvas/Canvas'
 import { AuthProvider } from '../../contexts/AuthContext'
 
+// Mock auth to have a logged-in user
+jest.mock('../../services/auth', () => ({
+  onAuthStateChanged: (cb: (u: any) => void) => {
+    cb({ id: 'u1', displayName: 'Test User' })
+    return jest.fn()
+  },
+  signInWithGoogle: jest.fn(async () => {}),
+  signOut: jest.fn(async () => {}),
+}))
+
 // Capture the onSnapshot callback so tests can emit snapshots
 let emitSnapshot: ((snap: any) => void) | null = null
 
