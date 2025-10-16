@@ -9,8 +9,10 @@
     "bump:patch": "node scripts/bump-version.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest",
-    "deploy:hosting": "npx --yes firebase-tools deploy --only hosting --non-interactive"
+    "test": "jest --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+    "test:coverage": "jest --coverage --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+    "test:watch": "jest --watch --maxWorkers=2 --workerIdleMemoryLimit=512MB",
+    "deploy:hosting": "npx --yes firebase-tools hosting:channel:deploy Dev"
   },
   "dependencies": {
     "firebase": "^11.10.0",

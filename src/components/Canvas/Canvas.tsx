@@ -199,10 +199,11 @@ export default function Canvas() {
     movedRef.current = false
   }, [])
 
-  // Track pointer for presence updates (throttled via RAF)
+  // Track pointer for presence updates (optimized throttling)
   const timeoutId = useRef<any>(null)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
+  const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
   const stageRef = useRef<any>(null)
 
   const scheduleCursorSend = useCallback(() => {
@@ -210,18 +211,29 @@ export default function Canvas() {
     timeoutId.current = setTimeout(async () => {
       timeoutId.current = null
       const now = Date.now()
-      if (now - lastSentAt.current < 50) {
+      if (now - lastSentAt.current < 100) { // Increased throttle to 100ms
         scheduleCursorSend()
         return
       }
       const p = pendingCursor.current
       if (!p || !user) return
+      
+      // Only send if position has changed significantly (reduces unnecessary updates)
+      const lastPos = lastSentPosition.current
+      if (lastPos && Math.abs(p.x - lastPos.x) < 5 && Math.abs(p.y - lastPos.y) < 5) {
+        scheduleCursorSend()
+        return
+      }
+      
       pendingCursor.current = null
       lastSentAt.current = now
+      lastSentPosition.current = { ...p }
       try {
         await updateCursorPositionRtdb(user.id, p)
-      } catch {}
-    }, 50)
+      } catch (error) {
+        console.warn('Failed to update cursor position:', error)
+      }
+    }, 100) // Increased throttle interval
   }, [user])
 
   const onStageMouseMove = useCallback((e: any) => {
@@ -458,7 +470,7 @@ export default function Canvas() {
                 width={r.width}
                 height={r.height}
                 text={r.text || 'Enter Text'}
-                fontSize={r.fontSize || 16}
+                fontSize={r.fontSize || 32}
                 fill={r.fill}
                 rotation={r.rotation || 0}
                 align="left"
@@ -488,9 +500,7 @@ export default function Canvas() {
               width={r.width}
               height={r.height}
               rotation={r.rotation || 0}
-              onDragMove={() => {
-                // Update handled by context in hybrid approach
-              }}
+              onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
               onDragEnd={(evt: any) => {
                 const node = evt.target
                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
@@ -532,11 +542,24 @@ export default function Canvas() {
       {Object.values(users)
         .filter((u) => u.userId !== (user?.id ?? ''))
         .filter((u) => !!u.cursor)
+        .filter((u) => {
+          // Only show cursors that have been updated recently (within 5 seconds)
+          const now = Date.now()
+          return now - u.updatedAt < 5000
+        })
         .map((u) => {
           const pos = u.cursor!
-              const sx = offsetX + viewport.x + pos.x * viewport.scale
-              const sy = offsetY + viewport.y + pos.y * viewport.scale
-              return <UserCursor key={`cursor-${u.userId}`} x={sx} y={sy} name={u.displayName} />
+          const sx = offsetX + viewport.x + pos.x * viewport.scale
+          const sy = offsetY + viewport.y + pos.y * viewport.scale
+          return (
+            <UserCursor 
+              key={`cursor-${u.userId}`} 
+              x={sx} 
+              y={sy} 
+              name={u.displayName} 
+              isActive={true}
+            />
+          )
         })}
           </>
         )

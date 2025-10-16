@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { UserPresence } from '../types/presence.types'
-import { setUserOfflineRtdb, setUserOnlineRtdb } from '../services/realtime'
+import { setUserOfflineRtdb, setUserOnlineRtdb, cleanupStaleCursorsRtdb } from '../services/realtime'
 import { useAuth } from './AuthContext'
 
 export interface PresenceContextValue {
@@ -50,6 +50,15 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('offline', onOffline)
     }
   }, [user])
+
+  // Periodic cleanup of stale cursors
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      cleanupStaleCursorsRtdb(30000).catch(() => {}) // Clean up cursors older than 30 seconds
+    }, 60000) // Run cleanup every minute
+
+    return () => clearInterval(cleanupInterval)
+  }, [])
 
   const value: PresenceContextValue = useMemo(() => ({ users, setUsers, isOnline }), [users, isOnline])
 

@@ -1,24 +1,44 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { subscribeToPresenceRtdb } from '../services/realtime'
 import type { UserPresence } from '../types/presence.types'
 import { usePresence } from '../contexts/PresenceContext'
-import { useAuth } from '../contexts/AuthContext'
 
 export function useCursorSync(): void {
   const { setUsers } = usePresence()
-  const { user } = useAuth()
+  const lastUsersRef = useRef<Record<string, UserPresence>>({})
+
+  const handlePresenceUpdate = useCallback((rows: UserPresence[]) => {
+    const map: Record<string, UserPresence> = {}
+    let hasChanges = false
+    
+    for (const r of rows) {
+      map[r.userId] = r
+      // Only trigger update if data actually changed
+      const lastUser = lastUsersRef.current[r.userId]
+      if (!lastUser || 
+          lastUser.displayName !== r.displayName ||
+          lastUser.cursor?.x !== r.cursor?.x ||
+          lastUser.cursor?.y !== r.cursor?.y ||
+          lastUser.updatedAt !== r.updatedAt) {
+        hasChanges = true
+      }
+    }
+    
+    // Check for removed users
+    if (Object.keys(lastUsersRef.current).length !== Object.keys(map).length) {
+      hasChanges = true
+    }
+    
+    if (hasChanges) {
+      lastUsersRef.current = map
+      setUsers(map)
+    }
+  }, [setUsers])
 
   useEffect(() => {
-    const unsub = subscribeToPresenceRtdb((rows: UserPresence[]) => {
-      const map: Record<string, UserPresence> = {}
-      for (const r of rows) {
-        // Store all users; consumer can filter out self
-        map[r.userId] = r
-      }
-      setUsers(map)
-    })
+    const unsub = subscribeToPresenceRtdb(handlePresenceUpdate)
     return unsub
-  }, [setUsers, user?.id])
+  }, [handlePresenceUpdate])
 }
 
 export default undefined
