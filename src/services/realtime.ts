@@ -67,12 +67,12 @@ export async function setUserOfflineRtdb(userId: string): Promise<void> {
   await update(presenceRef, { cursor: null, updatedAt: serverTimestamp() as any })
 }
 
-<<<<<<< HEAD
 export async function removeUserPresenceRtdb(userId: string): Promise<void> {
   const presenceRef = ref(rtdb(), `presence/${userId}`)
   // completely remove user's presence data
   await remove(presenceRef)
-=======
+}
+
 // Clean up stale cursor data (call periodically)
 export async function cleanupStaleCursorsRtdb(maxAgeMs: number = 30000): Promise<void> {
   const presenceRef = ref(rtdb(), 'presence')
@@ -102,7 +102,6 @@ export async function cleanupStaleCursorsRtdb(maxAgeMs: number = 30000): Promise
   } catch (error) {
     console.warn('Failed to cleanup stale cursors:', error)
   }
->>>>>>> Dev
 }
 
 // Drag channel via RTDB

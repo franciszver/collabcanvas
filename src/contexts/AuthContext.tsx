@@ -72,12 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🚪 AuthProvider: Starting sign-out process...')
     setError(null)
     try {
-<<<<<<< HEAD
-      await signOut(user?.id)
-=======
       await signOut()
       console.log('✅ AuthProvider: Sign-out completed')
->>>>>>> Dev
     } catch (e) {
       console.error('❌ AuthProvider: Sign-out error:', e)
       setError((e as Error).message)

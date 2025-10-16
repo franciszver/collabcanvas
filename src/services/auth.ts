@@ -46,9 +46,6 @@ export async function signInWithGoogleRedirect(): Promise<void> {
   await signInWithRedirect(auth, provider)
 }
 
-<<<<<<< HEAD
-export async function signOut(userId?: string): Promise<void> {
-=======
 export async function handleRedirectResult(): Promise<AuthUserProfile | null> {
   const auth = getAuth(getFirebaseApp())
   try {
@@ -69,16 +66,16 @@ export async function handleRedirectResult(): Promise<AuthUserProfile | null> {
 }
 
 export async function signOut(): Promise<void> {
->>>>>>> Dev
   const auth = getAuth(getFirebaseApp())
+  const currentUser = auth.currentUser
   
   // Remove user's presence data from realtime database before signing out
-  if (userId) {
+  if (currentUser) {
     try {
       // First set offline (clears cursor)
-      await setUserOfflineRtdb(userId)
+      await setUserOfflineRtdb(currentUser.uid)
       // Then completely remove presence data
-      await removeUserPresenceRtdb(userId)
+      await removeUserPresenceRtdb(currentUser.uid)
     } catch (err) {
       console.error('Failed to remove user presence on sign out:', err)
     }

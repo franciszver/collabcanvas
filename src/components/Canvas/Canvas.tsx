@@ -203,20 +203,12 @@ export default function Canvas() {
     movedRef.current = false
   }, [setSelectedId])
 
-<<<<<<< HEAD
-  // Track pointer for presence updates (throttled via RAF)
-  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingCursor = useRef<{ x: number; y: number } | null>(null)
-  const lastSentAt = useRef<number>(0)
-  const stageRef = useRef<Konva.Stage | null>(null)
-=======
   // Track pointer for presence updates (optimized throttling)
   const timeoutId = useRef<any>(null)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
   const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
   const stageRef = useRef<any>(null)
->>>>>>> Dev
 
   const scheduleCursorSend = useCallback(() => {
     if (timeoutId.current != null) return
@@ -242,15 +234,10 @@ export default function Canvas() {
       lastSentPosition.current = { ...p }
       try {
         await updateCursorPositionRtdb(user.id, p)
-<<<<<<< HEAD
-      } catch { /* ignore */ }
-    }, 50)
-=======
       } catch (error) {
         console.warn('Failed to update cursor position:', error)
       }
     }, 100) // Increased throttle interval
->>>>>>> Dev
   }, [user])
 
   const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -518,15 +505,8 @@ export default function Canvas() {
               width={r.width}
               height={r.height}
               rotation={r.rotation || 0}
-<<<<<<< HEAD
-              onDragMove={() => {
-                // Update handled by context in hybrid approach
-              }}
-              onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => {
-=======
               onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
               onDragEnd={(evt: any) => {
->>>>>>> Dev
                 const node = evt.target
                 updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                 draggingIdRef.current = null
