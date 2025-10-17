@@ -405,8 +405,11 @@ async function createShapeFromCommand(
     y = parameters.y
   } else {
     // Default position (center of viewport)
-    const defaultX = (viewport.x + 400) / viewport.scale
-    const defaultY = (viewport.y + 300) / viewport.scale
+    // Calculate the actual center of the user's visible area
+    const screenCenterX = window.innerWidth / 2
+    const screenCenterY = window.innerHeight / 2
+    const defaultX = (screenCenterX - viewport.x) / viewport.scale
+    const defaultY = (screenCenterY - viewport.y) / viewport.scale
     
     if (index === 0) {
       x = defaultX
