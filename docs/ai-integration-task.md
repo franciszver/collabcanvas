@@ -142,21 +142,21 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 3: Manipulation Commands (PR 3)
+## Epic 3: Manipulation Commands (PR 3) ✅ COMPLETED
 
-- [ ] **1. Extend interpreter for move, resize, rotate.**  
+- [x] **1. Extend interpreter for move, resize, rotate.**  
    **Prompt:**  
    *"Add support in `applyCanvasCommand` for `manipulate` actions: move (update x,y), resize (update width/height or radius), and rotate (update rotation)."*
 
-- [ ] **2. Add shape selection context (by ID or last created).**  
+- [x] **2. Add shape selection context (by ID or last created).**  
    **Prompt:**  
    *"Modify `applyCanvasCommand` so that if no shape ID is provided, it defaults to the last created shape. Add support for targeting by ID."*
 
-- [ ] **3. Provide chat feedback on success.**  
+- [x] **3. Provide chat feedback on success.**  
    **Prompt:**  
    *"Update the Firebase Function to append a confirmation message to Firestore chat after a successful manipulation, e.g., '✅ Resized circle to 200px radius'."*
 
-- [ ] **4. Add per-user rate limiting.**  
+- [x] **4. Add per-user rate limiting.**  
    **Prompt:**  
    *"Implement per-user rate limiting in the Firebase Function so that no user can send more than 5 AI commands per 10 seconds."*
 

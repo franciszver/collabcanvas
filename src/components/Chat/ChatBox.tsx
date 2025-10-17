@@ -53,14 +53,31 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         const commandResult = await applyCanvasCommand(response.data)
         
         if (commandResult.success) {
-          const createdCount = commandResult.createdShapes?.length || 0
-          let aiResponse = `✅ Created ${createdCount} shape(s): ${response.data.target}`
+          let aiResponse = ''
+          
+          if (response.data.action === 'create') {
+            const createdCount = commandResult.createdShapes?.length || 0
+            aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
+          } else if (response.data.action === 'manipulate') {
+            // Parse manipulation details
+            const params = response.data.parameters
+            const actions: string[] = []
+            if (params.x !== undefined || params.y !== undefined) actions.push('moved')
+            if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
+            if (params.rotation !== undefined) actions.push('rotated')
+            if (params.color !== undefined) actions.push('recolored')
+            
+            const actionText = actions.join(', ')
+            aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
+          }
+          
           if (commandResult.details) {
             aiResponse += `\n\nDetails: ${commandResult.details}`
           }
           await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
         } else {
-          let aiResponse = `❌ Failed to create shape: ${commandResult.error}`
+          const actionText = response.data.action === 'create' ? 'create' : 'manipulate'
+          let aiResponse = `❌ Failed to ${actionText} shape: ${commandResult.error}`
           if (commandResult.details) {
             aiResponse += `\n\nDetails: ${commandResult.details}`
           }

@@ -5,6 +5,7 @@ export interface CanvasAction {
   action: 'create' | 'manipulate' | 'layout' | 'complex'
   target: 'circle' | 'rectangle' | 'text' | 'group' | 'form' | 'navbar' | 'card'
   parameters: {
+    id?: string // Optional: explicit shape ID to manipulate
     x?: number
     y?: number
     width?: number

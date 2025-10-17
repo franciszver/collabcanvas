@@ -16,8 +16,21 @@ export interface UseCanvasCommandsReturn {
 // Track last created shape position for cascade positioning
 let lastShapePosition = { x: 0, y: 0 }
 
+// Store last created shape ID per user (survives page refresh)
+const STORAGE_KEY = 'collabcanvas:lastCreatedShapeId'
+
+function getLastCreatedShapeId(): string | null {
+  if (typeof window === 'undefined') return null
+  return sessionStorage.getItem(STORAGE_KEY)
+}
+
+function setLastCreatedShapeId(shapeId: string): void {
+  if (typeof window === 'undefined') return
+  sessionStorage.setItem(STORAGE_KEY, shapeId)
+}
+
 export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): UseCanvasCommandsReturn {
-  const { addShape } = useShapes({ documentId, enableLiveDrag: true })
+  const { addShape, updateShape, shapes: rectangles } = useShapes({ documentId, enableLiveDrag: true })
   const { viewport, selectedId } = useCanvas()
 
   const applyCanvasCommand = useCallback(async (command: CanvasAction): Promise<{ success: boolean; error?: string; createdShapes?: string[]; details?: string }> => {
@@ -38,6 +51,8 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
               createdShapes.push(shape.id)
               // Update last position for cascade
               lastShapePosition = { x: shape.x, y: shape.y }
+              // Track last created shape ID for manipulation
+              setLastCreatedShapeId(shape.id)
             }
           } catch (shapeError) {
             // Try to fix specific parameter issues
@@ -50,6 +65,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
                 createdShapes.push(fixedShape.id)
                 errors.push(`Fixed parameters for ${target}: ${shapeError instanceof Error ? shapeError.message : 'Invalid parameters'}`)
                 lastShapePosition = { x: fixedShape.x, y: fixedShape.y }
+                setLastCreatedShapeId(fixedShape.id)
               }
             } catch (fixedError) {
               // Try with default values if fixing fails
@@ -60,6 +76,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
                   createdShapes.push(defaultShape.id)
                   errors.push(`Used default values for ${target} due to: ${fixedError instanceof Error ? fixedError.message : 'Invalid parameters'}`)
                   lastShapePosition = { x: defaultShape.x, y: defaultShape.y }
+                  setLastCreatedShapeId(defaultShape.id)
                 }
               } catch (defaultError) {
                 errors.push(`Failed to create ${target}: ${defaultError instanceof Error ? defaultError.message : 'Unknown error'}`)
@@ -68,7 +85,55 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           }
         }
       }
-      // TODO: Handle manipulate, layout, complex actions in future epics
+      
+      // Handle manipulate action
+      if (action === 'manipulate') {
+        // Determine target shape ID using fallback chain
+        const targetId = parameters.id || getLastCreatedShapeId() || selectedId
+        
+        if (!targetId) {
+          return { 
+            success: false, 
+            error: 'No shape available to manipulate. Please select a shape or create one first.',
+            details: 'Target resolution failed: no explicit ID, last created, or selected shape found'
+          }
+        }
+        
+        // Find the shape to manipulate
+        const targetShape = rectangles.find(r => r.id === targetId)
+        if (!targetShape) {
+          return { 
+            success: false, 
+            error: `Shape not found: ${targetId}`,
+            details: 'Shape may have been deleted or does not exist'
+          }
+        }
+        
+        // Build update object from parameters
+        const updates: Partial<Rectangle> = {}
+        if (parameters.x !== undefined) updates.x = parameters.x
+        if (parameters.y !== undefined) updates.y = parameters.y
+        if (parameters.width !== undefined) updates.width = parameters.width
+        if (parameters.height !== undefined) updates.height = parameters.height
+        if (parameters.radius !== undefined) {
+          // For circles, radius maps to width/height
+          updates.width = parameters.radius * 2
+          updates.height = parameters.radius * 2
+        }
+        if (parameters.rotation !== undefined) updates.rotation = parameters.rotation
+        if (parameters.color !== undefined) updates.fill = validateColor(parameters.color) || targetShape.fill
+        
+        // Apply the manipulation
+        await updateShape(targetId, updates)
+        
+        return {
+          success: true,
+          details: `Manipulated ${targetShape.type} (ID: ${targetId})`,
+          createdShapes: [] // No new shapes created
+        }
+      }
+      
+      // TODO: Handle layout, complex actions in future epics
 
       const details = errors.length > 0 ? errors.join('; ') : undefined
       return { success: createdShapes.length > 0, error: errors.length > 0 ? errors.join('; ') : undefined, createdShapes, details }
@@ -80,7 +145,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         details: `Command failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
-  }, [addShape, viewport, selectedId])
+  }, [addShape, updateShape, rectangles, viewport, selectedId])
 
   return { applyCanvasCommand }
 }

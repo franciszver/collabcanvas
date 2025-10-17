@@ -1,7 +1,13 @@
 const functions = require("firebase-functions");
+const admin = require("firebase-admin");
 const { OpenAI } = require("openai");
 const Ajv = require("ajv");
 const schema = require("./schema");
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
@@ -10,12 +16,81 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// Rate limiting constants
+const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
+const RATE_LIMIT_MAX_REQUESTS = 5;
+
+async function checkRateLimit(userId) {
+  const rateLimitRef = admin.firestore().collection('rateLimits').doc(userId);
+  const now = Date.now();
+  
+  try {
+    const doc = await rateLimitRef.get();
+    
+    if (!doc.exists) {
+      // First request from this user
+      await rateLimitRef.set({
+        count: 1,
+        windowStart: now,
+        expiresAt: now + RATE_LIMIT_WINDOW_MS
+      });
+      return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+    }
+    
+    const data = doc.data();
+    const windowStart = data?.windowStart || 0;
+    const count = data?.count || 0;
+    
+    // Check if we're in a new window
+    if (now - windowStart > RATE_LIMIT_WINDOW_MS) {
+      // Reset the window
+      await rateLimitRef.set({
+        count: 1,
+        windowStart: now,
+        expiresAt: now + RATE_LIMIT_WINDOW_MS
+      });
+      return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+    }
+    
+    // Check if limit exceeded
+    if (count >= RATE_LIMIT_MAX_REQUESTS) {
+      return { allowed: false, remaining: 0 };
+    }
+    
+    // Increment count
+    await rateLimitRef.update({
+      count: count + 1
+    });
+    
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - count - 1 };
+  } catch (error) {
+    console.error('Rate limit check failed:', error);
+    // Fail open - allow request if rate limit check fails
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS };
+  }
+}
+
 exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
   try {
     const { prompt } = data;
 
     if (!prompt || typeof prompt !== 'string') {
       throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
+    }
+
+    // Check authentication
+    const userId = context.auth?.uid;
+    if (!userId) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    // Check rate limit
+    const rateLimit = await checkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return { 
+        error: 'Rate limit exceeded. Please wait a moment before sending another command.',
+        details: 'You can send up to 5 AI commands every 10 seconds.'
+      };
     }
 
     // System prompt to restrict AI to JSON schema
