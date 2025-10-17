@@ -6,9 +6,19 @@ const schema = require("./schema");
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI (lazy initialization)
+let client = null;
+
+function getOpenAI() {
+  if (!client) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    client = new OpenAI({ apiKey });
+  }
+  return client;
+}
 
 exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
   try {
@@ -50,7 +60,8 @@ that describe canvas actions.
   }
 }`;
 
-    const completion = await client.chat.completions.create({
+    const openaiClient = getOpenAI();
+    const completion = await openaiClient.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: systemPrompt },

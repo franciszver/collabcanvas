@@ -3,23 +3,21 @@ import { getFirebaseApp } from './firebase'
 
 export interface CanvasAction {
   action: 'create' | 'manipulate' | 'layout' | 'complex'
-  shapeType?: 'circle' | 'rectangle' | 'text' | 'arrow' | 'star' | 'triangle'
-  id?: string
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  radius?: number
-  text?: string
-  fontSize?: number
-  fill?: string
-  rotation?: number
-  shapes?: string[]
-  layout?: 'row' | 'column' | 'grid'
-  rows?: number
-  cols?: number
-  padding?: number
-  complexType?: 'form' | 'navbar' | 'card'
+  target: 'circle' | 'rectangle' | 'text' | 'group' | 'form' | 'navbar' | 'card'
+  parameters: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    radius?: number
+    rotation?: number
+    color?: string
+    text?: string
+    layout?: 'grid' | 'row' | 'column'
+    count?: number
+    fields?: string[]
+    items?: string[]
+  }
 }
 
 export interface AIResponse {

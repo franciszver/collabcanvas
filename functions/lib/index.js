@@ -26,28 +26,36 @@ exports.aiCanvasCommand = (0, https_1.onCall)(async (request) => {
             throw new https_1.HttpsError('invalid-argument', 'Prompt is required and must be a string');
         }
         // System prompt to restrict AI to JSON schema
-        const systemPrompt = `You are an AI assistant for a collaborative canvas application. 
-    You can only respond with JSON objects that match the canvas action schema.
-    
-    Available actions:
-    - create: Create shapes (circle, rectangle, text, arrow, star, triangle)
-    - manipulate: Move, resize, rotate existing shapes
-    - layout: Arrange shapes in rows, columns, or grids
-    - complex: Create complex UI elements (forms, navbars, cards)
-    
-    Required fields for create:
-    - action: "create"
-    - shapeType: one of the available shape types
-    - x, y: position coordinates
-    - width, height: dimensions (or radius for circles)
-    - fill: color (hex code)
-    - text: text content (for text shapes)
-    - fontSize: font size (for text shapes)
-    
-    If the user's request is unrelated to canvas operations, respond with:
-    {"error": "Unsupported command"}
-    
-    Always respond with valid JSON only.`;
+        const systemPrompt = `You are an AI Canvas Agent integrated into a collaborative drawing application. 
+Your ONLY purpose is to translate natural language user commands into JSON objects 
+that describe canvas actions. 
+
+⚠️ Rules:
+- Always respond ONLY with valid JSON.
+- Never include explanations, free text, or commentary.
+- The JSON must strictly follow the schema below.
+- If the user asks for anything unrelated to canvas actions, respond with:
+  { "error": "Unsupported command. Only canvas-related actions are allowed." }
+
+📐 JSON Schema:
+{
+  "action": "create" | "manipulate" | "layout" | "complex",
+  "target": "circle" | "rectangle" | "text" | "group" | "form" | "navbar" | "card",
+  "parameters": {
+    "x": number (optional),
+    "y": number (optional),
+    "width": number (optional),
+    "height": number (optional),
+    "radius": number (optional),
+    "rotation": number (degrees, optional),
+    "color": string (CSS color, optional),
+    "text": string (for text shapes, optional),
+    "layout": string ("grid" | "row" | "column", optional),
+    "count": number (for repeated elements, optional),
+    "fields": array of strings (for forms, optional),
+    "items": array of strings (for navbars, optional)
+  }
+}`;
         const openaiClient = getOpenAI();
         const completion = await openaiClient.chat.completions.create({
             model: 'gpt-3.5-turbo',
