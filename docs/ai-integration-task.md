@@ -162,7 +162,23 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 4: Layout Commands (PR 4)
+## Epic 4: UI Consistency & Chat Visibility (PR 4) ✅ COMPLETED
+
+- [x] **1. Create ChatBox.module.css with all Tailwind styles converted.**  
+   **Prompt:**  
+   *"Create a CSS module file for the ChatBox component that converts all Tailwind classes to equivalent CSS. Include styles for floating button, chat container, message bubbles, input field, and animations."*
+
+- [x] **2. Update ChatBox.tsx to use CSS modules instead of Tailwind classes.**  
+   **Prompt:**  
+   *"Replace all className attributes in ChatBox.tsx with CSS module references. Import the styles object and update all Tailwind classes to use styles.xxx format."*
+
+- [x] **3. Test chat button visibility and functionality after login.**  
+   **Prompt:**  
+   *"Verify that the chat button appears as a blue circle in the bottom-right corner after login, opens/closes the chat window correctly, and all styling matches the intended design."*
+
+---
+
+## Epic 5: Layout Commands (PR 5)
 
 - [ ] **1. Implement layout utilities (row, column, grid).**  
    **Prompt:**  
@@ -178,7 +194,7 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 5: Complex Commands (PR 5)
+## Epic 6: Complex Commands (PR 6)
 
 - [ ] **1. Implement multi-step orchestration (forms, navbars, cards).**  
    **Prompt:**  
@@ -194,7 +210,7 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 6: Performance & Accuracy (PR 6)
+## Epic 7: Performance & Accuracy (PR 7)
 
 - [ ] **1. Optimize prompts for sub-2s responses.**  
    **Prompt:**  
@@ -214,7 +230,7 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 7: Multi-User Synchronization (PR 7)
+## Epic 8: Multi-User Synchronization (PR 8)
 
 - [ ] **1. Ensure Firestore transactions prevent conflicts.**  
    **Prompt:**  
@@ -234,7 +250,7 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 8: UX Polish & Feedback (PR 8)
+## Epic 9: UX Polish & Feedback (PR 9)
 
 - [ ] **1. Add loading indicators and inline confirmations.**  
    **Prompt:**  

@@ -5,6 +5,7 @@ import { aiCanvasCommand } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import styles from './ChatBox.module.css'
 
 interface ChatBoxProps {
   isOpen: boolean
@@ -105,10 +106,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-colors z-50"
+        className={styles.floatingButton}
         aria-label="Open chat"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg style={{ width: '1.5rem', height: '1.5rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </button>
@@ -116,48 +117,48 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white border border-gray-300 rounded-lg shadow-xl flex flex-col z-50">
+    <div className={styles.chatContainer}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <h3 className="font-semibold text-gray-800">AI Assistant</h3>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.statusIndicator}></div>
+          <h3 className={styles.headerTitle}>AI Assistant</h3>
         </div>
         <button
           onClick={onToggle}
-          className="text-gray-500 hover:text-gray-700 transition-colors"
+          className={styles.closeButton}
           aria-label="Close chat"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className={styles.messagesArea}>
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
+          <div className={styles.emptyState}>
             <p>Hi! I'm your AI assistant.</p>
-            <p className="text-sm mt-1">Ask me to create or modify shapes on the canvas.</p>
+            <p>Ask me to create or modify shapes on the canvas.</p>
           </div>
         ) : (
           messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`${styles.messageContainer} ${
+                message.role === 'user' ? styles.messageContainerUser : styles.messageContainerAssistant
+              }`}
             >
               <div
-                className={`max-w-xs px-3 py-2 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-800'
+                className={`${styles.messageBubble} ${
+                  message.role === 'user' ? styles.messageBubbleUser : styles.messageBubbleAssistant
                 }`}
               >
-                <div className="text-sm font-medium mb-1">
+                <div className={styles.messageSender}>
                   {message.displayName}
                 </div>
-                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                <div className={styles.messageContent}>{message.content}</div>
               </div>
             </div>
           ))
@@ -165,9 +166,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         
         {/* Other users typing indicator */}
         {typingUsers.length > 0 && (
-          <div className="flex justify-start">
-            <div className="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg">
-              <div className="text-sm text-gray-600">
+          <div className={styles.typingIndicator}>
+            <div className={styles.typingBubble}>
+              <div className={styles.typingText}>
                 {typingUsers.map(user => user.displayName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
               </div>
             </div>
@@ -176,13 +177,13 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         
         {/* AI typing indicator */}
         {isAITyping && (
-          <div className="flex justify-start">
-            <div className="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <span className="ml-2 text-sm text-gray-600">AI is thinking...</span>
+          <div className={styles.typingIndicator}>
+            <div className={styles.typingBubble}>
+              <div className={styles.typingDots}>
+                <div className={styles.typingDot}></div>
+                <div className={styles.typingDot}></div>
+                <div className={styles.typingDot}></div>
+                <span className={styles.typingLabel}>AI is thinking...</span>
               </div>
             </div>
           </div>
@@ -191,8 +192,8 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex space-x-2">
+      <div className={styles.inputArea}>
+        <div className={styles.inputContainer}>
           <input
             type="text"
             value={inputValue}
@@ -200,13 +201,13 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             onBlur={handleInputBlur}
             onKeyPress={handleKeyPress}
             placeholder="Ask me to create shapes..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={styles.inputField}
             disabled={isAITyping}
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isAITyping}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={styles.sendButton}
           >
             Send
           </button>
