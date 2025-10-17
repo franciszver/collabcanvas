@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import usePresence from '../../hooks/usePresence'
 import { useCanvas } from '../../contexts/CanvasContext'
 import { useAuth } from '../../contexts/AuthContext'
-import { generateRectId, getRandomColor, transformCanvasCoordinates } from '../../utils/helpers'
 
 export default function DetailsDropdown() {
   const { onlineUsers, onlineCount, activeCount } = usePresence()
-  const { rectangles, clearAllRectangles, isLoading, addRectangle, viewport } = useCanvas()
+  const { rectangles, clearAllRectangles, isLoading } = useCanvas()
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -48,13 +47,6 @@ export default function DetailsDropdown() {
     return { rect, circ, tri, star, text, arrow, total: rectangles.length }
   }, [rectangles])
   const canClear = !busy && !isLoading && rectCount > 0
-  const canGenerate = !busy && !isLoading
-
-  const randomCanvasPosition = () => {
-    const sx = Math.max(0, Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200))
-    const sy = Math.max(0, Math.random() * Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 800) - 120)) + 80
-    return transformCanvasCoordinates(sx, sy, viewport)
-  }
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -140,7 +132,8 @@ export default function DetailsDropdown() {
 
           <div style={{ height: 1, background: '#1f2937', margin: '6px 0' }} />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
+            {/* Random 500 button hidden */}
+            {/* <button
               onClick={async () => {
                 if (!canGenerate) return
                 setBusy(true)
@@ -175,7 +168,7 @@ export default function DetailsDropdown() {
               }}
             >
               {busy ? 'Generating…' : 'Random 500'}
-            </button>
+            </button> */}
             <button
               onClick={async () => {
                 if (!canClear) return
