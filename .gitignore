@@ -15,6 +15,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Firebase
+*.runtimeconfig.json
+
 # Coverage
 coverage/
 
