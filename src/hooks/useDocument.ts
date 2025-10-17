@@ -66,7 +66,10 @@ export function useDocument({
 
   // Document operations
   const updateDocumentHandler = useCallback(async (updates: Partial<Omit<DocumentDocument, 'id' | 'createdAt' | 'ownerId'>>) => {
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      console.warn('User not authenticated, skipping document update')
+      return
+    }
     
     try {
       await updateDocument(documentId, updates)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { getFirestore } from 'firebase/firestore'
 import { getFirebaseApp } from '../services/firebase'
 
@@ -50,13 +50,13 @@ export function useTypingIndicator(userId: string, displayName: string) {
       const db = getFirestore(getFirebaseApp())
       const typingRef = doc(db, 'typing', 'users')
       
-      await updateDoc(typingRef, {
+      await setDoc(typingRef, {
         [userId]: {
           displayName,
           isTyping: typing,
           lastSeen: serverTimestamp()
         }
-      })
+      }, { merge: true })
       
       setIsTyping(typing)
     } catch (error) {

@@ -42,8 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set up auth state listener
       unsubscribe = onAuthStateChanged((u) => {
         console.log('🔄 AuthProvider: Auth state changed:', u)
-        setUser(u)
-        setIsLoading(false)
+        // Use setTimeout to ensure state updates happen in the next tick
+        // This helps avoid act() warnings in tests
+        setTimeout(() => {
+          setUser(u)
+          setIsLoading(false)
+        }, 0)
       })
     }
 

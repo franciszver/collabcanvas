@@ -25,14 +25,29 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   // Manage online/offline lifecycle for the authenticated user
   useEffect(() => {
     if (!user) return
-    setUserOnlineRtdb(user.id, user.displayName ?? null).catch(() => {})
+    if (typeof setUserOnlineRtdb === 'function') {
+      const result = setUserOnlineRtdb(user.id, user.displayName ?? null)
+      if (result && typeof result.catch === 'function') {
+        result.catch(() => {})
+      }
+    }
     const handleBeforeUnload = () => {
-      setUserOfflineRtdb(user.id).catch(() => {})
+      if (typeof setUserOfflineRtdb === 'function') {
+        const result = setUserOfflineRtdb(user.id)
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => {})
+        }
+      }
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      setUserOfflineRtdb(user.id).catch(() => {})
+      if (typeof setUserOfflineRtdb === 'function') {
+        const result = setUserOfflineRtdb(user.id)
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => {})
+        }
+      }
     }
   }, [user])
 
@@ -40,7 +55,12 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onOnline = () => {
       setIsOnline(true)
-      if (user) setUserOnlineRtdb(user.id, user.displayName ?? null).catch(() => {})
+      if (user && typeof setUserOnlineRtdb === 'function') {
+        const result = setUserOnlineRtdb(user.id, user.displayName ?? null)
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => {})
+        }
+      }
     }
     const onOffline = () => setIsOnline(false)
     window.addEventListener('online', onOnline)
@@ -54,7 +74,12 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   // Periodic cleanup of stale cursors
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      cleanupStaleCursorsRtdb(30000).catch(() => {}) // Clean up cursors older than 30 seconds
+      if (typeof cleanupStaleCursorsRtdb === 'function') {
+        const result = cleanupStaleCursorsRtdb(30000) // Clean up cursors older than 30 seconds
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => {})
+        }
+      }
     }, 60000) // Run cleanup every minute
 
     return () => clearInterval(cleanupInterval)

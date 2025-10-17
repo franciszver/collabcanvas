@@ -1,29 +1,90 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiCanvasCommand = void 0;
-const https_1 = require("firebase-functions/v2/https");
-const app_1 = require("firebase-admin/app");
-const openai_1 = require("openai");
-// Initialize Firebase Admin
-(0, app_1.initializeApp)();
-// Initialize OpenAI (lazy initialization)
-let openai = null;
-function getOpenAI() {
-    if (!openai) {
-        const apiKey = process.env.OPENAI_API_KEY;
-        if (!apiKey) {
-            throw new Error('OPENAI_API_KEY environment variable is not set');
-        }
-        openai = new openai_1.default({ apiKey });
-    }
-    return openai;
+const { onCall } = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
+const { OpenAI } = require("openai");
+const Ajv = require("ajv");
+const schema = require("./schema");
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+    admin.initializeApp();
 }
-exports.aiCanvasCommand = (0, https_1.onCall)(async (request) => {
+const ajv = new Ajv();
+const validate = ajv.compile(schema);
+const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
+// Rate limiting constants
+const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
+const RATE_LIMIT_MAX_REQUESTS = 5;
+// Force restart to pick up environment variables
+async function checkRateLimit(userId) {
+    const rateLimitRef = admin.firestore().collection('rateLimits').doc(userId);
+    const now = Date.now();
+    try {
+        const doc = await rateLimitRef.get();
+        if (!doc.exists) {
+            // First request from this user
+            await rateLimitRef.set({
+                count: 1,
+                windowStart: now,
+                expiresAt: now + RATE_LIMIT_WINDOW_MS
+            });
+            return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+        }
+        const data = doc.data();
+        const windowStart = (data === null || data === void 0 ? void 0 : data.windowStart) || 0;
+        const count = (data === null || data === void 0 ? void 0 : data.count) || 0;
+        // Check if we're in a new window
+        if (now - windowStart > RATE_LIMIT_WINDOW_MS) {
+            // Reset the window
+            await rateLimitRef.set({
+                count: 1,
+                windowStart: now,
+                expiresAt: now + RATE_LIMIT_WINDOW_MS
+            });
+            return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+        }
+        // Check if limit exceeded
+        if (count >= RATE_LIMIT_MAX_REQUESTS) {
+            return { allowed: false, remaining: 0 };
+        }
+        // Increment count
+        await rateLimitRef.update({
+            count: count + 1
+        });
+        return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - count - 1 };
+    }
+    catch (error) {
+        console.error('Rate limit check failed:', error);
+        // Fail open - allow request if rate limit check fails
+        return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS };
+    }
+}
+exports.aiCanvasCommand = onCall(async (request) => {
     var _a, _b;
     try {
-        const { prompt } = request.data;
+        console.log('Received request:', JSON.stringify(request));
+        console.log('Request data:', JSON.stringify(request.data));
+        // In v2 callable functions, data is directly on request.data
+        const { prompt } = request.data || {};
+        const auth = request.auth;
         if (!prompt || typeof prompt !== 'string') {
-            throw new https_1.HttpsError('invalid-argument', 'Prompt is required and must be a string');
+            console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
+            console.error('Full request.data:', request.data);
+            throw new Error('Prompt is required and must be a string');
+        }
+        // Check authentication
+        const userId = auth === null || auth === void 0 ? void 0 : auth.uid;
+        if (!userId) {
+            throw new Error('User must be authenticated');
+        }
+        // Check rate limit
+        const rateLimit = await checkRateLimit(userId);
+        if (!rateLimit.allowed) {
+            return {
+                error: 'Rate limit exceeded. Please wait a moment before sending another command.',
+                details: 'You can send up to 5 AI commands every 10 seconds.'
+            };
         }
         // System prompt to restrict AI to JSON schema
         const systemPrompt = `You are an AI Canvas Agent integrated into a collaborative drawing application. 
@@ -51,13 +112,15 @@ that describe canvas actions.
     "color": string (CSS color, optional),
     "text": string (for text shapes, optional),
     "layout": string ("grid" | "row" | "column", optional),
-    "count": number (for repeated elements, optional),
+    "count": number (for repeated elements or layout, optional, max 20),
+    "spacing": number (gap between shapes in pixels, optional, default 20),
+    "rows": number (grid rows, optional, auto-calculated if not provided),
+    "cols": number (grid columns, optional, auto-calculated if not provided),
     "fields": array of strings (for forms, optional),
     "items": array of strings (for navbars, optional)
   }
 }`;
-        const openaiClient = getOpenAI();
-        const completion = await openaiClient.chat.completions.create({
+        const completion = await client.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -65,11 +128,11 @@ that describe canvas actions.
             ],
             temperature: 0.1,
             max_tokens: 500,
-            stream: false // Keep non-streaming for now, can be enhanced later
+            stream: false
         });
         const response = (_b = (_a = completion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
         if (!response) {
-            throw new https_1.HttpsError('internal', 'No response from OpenAI');
+            throw new Error('No response from OpenAI');
         }
         // Try to parse the response as JSON
         let parsedResponse;
@@ -81,21 +144,20 @@ that describe canvas actions.
             return { error: 'Invalid response format from AI' };
         }
         // Check if it's an error response
-        if ('error' in parsedResponse) {
+        if (parsedResponse.error) {
             return parsedResponse;
         }
-        // Validate the action structure
-        if (!parsedResponse.action) {
-            return { error: 'Invalid action structure' };
+        // Validate against JSON schema using AJV
+        const isValid = validate(parsedResponse);
+        if (!isValid) {
+            console.error('Schema validation failed:', validate.errors);
+            return { error: 'Response does not match required schema' };
         }
         return parsedResponse;
     }
     catch (error) {
         console.error('Error in aiCanvasCommand:', error);
-        if (error instanceof https_1.HttpsError) {
-            throw error;
-        }
-        throw new https_1.HttpsError('internal', 'An error occurred processing your request');
+        throw error;
     }
 });
 //# sourceMappingURL=index.js.map

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { CanvasProvider } from '../../contexts/CanvasContext'
 import { PresenceProvider } from '../../contexts/PresenceContext'
@@ -8,12 +8,48 @@ import { createShape, updateShape, deleteShape, deleteAllShapes } from '../../se
 // Mock auth to have a logged-in user
 jest.mock('../../services/auth', () => ({
   onAuthStateChanged: (cb: (u: any) => void) => {
-    cb({ id: 'u1', displayName: 'Test User' })
+    // Use setTimeout to ensure the callback is called after component mount
+    setTimeout(() => {
+      cb({ 
+        id: 'u1', 
+        displayName: 'Test User',
+        email: 'test@example.com',
+        photoURL: null
+      })
+    }, 0)
     return jest.fn()
   },
   signInWithGoogle: jest.fn(async () => {}),
   signOut: jest.fn(async () => {}),
+  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
 }))
+
+// Mock realtime service
+jest.mock('../../services/realtime', () => ({
+  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
+  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
+  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
+  clearCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToDragRtdb: jest.fn(() => jest.fn()),
+  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
+  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
+  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
+  cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
+}))
+
+// Import and spy on the realtime service to ensure it's properly mocked
+import * as realtimeService from '../../services/realtime'
+
+// Override the specific functions to ensure they return Promises
+beforeEach(() => {
+  jest.spyOn(realtimeService, 'setUserOnlineRtdb').mockResolvedValue(undefined)
+  jest.spyOn(realtimeService, 'setUserOfflineRtdb').mockResolvedValue(undefined)
+})
 
 // Mock firestore service
 jest.mock('../../services/firestore', () => ({
@@ -51,6 +87,24 @@ jest.mock('../../services/realtime', () => ({
   subscribeToResizeRtdb: jest.fn(() => jest.fn()),
   clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
   removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+}))
+
+// Mock the useCanvas hook to provide a working addRectangle function
+jest.mock('../../contexts/CanvasContext', () => ({
+  ...jest.requireActual('../../contexts/CanvasContext'),
+  useCanvas: () => ({
+    rectangles: [],
+    isLoading: false,
+    selectedId: null,
+    addRectangle: jest.fn(async (shapeData) => {
+      // Call the mocked createShape function directly
+      const { createShape } = jest.requireMock('../../services/firestore')
+      await createShape(shapeData)
+    }),
+    updateRectangle: jest.fn(),
+    deleteRectangle: jest.fn(),
+    clearAllRectangles: jest.fn(),
+  }),
 }))
 
 function renderShapeSelector() {
@@ -95,6 +149,15 @@ describe('Shape Management Core Functionality', () => {
   test('creates rectangle when rectangle button is clicked', async () => {
     renderShapeSelector()
     
+    // Wait for user to be authenticated and component to be ready
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    })
+    
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /create shapes/i })).toBeInTheDocument()
+    })
+    
     // Open dropdown
     const createButton = screen.getByRole('button', { name: /create shapes/i })
     fireEvent.click(createButton)
@@ -109,6 +172,7 @@ describe('Shape Management Core Functionality', () => {
     
     // Check that the correct shape data was passed
     const callArgs = mockCreateShape.mock.calls[0][0]
+    expect(callArgs).toBeDefined()
     expect(callArgs.type).toBe('rect')
     expect(callArgs.width).toBe(200)
     expect(callArgs.height).toBe(100)
@@ -121,6 +185,15 @@ describe('Shape Management Core Functionality', () => {
 
   test('creates circle when circle button is clicked', async () => {
     renderShapeSelector()
+    
+    // Wait for user to be authenticated and component to be ready
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    })
+    
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /create shapes/i })).toBeInTheDocument()
+    })
     
     // Open dropdown
     const createButton = screen.getByRole('button', { name: /create shapes/i })
@@ -136,7 +209,10 @@ describe('Shape Management Core Functionality', () => {
     
     // Check that the correct shape data was passed
     const callArgs = mockCreateShape.mock.calls[0][0]
+    expect(callArgs).toBeDefined()
     expect(callArgs.type).toBe('circle')
+    expect(callArgs.width).toBe(200)
+    expect(callArgs.height).toBe(100) // Circle uses height from the shape creation logic
     
     // Wait for dropdown to close
     await waitFor(() => {

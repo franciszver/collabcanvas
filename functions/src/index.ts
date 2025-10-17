@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const { onCall } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const { OpenAI } = require("openai");
 const Ajv = require("ajv");
@@ -20,7 +20,9 @@ const client = new OpenAI({
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_REQUESTS = 5;
 
-async function checkRateLimit(userId) {
+// Force restart to pick up environment variables
+
+async function checkRateLimit(userId: string) {
   const rateLimitRef = admin.firestore().collection('rateLimits').doc(userId);
   const now = Date.now();
   
@@ -70,18 +72,25 @@ async function checkRateLimit(userId) {
   }
 }
 
-exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
+exports.aiCanvasCommand = onCall(async (request: any) => {
   try {
-    const { prompt } = data;
+    console.log('Received request:', JSON.stringify(request));
+    console.log('Request data:', JSON.stringify(request.data));
+    
+    // In v2 callable functions, data is directly on request.data
+    const { prompt } = request.data || {};
+    const auth = request.auth;
 
     if (!prompt || typeof prompt !== 'string') {
-      throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
+      console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
+      console.error('Full request.data:', request.data);
+      throw new Error('Prompt is required and must be a string');
     }
 
     // Check authentication
-    const userId = context.auth?.uid;
+    const userId = auth?.uid;
     if (!userId) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+      throw new Error('User must be authenticated');
     }
 
     // Check rate limit
@@ -142,7 +151,7 @@ that describe canvas actions.
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      throw new functions.https.HttpsError('internal', 'No response from OpenAI');
+      throw new Error('No response from OpenAI');
     }
 
     // Try to parse the response as JSON
@@ -170,11 +179,6 @@ that describe canvas actions.
 
   } catch (error) {
     console.error('Error in aiCanvasCommand:', error);
-    
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    
-    throw new functions.https.HttpsError('internal', 'An error occurred processing your request');
+    throw error;
   }
 });
