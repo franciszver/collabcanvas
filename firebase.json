@@ -18,7 +18,6 @@
   "hosting": {
     "public": "dist",
     "predeploy": [
-      "npm run bump:patch",
       "npm run build"
     ],
     "ignore": [
