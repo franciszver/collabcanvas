@@ -43,9 +43,10 @@ function App() {
                   background: '#1f2937',
                   position: 'fixed',
                   top: 0,
-                  left: 0,
                   right: 0,
+                  width: '50%',
                   zIndex: 100,
+                  borderBottomLeftRadius: 8,
                 }}
               >
                 <div>

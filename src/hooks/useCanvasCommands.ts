@@ -3,7 +3,7 @@ import { useShapes } from './useShapes'
 import { useCanvas } from '../contexts/CanvasContext'
 import type { CanvasAction } from '../services/ai'
 import type { Rectangle } from '../types/canvas.types'
-import { generateRectId } from '../utils/helpers'
+import { generateRectId, generateGradientColors } from '../utils/helpers'
 
 export interface UseCanvasCommandsOptions {
   documentId: string
@@ -170,9 +170,18 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           }
         }
         
+        // Generate gradient colors if gradient parameters are provided
+        let gradientColors: string[] | undefined
+        if (count > 1 && parameters.gradientDirection && parameters.color) {
+          const baseColor = parameters.color
+          const direction = parameters.gradientDirection
+          const intensity = parameters.gradientIntensity ?? 0.3
+          gradientColors = generateGradientColors(baseColor, count, direction, intensity)
+        }
+        
         for (let i = 0; i < count; i++) {
           try {
-            const shape = await createShapeFromCommand(target, parameters, viewport, i)
+            const shape = await createShapeFromCommand(target, parameters, viewport, i, gradientColors)
             if (shape) {
               await addShape(shape)
               createdShapes.push(shape.id)
@@ -186,7 +195,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             const fixedParams = fixParameters(parameters, shapeError)
             
             try {
-              const fixedShape = await createShapeFromCommand(target, fixedParams, viewport, i)
+              const fixedShape = await createShapeFromCommand(target, fixedParams, viewport, i, gradientColors)
               if (fixedShape) {
                 await addShape(fixedShape)
                 createdShapes.push(fixedShape.id)
@@ -197,7 +206,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             } catch (fixedError) {
               // Try with default values if fixing fails
               try {
-                const defaultShape = await createShapeFromCommand(target, {}, viewport, i)
+                const defaultShape = await createShapeFromCommand(target, {}, viewport, i, gradientColors)
                 if (defaultShape) {
                   await addShape(defaultShape)
                   createdShapes.push(defaultShape.id)
@@ -394,7 +403,8 @@ async function createShapeFromCommand(
   target: CanvasAction['target'], 
   parameters: CanvasAction['parameters'], 
   viewport: { scale: number; x: number; y: number },
-  index: number = 0
+  index: number = 0,
+  gradientColors?: string[]
 ): Promise<Rectangle | null> {
   const id = generateRectId()
   
@@ -422,7 +432,9 @@ async function createShapeFromCommand(
     }
   }
   
-  const color = validateColor(parameters.color) ?? '#3B82F6'
+  // Use gradient color if available, otherwise use base color
+  const baseColor = validateColor(parameters.color) ?? '#3B82F6'
+  const color = gradientColors && gradientColors[index] ? gradientColors[index] : baseColor
   const rotation = validateRotation(parameters.rotation) ?? 0
 
   // Map AI target to shape type

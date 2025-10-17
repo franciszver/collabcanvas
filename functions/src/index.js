@@ -56,6 +56,11 @@ that describe canvas actions.
 - fontSize: 8px minimum, 72px maximum
 - All dimensions are in pixels
 
+🎨 GRADIENT SUPPORT:
+- gradientDirection: "lighter" | "darker" | "both" (optional)
+- gradientIntensity: 0.1-1.0 (optional, default 0.3)
+- Use with count > 1 to create gradient effects
+
 Example valid responses:
 "create a circle" → {
   "action": "create",
@@ -80,6 +85,26 @@ Example valid responses:
   "parameters": {
     "text": "Enter Text",
     "fontSize": 24
+  }
+}
+
+"make 5 blue rectangles with lighter gradient" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "count": 5,
+    "color": "blue",
+    "gradientDirection": "lighter"
+  }
+}
+
+"create 3 red circles with darker gradient" → {
+  "action": "create",
+  "target": "circle",
+  "parameters": {
+    "count": 3,
+    "color": "red",
+    "gradientDirection": "darker"
   }
 }`;
 

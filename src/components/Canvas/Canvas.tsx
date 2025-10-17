@@ -10,6 +10,7 @@ import { updateCursorPositionRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
+import { calculateShapeNumbers, getShapeTypeName } from '../../utils/helpers'
 
 export default function Canvas() {
   const { 
@@ -31,11 +32,17 @@ export default function Canvas() {
   const isPanningRef = useRef(false)
   const lastPosRef = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
-  const widthPct = 0.8
-  const heightPct = 0.7
-  const sizePct = (n: number, pct: number) => Math.round(n * pct)
-  const [containerSize, setContainerSize] = useState({ width: sizePct(window.innerWidth, widthPct), height: sizePct(window.innerHeight, heightPct) })
+  const [containerSize, setContainerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
   const prevSizeRef = useRef(containerSize)
+  
+  // Dynamically resize canvas when window size changes
+  useEffect(() => {
+    const handleResize = () => {
+      setContainerSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   const selectedIdsRef = useRef<Set<string>>(new Set())
   const setSingleSelection = useCallback((id: string) => {
     selectedIdsRef.current = new Set([id])
@@ -50,31 +57,17 @@ export default function Canvas() {
     setSelectedId(id)
   }, [setSelectedId])
   const transformerRef = useRef<Konva.Transformer>(null)
-  // Clamp viewport so Stage stays within browser viewport
+  
+  // Calculate shape numbers by type
+  const shapeNumbers = useMemo(() => calculateShapeNumbers(rectangles), [rectangles])
+  
+  // Clamp viewport - no clamping needed since canvas fills entire window
   const clampViewport = useCallback(
     (x: number, y: number) => {
-      const maxX = Math.max(0, window.innerWidth - containerSize.width)
-      const maxY = Math.max(0, window.innerHeight - containerSize.height)
-      const clampedX = Math.max(0, Math.min(x, maxX))
-      const clampedY = Math.max(0, Math.min(y, maxY))
-      return { x: clampedX, y: clampedY }
+      return { x, y }
     },
-    [containerSize]
+    []
   )
-
-  // Center stage initially if not persisted
-  useEffect(() => {
-    try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('collabcanvas:viewport') : null
-      if (!raw && viewport.x === 0 && viewport.y === 0) {
-        const centered = clampViewport(
-          Math.round((window.innerWidth - containerSize.width) / 2),
-          Math.round((window.innerHeight - containerSize.height) / 2)
-        )
-        setViewport({ ...viewport, ...centered })
-      }
-    } catch { /* ignore */ }
-  }, [viewport, containerSize, setViewport, clampViewport])
 
   // Compute grid lines based on visible canvas area (wider spacing)
   const gridLines = useMemo(() => {
@@ -175,24 +168,19 @@ export default function Canvas() {
     }
   }, [rectangles, selectedId, setSelectedId])
 
+  // Update viewport when container size changes to maintain canvas center point
   useEffect(() => {
-    const onResize = () => {
-      const newWidth = sizePct(window.innerWidth, widthPct)
-      const newHeight = sizePct(window.innerHeight, heightPct)
-      const prev = prevSizeRef.current
+    const prev = prevSizeRef.current
+    if (prev.width !== containerSize.width || prev.height !== containerSize.height) {
       // Keep the same canvas center point in view after resize
       const centerCanvasX = (prev.width / 2 - viewport.x) / viewport.scale
       const centerCanvasY = (prev.height / 2 - viewport.y) / viewport.scale
-      setContainerSize({ width: newWidth, height: newHeight })
-      const nx = newWidth / 2 - centerCanvasX * viewport.scale
-      const ny = newHeight / 2 - centerCanvasY * viewport.scale
-      const clamped = clampViewport(nx, ny)
-      setViewport({ ...viewport, x: clamped.x, y: clamped.y })
-      prevSizeRef.current = { width: newWidth, height: newHeight }
+      const nx = containerSize.width / 2 - centerCanvasX * viewport.scale
+      const ny = containerSize.height / 2 - centerCanvasY * viewport.scale
+      setViewport({ ...viewport, x: nx, y: ny })
+      prevSizeRef.current = containerSize
     }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [viewport, setViewport, clampViewport])
+  }, [containerSize, viewport, setViewport])
 
   const onClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     // Disable shape creation by clicking on canvas background; just clear selection
@@ -582,6 +570,8 @@ export default function Canvas() {
       if (!sel) return null
       const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
       const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
+      const shapeNumber = shapeNumbers.get(sel.id) || 0
+      const shapeTypeName = getShapeTypeName(sel.type)
       return (
         <div
           style={{
@@ -600,6 +590,15 @@ export default function Canvas() {
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          <div style={{ 
+            fontSize: 14, 
+            fontWeight: 600, 
+            color: '#E5E7EB',
+            paddingRight: 8,
+            borderRight: '1px solid #374151'
+          }}>
+            {shapeTypeName} #{shapeNumber}
+          </div>
           <input
             type="color"
             value={sel.fill}

@@ -28,6 +28,15 @@ const schema = {
           enum: ["grid", "row", "column"]
         },
         count: { type: "number" },
+        gradientDirection: { 
+          type: "string",
+          enum: ["lighter", "darker", "both"]
+        },
+        gradientIntensity: { 
+          type: "number", 
+          minimum: 0.1, 
+          maximum: 1.0 
+        },
         fields: {
           type: "array",
           items: { type: "string" }

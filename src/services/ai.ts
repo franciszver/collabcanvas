@@ -20,6 +20,8 @@ export interface CanvasAction {
     spacing?: number // Gap between shapes in pixels for layouts
     rows?: number // Grid rows (optional, auto-calculated if not provided)
     cols?: number // Grid columns (optional, auto-calculated if not provided)
+    gradientDirection?: 'lighter' | 'darker' | 'both'
+    gradientIntensity?: number
     fields?: string[]
     items?: string[]
   }
