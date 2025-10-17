@@ -6,9 +6,26 @@ jest.mock('../../services/auth', () => ({
   onAuthStateChanged: (cb: (u: any) => void) => { cb({ id: 'u1', displayName: 'Test' }); return jest.fn() },
   signInWithGoogle: jest.fn(async () => {}),
   signOut: jest.fn(async () => {}),
+  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
 }))
 
-// PresenceContext uses realtime service, not a separate presence service
+// Mock realtime service
+jest.mock('../../services/realtime', () => ({
+  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
+  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
+  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
+  clearCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToDragRtdb: jest.fn(() => jest.fn()),
+  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
+  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
+  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
+  cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
+}))
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (

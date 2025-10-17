@@ -296,7 +296,7 @@ export default function Canvas() {
           const livePos = liveDragPositions[r.id]
           const baseX = draggingIdRef.current === r.id || isSelected ? r.x : livePos ? livePos.x : r.x
           const baseY = draggingIdRef.current === r.id || isSelected ? r.y : livePos ? livePos.y : r.y
-          const commonProps = {
+          const { key, ...commonProps } = {
             key: `shape-${r.id}`,
             name: `rect-${r.id}`,
             fill: r.fill,
@@ -355,6 +355,7 @@ export default function Canvas() {
             const cy = baseY + r.height / 2
             return (
               <Circle
+                key={key}
                 {...commonProps}
                 x={cx}
                 y={cy}
@@ -383,6 +384,7 @@ export default function Canvas() {
             const cy = baseY + r.height / 2
             return (
               <RegularPolygon
+                key={key}
                 {...commonProps}
                 x={cx}
                 y={cy}
@@ -413,6 +415,7 @@ export default function Canvas() {
             const cy = baseY + r.height / 2
             return (
               <Star
+                key={key}
                 {...commonProps}
                 x={cx}
                 y={cy}
@@ -441,6 +444,7 @@ export default function Canvas() {
             const points = [0, r.height / 2, r.width, r.height / 2]
             return (
               <Arrow
+                key={key}
                 {...commonProps}
                 x={baseX}
                 y={baseY}
@@ -469,6 +473,7 @@ export default function Canvas() {
           if (r.type === 'text') {
             return (
               <Text
+                key={key}
                 {...commonProps}
                 x={baseX}
                 y={baseY}
@@ -499,6 +504,7 @@ export default function Canvas() {
           // default rectangle
           return (
             <Rect
+              key={key}
               {...commonProps}
               x={baseX}
               y={baseY}

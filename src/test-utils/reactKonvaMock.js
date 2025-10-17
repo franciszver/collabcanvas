@@ -1,7 +1,7 @@
 // Minimal react-konva mock for tests to avoid requiring node-canvas
 const React = require('react')
 
-function Stage(props) {
+const Stage = React.forwardRef((props, ref) => {
   const wrapMouseMove = (handler) => (ev) => {
     if (!handler) return
     const stage = {
@@ -42,22 +42,30 @@ function Stage(props) {
     }
     handler({ target: stage })
   }
-  const { onMouseMove, onMouseDown, onMouseUp, onWheel, onClick, ...rest } = props
+  const { onMouseMove, onMouseDown, onMouseUp, onWheel, onClick, scaleX, scaleY, ...rest } = props
   return React.createElement('div', {
     'data-testid': 'Stage',
+    ref,
     onMouseMove: wrapMouseMove(onMouseMove),
     onMouseDown: wrapMouseDown(onMouseDown),
     onMouseUp: wrapMouseUp(onMouseUp),
     onWheel: wrapWheel(onWheel),
     onClick: wrapClick(onClick),
+    scalex: scaleX,
+    scaley: scaleY,
     ...rest,
   })
-}
+})
 function Layer(props) {
-  return React.createElement('div', { 'data-testid': 'Layer', ...props })
+  const { listening, ...rest } = props
+  return React.createElement('div', { 
+    'data-testid': 'Layer', 
+    listening: listening ? 'true' : 'false',
+    ...rest 
+  })
 }
 function Rect(props) {
-  const { onDragStart, onDragMove, onDragEnd, onClick, onTap, ...rest } = props
+  const { onDragStart, onDragMove, onDragEnd, onClick, onTap, onMouseEnter, onMouseLeave, onTransformEnd, perfectDrawEnabled, shadowForStrokeEnabled, ...rest } = props
   const handleMouseDown = (ev) => {
     if (onDragStart) onDragStart({ target: { x: () => props.x, y: () => props.y } })
   }
@@ -71,13 +79,29 @@ function Rect(props) {
     if (ev && ev.stopPropagation) ev.stopPropagation()
     if (onClick) onClick({ target: { x: () => props.x, y: () => props.y } })
   }
+  const handleTap = (ev) => {
+    if (ev && ev.stopPropagation) ev.stopPropagation()
+    if (onTap) onTap({ target: { x: () => props.x, y: () => props.y } })
+  }
+  const handleMouseEnter = (ev) => {
+    if (onMouseEnter) onMouseEnter({ target: { x: () => props.x, y: () => props.y } })
+  }
+  const handleMouseLeave = (ev) => {
+    if (onMouseLeave) onMouseLeave({ target: { x: () => props.x, y: () => props.y } })
+  }
+  const handleTransformEnd = (ev) => {
+    if (onTransformEnd) onTransformEnd({ target: { x: () => props.x, y: () => props.y } })
+  }
   return React.createElement('div', { 
     'data-testid': 'Rect', 
     onMouseDown: handleMouseDown, 
     onMouseMove: handleMouseMove, 
     onMouseUp: handleMouseUp, 
-    onClick: handleClick, 
-    onTap,
+    onClick: handleClick,
+    onTap: handleTap,
+    onMouseEnter: handleMouseEnter,
+    onMouseLeave: handleMouseLeave,
+    onTransformEnd: handleTransformEnd,
     x: props.x,
     y: props.y,
     width: props.width,
@@ -86,51 +110,81 @@ function Rect(props) {
     ...rest 
   })
 }
-function Transformer(props) {
-  return React.createElement('div', { 'data-testid': 'Transformer', ...props })
-}
+const Transformer = React.forwardRef((props, ref) => {
+  const { rotateEnabled, ignoreStroke, ...rest } = props
+  return React.createElement('div', { 
+    'data-testid': 'Transformer', 
+    ref,
+    rotateenabled: rotateEnabled ? 'true' : 'false',
+    ignorestroke: ignoreStroke ? 'true' : 'false',
+    ...rest 
+  })
+})
 
 function Text(props) {
   return React.createElement('div', { 'data-testid': 'Text', ...props })
 }
 
 function Circle(props) {
-  const { onDragMove, onDragEnd, ...rest } = props
+  const { onDragMove, onDragEnd, onTransformEnd, perfectDrawEnabled, shadowForStrokeEnabled, ...rest } = props
   const handleMouseMove = (ev) => {
     if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
   const handleMouseUp = (ev) => {
     if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
-  return React.createElement('div', { 'data-testid': 'Circle', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+  const handleTransformEnd = (ev) => {
+    if (onTransformEnd) onTransformEnd({ target: { x: () => props.x, y: () => props.y } })
+  }
+  return React.createElement('div', { 'data-testid': 'Circle', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onTransformEnd: handleTransformEnd, ...rest })
 }
 
 function RegularPolygon(props) {
-  const { onDragMove, onDragEnd, ...rest } = props
+  const { onDragMove, onDragEnd, onTransformEnd, perfectDrawEnabled, shadowForStrokeEnabled, ...rest } = props
   const handleMouseMove = (ev) => {
     if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
   const handleMouseUp = (ev) => {
     if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
-  return React.createElement('div', { 'data-testid': 'RegularPolygon', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+  const handleTransformEnd = (ev) => {
+    if (onTransformEnd) onTransformEnd({ target: { x: () => props.x, y: () => props.y } })
+  }
+  return React.createElement('div', { 'data-testid': 'RegularPolygon', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onTransformEnd: handleTransformEnd, ...rest })
 }
 
 function Star(props) {
-  const { onDragMove, onDragEnd, ...rest } = props
+  const { onDragMove, onDragEnd, onTransformEnd, perfectDrawEnabled, shadowForStrokeEnabled, ...rest } = props
   const handleMouseMove = (ev) => {
     if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
   const handleMouseUp = (ev) => {
     if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
   }
-  return React.createElement('div', { 'data-testid': 'Star', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, ...rest })
+  const handleTransformEnd = (ev) => {
+    if (onTransformEnd) onTransformEnd({ target: { x: () => props.x, y: () => props.y } })
+  }
+  return React.createElement('div', { 'data-testid': 'Star', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onTransformEnd: handleTransformEnd, ...rest })
 }
 
 function Line(props) {
   return React.createElement('div', { 'data-testid': 'Line', ...props })
 }
 
-module.exports = { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line }
+function Arrow(props) {
+  const { onDragMove, onDragEnd, onTransformEnd, perfectDrawEnabled, shadowForStrokeEnabled, ...rest } = props
+  const handleMouseMove = (ev) => {
+    if (onDragMove) onDragMove({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleMouseUp = (ev) => {
+    if (onDragEnd) onDragEnd({ target: { x: () => (ev.clientX || props.x), y: () => (ev.clientY || props.y) } })
+  }
+  const handleTransformEnd = (ev) => {
+    if (onTransformEnd) onTransformEnd({ target: { x: () => props.x, y: () => props.y } })
+  }
+  return React.createElement('div', { 'data-testid': 'Arrow', onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onTransformEnd: handleTransformEnd, ...rest })
+}
+
+module.exports = { Stage, Layer, Rect, Transformer, Text, Circle, RegularPolygon, Star, Line, Arrow }
 
 

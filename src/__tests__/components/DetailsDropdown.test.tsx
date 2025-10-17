@@ -12,6 +12,25 @@ jest.mock('../../services/auth', () => ({
   },
   signInWithGoogle: jest.fn(async () => {}),
   signOut: jest.fn(async () => {}),
+  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
+}))
+
+// Mock realtime service
+jest.mock('../../services/realtime', () => ({
+  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
+  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
+  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
+  clearCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToDragRtdb: jest.fn(() => jest.fn()),
+  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
+  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
+  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
+  cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
 }))
 
 // Mock Firestore and presence listeners to be inert

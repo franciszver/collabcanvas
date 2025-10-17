@@ -1,4 +1,5 @@
 import './App.css'
+import { useState } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
@@ -6,12 +7,14 @@ import AppLayout from './components/Layout/AppLayout'
 import ErrorBoundary from './components/Layout/ErrorBoundary'
 import DetailsDropdown from './components/Header/DetailsDropdown'
 import ShapeSelector from './components/Header/ShapeSelector'
+import ChatBox from './components/Chat/ChatBox'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
 import { PresenceProvider } from './contexts/PresenceContext'
 
 function App() {
   const { user, isLoading } = useAuth()
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   console.log('📱 App: Current state - user:', user, 'isLoading:', isLoading)
 
@@ -55,6 +58,7 @@ function App() {
                 </div>
               </div>
               <Canvas />
+              <ChatBox isOpen={isChatOpen} onToggle={() => setIsChatOpen(!isChatOpen)} />
               </ErrorBoundary>
             </AppLayout>
           </CanvasProvider>

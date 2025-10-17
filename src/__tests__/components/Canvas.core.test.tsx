@@ -12,6 +12,25 @@ jest.mock('../../services/auth', () => ({
   },
   signInWithGoogle: jest.fn(async () => {}),
   signOut: jest.fn(async () => {}),
+  handleRedirectResult: jest.fn(() => Promise.resolve(null)),
+}))
+
+// Mock realtime service
+jest.mock('../../services/realtime', () => ({
+  setUserOnlineRtdb: jest.fn(() => Promise.resolve()),
+  setUserOfflineRtdb: jest.fn(() => Promise.resolve()),
+  updateCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToPresenceRtdb: jest.fn(() => jest.fn()),
+  clearCursorPositionRtdb: jest.fn(() => Promise.resolve()),
+  removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToDragRtdb: jest.fn(() => jest.fn()),
+  clearDragPositionRtdb: jest.fn(() => Promise.resolve()),
+  publishDragPositionsRtdbThrottled: jest.fn(() => Promise.resolve()),
+  publishResizePositionsRtdb: jest.fn(() => Promise.resolve()),
+  subscribeToResizeRtdb: jest.fn(() => jest.fn()),
+  clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
+  cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
 }))
 
 // Mock firestore service to provide proper data
@@ -23,15 +42,19 @@ jest.mock('../../services/firestore', () => ({
     // Call the callback with empty array initially
     cb([])
     // Store the callback so we can call it later
-    emitShapes = cb
+    emitShapes = (shapes: any[]) => {
+      mockRectangles = shapes
+      cb(shapes)
+    }
     return jest.fn()
   }),
-  createRectangle: jest.fn(() => Promise.resolve()),
-  updateRectangleDoc: jest.fn(() => Promise.resolve()),
-  updateDocument: jest.fn(() => Promise.resolve()),
-  deleteRectangleDoc: jest.fn(() => Promise.resolve()),
+  createShape: jest.fn(() => Promise.resolve()),
+  updateShape: jest.fn(() => Promise.resolve()),
+  deleteShape: jest.fn(() => Promise.resolve()),
   deleteAllShapes: jest.fn(() => Promise.resolve()),
   rectangleToShape: jest.fn((rect: any) => rect),
+  shapeToRectangle: jest.fn((shape: any) => shape),
+  updateDocument: jest.fn(() => Promise.resolve()),
   db: jest.fn(() => ({})),
   rectanglesCollection: jest.fn(() => ({})),
   presenceCollection: jest.fn(() => ({})),
@@ -54,6 +77,74 @@ jest.mock('../../services/realtime', () => ({
   removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
 }))
 
+// Import and spy on the realtime service to ensure it's properly mocked
+import * as realtimeService from '../../services/realtime'
+
+// Override the specific functions to ensure they return Promises
+beforeEach(() => {
+  jest.spyOn(realtimeService, 'setUserOnlineRtdb').mockResolvedValue(undefined)
+  jest.spyOn(realtimeService, 'setUserOfflineRtdb').mockResolvedValue(undefined)
+})
+
+// Mock the useDocument hook
+jest.mock('../../hooks/useDocument', () => ({
+  useDocument: () => ({
+    document: { id: 'test-doc', title: 'Test Document', viewport: { x: 0, y: 0, scale: 1 } },
+    isLoading: false,
+    error: null,
+    updateDocument: jest.fn(() => Promise.resolve()),
+    deleteDocument: jest.fn(() => Promise.resolve()),
+    updateViewport: jest.fn(() => Promise.resolve()),
+  }),
+}))
+
+// Mock the useShapes hook
+jest.mock('../../hooks/useShapes', () => ({
+  useShapes: () => ({
+    shapes: mockRectangles,
+    isLoading: false,
+    error: null,
+    addShape: jest.fn(() => Promise.resolve()),
+    updateShape: jest.fn(() => Promise.resolve()),
+    deleteShape: jest.fn(() => Promise.resolve()),
+    clearAllShapes: jest.fn(() => Promise.resolve()),
+    liveDragPositions: {},
+    isDragging: false,
+    publishDragUpdate: jest.fn(() => Promise.resolve()),
+    clearDragUpdate: jest.fn(() => Promise.resolve()),
+  }),
+}))
+
+// Mock the useCanvas hook to provide a working addRectangle function
+let mockRectangles: any[] = []
+
+jest.mock('../../contexts/CanvasContext', () => ({
+  ...jest.requireActual('../../contexts/CanvasContext'),
+  CanvasProvider: ({ children }: { children: React.ReactNode }) => children,
+  useCanvas: () => ({
+    rectangles: mockRectangles,
+    viewport: { scale: 1, x: 0, y: 0 },
+    selectedTool: 'pan',
+    isLoading: false,
+    selectedId: null,
+    addRectangle: jest.fn(async (shapeData) => {
+      // Call the mocked createShape function directly
+      const { createShape } = jest.requireMock('../../services/firestore')
+      await createShape(shapeData)
+    }),
+    updateRectangle: jest.fn(),
+    deleteRectangle: jest.fn(),
+    clearAllRectangles: jest.fn(),
+    setViewport: jest.fn(),
+    setRectangles: jest.fn(),
+    setSelectedId: jest.fn(),
+    liveDragPositions: {},
+    isDragging: false,
+    publishDragUpdate: jest.fn(),
+    clearDragUpdate: jest.fn(),
+  }),
+}))
+
 function renderCanvas() {
   return render(
     <AuthProvider>
@@ -68,8 +159,9 @@ function renderCanvas() {
 
 describe('Canvas Core Functionality', () => {
   beforeEach(() => {
-    // Reset the emitShapes function
+    // Reset the emitShapes function and mock rectangles
     emitShapes = null
+    mockRectangles = []
   })
 
   test('renders canvas with grid lines', () => {
@@ -90,10 +182,12 @@ describe('Canvas Core Functionality', () => {
     expect(screen.queryByTestId('Rect')).not.toBeInTheDocument()
     
     // Emit shapes data
-    emitShapes?.([
+    const shapes = [
       { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
       { id: 'rect2', x: 150, y: 50, width: 120, height: 90, fill: '#10B981', type: 'rect' },
-    ])
+    ]
+    mockRectangles = shapes
+    emitShapes?.(shapes)
     
     // Wait for shapes to be rendered
     await waitFor(() => {
@@ -106,18 +200,22 @@ describe('Canvas Core Functionality', () => {
     renderCanvas()
     
     // Emit initial shapes
-    emitShapes?.([
+    const initialShapes = [
       { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
-    ])
+    ]
+    mockRectangles = initialShapes
+    emitShapes?.(initialShapes)
     
     await waitFor(() => {
       expect(screen.getByTestId('Rect')).toBeInTheDocument()
     })
     
     // Update the shape
-    emitShapes?.([
+    const updatedShapes = [
       { id: 'rect1', x: 50, y: 60, width: 150, height: 100, fill: '#3B82F6', type: 'rect' },
-    ])
+    ]
+    mockRectangles = updatedShapes
+    emitShapes?.(updatedShapes)
     
     // The shape should still be there (same ID)
     await waitFor(() => {
@@ -130,6 +228,7 @@ describe('Canvas Core Functionality', () => {
     renderCanvas()
     
     // Emit empty array
+    mockRectangles = []
     emitShapes?.([])
     
     await waitFor(() => {
@@ -141,11 +240,13 @@ describe('Canvas Core Functionality', () => {
     renderCanvas()
     
     // Emit different shape types
-    emitShapes?.([
+    const shapes = [
       { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
       { id: 'circle1', x: 150, y: 50, width: 80, height: 80, fill: '#10B981', type: 'circle' },
       { id: 'triangle1', x: 250, y: 30, width: 100, height: 100, fill: '#F59E0B', type: 'triangle' },
-    ])
+    ]
+    mockRectangles = shapes
+    emitShapes?.(shapes)
     
     await waitFor(() => {
       expect(screen.getByTestId('Rect')).toBeInTheDocument()
@@ -179,9 +280,11 @@ describe('Canvas Core Functionality', () => {
     renderCanvas()
     
     // Emit a shape
-    emitShapes?.([
+    const shapes = [
       { id: 'rect1', x: 10, y: 20, width: 100, height: 80, fill: '#EF4444', type: 'rect' },
-    ])
+    ]
+    mockRectangles = shapes
+    emitShapes?.(shapes)
     
     await waitFor(() => {
       expect(screen.getByTestId('Rect')).toBeInTheDocument()

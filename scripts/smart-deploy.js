@@ -18,9 +18,9 @@ function deploy() {
   if (branch === 'main') {
     console.log('Deploying to production (main branch)...')
     execSync('npx --yes firebase-tools deploy --only hosting', { stdio: 'inherit' })
-  } else if (branch === 'Dev') {
-    console.log('Deploying to Dev preview channel...')
-    execSync('npx --yes firebase-tools hosting:channel:deploy Dev', { stdio: 'inherit' })
+  } else if (branch === 'dev') {
+    console.log('Deploying to dev preview channel...')
+    execSync('npx --yes firebase-tools hosting:channel:deploy dev', { stdio: 'inherit' })
   } else {
     console.log(`Deploying to ${branch} preview channel...`)
     execSync(`npx --yes firebase-tools hosting:channel:deploy ${branch}`, { stdio: 'inherit' })

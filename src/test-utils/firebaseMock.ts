@@ -33,6 +33,22 @@ const mockFirestoreObj = {
     }, 0)
     return jest.fn() // unsubscribe function
   }),
+  subscribeToDocument: jest.fn((_docId: string, callback: (doc: any) => void) => {
+    // Simulate async behavior with document data
+    setTimeout(() => {
+      const doc = {
+        id: 'test-doc-id',
+        title: 'Test Document',
+        documentId: 'test-doc-id',
+        createdBy: 'test-user',
+        createdAt: { '.sv': 'timestamp' },
+        updatedBy: 'test-user',
+        updatedAt: { '.sv': 'timestamp' }
+      }
+      callback(doc)
+    }, 0)
+    return jest.fn() // unsubscribe function
+  }),
   query: jest.fn(),
   where: jest.fn(),
   orderBy: jest.fn(),
@@ -53,6 +69,19 @@ mockFirestoreObj.startAfter.mockReturnValue(mockFirestoreObj)
 mockFirestoreObj.endBefore.mockReturnValue(mockFirestoreObj)
 
 export const mockFirestore = mockFirestoreObj
+
+// Export individual functions that tests might import directly
+export const subscribeToDocument = mockFirestoreObj.subscribeToDocument
+export const subscribeToShapes = jest.fn((_docId: string, callback: (shapes: any[]) => void) => {
+  // Provide empty shapes by default
+  callback([])
+  return jest.fn()
+})
+export const createShape = jest.fn(() => Promise.resolve())
+export const updateShape = jest.fn(() => Promise.resolve())
+export const deleteShape = jest.fn(() => Promise.resolve())
+export const deleteAllShapes = jest.fn(() => Promise.resolve())
+export const rectangleToShape = jest.fn((rect: any) => rect)
 
 const mockRealtimeDBObj = {
   ref: jest.fn(),
@@ -99,3 +128,17 @@ export const mockAuth = {
   GoogleAuthProvider: jest.fn(function MockProvider() {}),
   handleRedirectResult: jest.fn(() => Promise.resolve(null)),
 }
+
+// Export individual auth functions that tests might import directly
+export const onAuthStateChanged = jest.fn((_auth: any, callback: any) => {
+  // Default: logged out state
+  callback(null)
+  return jest.fn()
+})
+export const handleRedirectResult = jest.fn(() => Promise.resolve(null))
+export const signInWithGoogle = jest.fn(() => Promise.resolve({
+  id: 'test-user-id',
+  displayName: 'Test User',
+  email: 'test@example.com'
+}))
+export const signOut = jest.fn(() => Promise.resolve())
