@@ -429,7 +429,10 @@ async function createShapeFromCommand(
   const typeMap: Record<string, Rectangle['type']> = {
     'circle': 'circle',
     'rectangle': 'rect',
-    'text': 'text'
+    'text': 'text',
+    'triangle': 'triangle',
+    'star': 'star',
+    'arrow': 'arrow'
   }
 
   const shapeType = typeMap[target]
@@ -483,6 +486,48 @@ async function createShapeFromCommand(
       z: 0,
       text: parameters.text ?? 'Enter Text',
       fontSize: fontSize ?? 16
+    }
+  } else if (target === 'triangle') {
+    const width = validateDimension(parameters.width) ?? 100
+    const height = validateDimension(parameters.height) ?? 100
+    return {
+      id,
+      type: 'triangle',
+      x,
+      y,
+      width,
+      height,
+      fill: color,
+      rotation,
+      z: 0
+    }
+  } else if (target === 'star') {
+    const width = validateDimension(parameters.width) ?? 100
+    const height = validateDimension(parameters.height) ?? 100
+    return {
+      id,
+      type: 'star',
+      x,
+      y,
+      width,
+      height,
+      fill: color,
+      rotation,
+      z: 0
+    }
+  } else if (target === 'arrow') {
+    const width = validateDimension(parameters.width) ?? 100
+    const height = validateDimension(parameters.height) ?? 60
+    return {
+      id,
+      type: 'arrow',
+      x,
+      y,
+      width,
+      height,
+      fill: color,
+      rotation,
+      z: 0
     }
   }
 

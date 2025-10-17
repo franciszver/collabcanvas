@@ -9,7 +9,7 @@ const schema = {
     },
     target: {
       type: "string",
-      enum: ["circle", "rectangle", "text", "group", "form", "navbar", "card"]
+      enum: ["circle", "rectangle", "text", "triangle", "star", "arrow", "group", "form", "navbar", "card"]
     },
     parameters: {
       type: "object",

@@ -32,7 +32,7 @@ that describe canvas actions.
 📐 JSON Schema (EXACT FORMAT REQUIRED):
 {
   "action": "create" | "manipulate" | "layout" | "complex",
-  "target": "circle" | "rectangle" | "text" | "group" | "form" | "navbar" | "card",
+  "target": "circle" | "rectangle" | "text" | "triangle" | "star" | "arrow" | "group" | "form" | "navbar" | "card",
   "parameters": {
     "x": number (optional),
     "y": number (optional),
