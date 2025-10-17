@@ -19,7 +19,8 @@ export function useCursorSync(): void {
           lastUser.displayName !== r.displayName ||
           lastUser.cursor?.x !== r.cursor?.x ||
           lastUser.cursor?.y !== r.cursor?.y ||
-          lastUser.updatedAt !== r.updatedAt) {
+          lastUser.updatedAt !== r.updatedAt ||
+          lastUser.isActive !== r.isActive) {
         hasChanges = true
       }
     }

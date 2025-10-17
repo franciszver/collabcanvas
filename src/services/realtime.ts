@@ -30,6 +30,7 @@ export function subscribeToPresenceRtdb(
         displayName: data.displayName ?? null,
         cursor: data.cursor ?? null,
         updatedAt,
+        isActive: data.isActive !== false, // Default to true if not set
       }
     })
     callback(rows)
@@ -42,13 +43,21 @@ export async function updateCursorPositionRtdb(userId: string, pos: CursorPositi
   const presenceRef = ref(rtdb(), `presence/${userId}`)
   
   try {
-    await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+    await update(presenceRef, { 
+      cursor: pos, 
+      updatedAt: serverTimestamp() as any,
+      isActive: true 
+    })
   } catch (error) {
     console.warn('Failed to update cursor position, retrying...', error)
     // Retry once after a short delay
     setTimeout(async () => {
       try {
-        await update(presenceRef, { cursor: pos, updatedAt: serverTimestamp() as any })
+        await update(presenceRef, { 
+          cursor: pos, 
+          updatedAt: serverTimestamp() as any,
+          isActive: true 
+        })
       } catch (retryError) {
         console.error('Failed to update cursor position after retry:', retryError)
       }
@@ -58,7 +67,11 @@ export async function updateCursorPositionRtdb(userId: string, pos: CursorPositi
 
 export async function setUserOnlineRtdb(userId: string, displayName: string | null): Promise<void> {
   const presenceRef = ref(rtdb(), `presence/${userId}`)
-  await update(presenceRef, { displayName, updatedAt: serverTimestamp() as any })
+  await update(presenceRef, { 
+    displayName, 
+    updatedAt: serverTimestamp() as any,
+    isActive: true 
+  })
 }
 
 export async function setUserOfflineRtdb(userId: string): Promise<void> {
@@ -102,6 +115,85 @@ export async function cleanupStaleCursorsRtdb(maxAgeMs: number = 30000): Promise
   } catch (error) {
     console.warn('Failed to cleanup stale cursors:', error)
   }
+}
+
+// Mark users as inactive (disable green light) after 60 seconds
+export async function markInactiveUsersRtdb(inactiveThresholdMs: number = 60000): Promise<number> {
+  const presenceRef = ref(rtdb(), 'presence')
+  const now = Date.now()
+  let markedCount = 0
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(presenceRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const updates: Record<string, any> = {}
+    
+    for (const [userId, userData] of Object.entries(data)) {
+      const user = userData as any
+      const updatedAt = typeof user.updatedAt === 'number' ? user.updatedAt : 0
+      const isActive = user.isActive !== false // Default to active if not set
+      
+      // If user hasn't been active for more than threshold and is still marked as active
+      if (now - updatedAt > inactiveThresholdMs && isActive) {
+        updates[`presence/${userId}/isActive`] = false
+        markedCount++
+      }
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb()), updates)
+      console.log(`🟡 Marked ${markedCount} users as inactive (disabled green light)`)
+    }
+  } catch (error) {
+    console.warn('Failed to mark inactive users:', error)
+  }
+  
+  return markedCount
+}
+
+// Remove users completely after 5 minutes of inactivity
+export async function cleanupInactiveUsersRtdb(removalThresholdMs: number = 300000): Promise<number> {
+  const presenceRef = ref(rtdb(), 'presence')
+  const now = Date.now()
+  let removedCount = 0
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(presenceRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const usersToRemove: string[] = []
+    
+    for (const [userId, userData] of Object.entries(data)) {
+      const user = userData as any
+      const updatedAt = typeof user.updatedAt === 'number' ? user.updatedAt : 0
+      
+      // If user hasn't been active for more than removal threshold, mark for removal
+      if (now - updatedAt > removalThresholdMs) {
+        usersToRemove.push(userId)
+      }
+    }
+    
+    // Remove inactive users from RTDB
+    if (usersToRemove.length > 0) {
+      const updates: Record<string, any> = {}
+      for (const userId of usersToRemove) {
+        updates[`presence/${userId}`] = null
+      }
+      
+      await update(ref(rtdb()), updates)
+      removedCount = usersToRemove.length
+      console.log(`🧹 Removed ${removedCount} inactive users from RTDB after 5 minutes`)
+    }
+  } catch (error) {
+    console.warn('Failed to cleanup inactive users:', error)
+  }
+  
+  return removedCount
 }
 
 // Drag channel via RTDB
