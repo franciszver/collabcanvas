@@ -37,6 +37,28 @@ const schema = {
           minimum: 0.1, 
           maximum: 1.0 
         },
+        selector: {
+          type: "object",
+          properties: {
+            color: { type: "string" },
+            shapeNumber: { type: "number" },
+            shapeType: { type: "string" }
+          }
+        },
+        sizeMultiplier: { type: "number" },
+        relativeResize: { type: "boolean" },
+        rotationDirection: { 
+          type: "string",
+          enum: ["right", "left", "flip", "clockwise", "counterclockwise"]
+        },
+        rotationDegrees: { type: "number" },
+        relativeRotation: { type: "boolean" },
+        positionAnchor: { 
+          type: "string",
+          enum: ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"]
+        },
+        offsetX: { type: "number" },
+        offsetY: { type: "number" },
         fields: {
           type: "array",
           items: { type: "string" }

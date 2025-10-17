@@ -106,7 +106,58 @@ Example valid responses:
     "color": "red",
     "gradientDirection": "darker"
   }
-}`;
+}
+
+"resize rectangle #3" → {
+  "action": "manipulate",
+  "target": "rectangle",
+  "parameters": {
+    "selector": {
+      "shapeNumber": 3
+    }
+  }
+}
+
+"make it twice as big" → {
+  "action": "manipulate",
+  "parameters": {
+    "sizeMultiplier": 2,
+    "relativeResize": true
+  }
+}
+
+"rotate the blue circle right" → {
+  "action": "manipulate",
+  "target": "circle",
+  "parameters": {
+    "selector": {
+      "color": "blue"
+    },
+    "rotationDirection": "right"
+  }
+}
+
+"move to center" → {
+  "action": "manipulate",
+  "parameters": {
+    "positionAnchor": "center"
+  }
+}
+
+⚠️ DISAMBIGUATION RULES:
+- If a command is ambiguous or incomplete, respond with error and suggestions
+- Be specific in clarification requests
+- Always provide numbered examples when asking for clarification
+- When user says "the [shape]" without specific identifier, ask for clarification
+- NEVER create new shapes when user says "the" - they want to modify existing ones
+
+🔍 SHAPE SELECTION RULES:
+- "the circle" = ask for shape type AND number (e.g., "circle #1")
+- "the red circle" = find red circles, ask for number if multiple found
+- "circle #3" = find specific circle by number
+- "make it bigger" = use last created or selected shape
+- If no shapes exist, suggest creating one first
+- Always ask for BOTH shape type and number when "the" is used without specifics`;
 
     // Initialize OpenAI client with the secret
     const apiKey = process.env.OPENAI_API_KEY;

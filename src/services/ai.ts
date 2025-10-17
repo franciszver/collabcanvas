@@ -22,6 +22,19 @@ export interface CanvasAction {
     cols?: number // Grid columns (optional, auto-calculated if not provided)
     gradientDirection?: 'lighter' | 'darker' | 'both'
     gradientIntensity?: number
+    selector?: {
+      color?: string
+      shapeNumber?: number
+      shapeType?: string
+    }
+    sizeMultiplier?: number
+    relativeResize?: boolean
+    rotationDirection?: 'right' | 'left' | 'flip' | 'clockwise' | 'counterclockwise'
+    rotationDegrees?: number
+    relativeRotation?: boolean
+    positionAnchor?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+    offsetX?: number
+    offsetY?: number
     fields?: string[]
     items?: string[]
   }

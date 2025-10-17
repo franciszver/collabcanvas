@@ -3,7 +3,17 @@ import { useShapes } from './useShapes'
 import { useCanvas } from '../contexts/CanvasContext'
 import type { CanvasAction } from '../services/ai'
 import type { Rectangle } from '../types/canvas.types'
-import { generateRectId, generateGradientColors } from '../utils/helpers'
+import { 
+  generateRectId, 
+  generateGradientColors, 
+  selectShapesByColor,
+  selectShapeByTypeAndNumber,
+  calculateRelativeSize,
+  calculateAnchorPosition,
+  parseRotationDirection,
+  getApproximatePosition,
+  getShapeTypeName
+} from '../utils/helpers'
 
 export interface UseCanvasCommandsOptions {
   documentId: string
@@ -260,48 +270,190 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
       
       // Handle manipulate action
       if (action === 'manipulate') {
-        // Determine target shape ID using fallback chain
-        const targetId = parameters.id || getLastCreatedShapeId() || selectedId
+        // Enhanced shape selection logic
+        let selectedShapes: Rectangle[] = []
         
-        if (!targetId) {
-          return { 
-            success: false, 
-            error: 'No shape available to manipulate. Please select a shape or create one first.',
-            details: 'Target resolution failed: no explicit ID, last created, or selected shape found'
+        // 1. Try selector-based selection first
+        if (parameters.selector) {
+          const { color, shapeNumber } = parameters.selector
+          
+          if (color) {
+            // Select by color
+            selectedShapes = selectShapesByColor(rectangles, color)
+            if (selectedShapes.length === 0) {
+              return {
+                success: false,
+                error: `No shapes found with color "${color}". Try creating a shape with that color first.`,
+                details: 'Color selection returned no results'
+              }
+            }
+          } else if (shapeNumber !== undefined && target) {
+            // Select by type and number
+            const shapeType = target === 'rectangle' ? 'rect' : target as any
+            const shape = selectShapeByTypeAndNumber(rectangles, shapeType, shapeNumber)
+            if (shape) {
+              selectedShapes = [shape]
+            } else {
+              return {
+                success: false,
+                error: `Could not find ${target} #${shapeNumber}. Check the shape number and try again.`,
+                details: 'Shape number selection failed'
+              }
+            }
+          }
+        } else if (target && !parameters.selector) {
+          // 2. Handle "the [shape]" without specific identifier - ask for clarification
+          const shapesOfType = rectangles.filter(s => (s.type || 'rect') === (target === 'rectangle' ? 'rect' : target))
+          
+          if (shapesOfType.length === 0) {
+            // No shapes of this type exist, ask user to specify shape type and number
+            const allShapes = rectangles.map((s, i) => {
+              const typeName = getShapeTypeName(s.type)
+              const position = getApproximatePosition(s, viewport)
+              const colorName = s.fill
+              return `${typeName} #${i + 1} (${colorName}, ${position})`
+            })
+            
+            if (allShapes.length === 0) {
+              return {
+                success: false,
+                error: `No shapes found. Please create a shape first, then specify which one to modify.`,
+                details: 'No shapes exist'
+              }
+            } else {
+              return {
+                success: false,
+                error: `No ${target}s found. I found these shapes:\n${allShapes.join('\n')}\n\nPlease specify which shape to modify by saying something like "circle #1" or "rectangle #2".`,
+                details: 'No shapes of specified type exist'
+              }
+            }
+          } else if (shapesOfType.length === 1) {
+            // Only one shape of this type, use it
+            selectedShapes = shapesOfType
+          } else {
+            // Multiple shapes of this type, ask for clarification with numbers
+            const shapeDescriptions = shapesOfType.map((s, i) => {
+              const typeName = getShapeTypeName(s.type)
+              const position = getApproximatePosition(s, viewport)
+              const colorName = s.fill
+              return `${typeName} #${i + 1} (${colorName}, ${position})`
+            })
+            
+            return {
+              success: false,
+              error: `I found ${shapesOfType.length} ${target}s:\n${shapeDescriptions.join('\n')}\n\nPlease specify which one by saying something like "${target} #1" or "${target} #2".`,
+              details: 'Multiple shapes of same type - clarification needed'
+            }
           }
         }
         
-        // Find the shape to manipulate
-        const targetShape = rectangles.find(r => r.id === targetId)
-        if (!targetShape) {
-          return { 
-            success: false, 
-            error: `Shape not found: ${targetId}`,
-            details: 'Shape may have been deleted or does not exist'
+        // 3. Fallback to ID, last created, or selected shape
+        if (selectedShapes.length === 0) {
+          const targetId = parameters.id || getLastCreatedShapeId() || selectedId
+          
+          if (!targetId) {
+            return { 
+              success: false, 
+              error: 'No shape available to manipulate. Please select a shape, specify a color, or create one first.',
+              details: 'Target resolution failed: no explicit ID, last created, or selected shape found'
+            }
+          }
+          
+          const targetShape = rectangles.find(r => r.id === targetId)
+          if (!targetShape) {
+            return { 
+              success: false, 
+              error: `Shape not found: ${targetId}`,
+              details: 'Shape may have been deleted or does not exist'
+            }
+          }
+          
+          selectedShapes = [targetShape]
+        }
+        
+        // 4. Handle multiple matches (ask for clarification)
+        if (selectedShapes.length > 1) {
+          const shapeDescriptions = selectedShapes.map((s, i) => {
+            const typeName = getShapeTypeName(s.type)
+            const position = getApproximatePosition(s, viewport)
+            return `${typeName} #${i + 1} (${position})`
+          })
+          
+          return {
+            success: false,
+            error: `I found ${selectedShapes.length} matching shapes:\n${shapeDescriptions.join('\n')}\n\nPlease specify which one by saying something like "${getShapeTypeName(selectedShapes[0].type)} #1"`,
+            details: 'Multiple shapes matched - clarification needed'
           }
         }
         
-        // Build update object from parameters
+        // 5. We have exactly one shape, proceed with manipulation
+        const targetShape = selectedShapes[0]
         const updates: Partial<Rectangle> = {}
-        if (parameters.x !== undefined) updates.x = parameters.x
-        if (parameters.y !== undefined) updates.y = parameters.y
-        if (parameters.width !== undefined) updates.width = parameters.width
-        if (parameters.height !== undefined) updates.height = parameters.height
+        
+        // Handle relative sizing
+        if (parameters.relativeResize && parameters.sizeMultiplier) {
+          updates.width = calculateRelativeSize(targetShape.width, parameters.sizeMultiplier)
+          updates.height = calculateRelativeSize(targetShape.height, parameters.sizeMultiplier)
+        } else {
+          // Absolute sizing
+          if (parameters.width !== undefined) updates.width = parameters.width
+          if (parameters.height !== undefined) updates.height = parameters.height
+        }
+        
+        // Handle rotation
+        if (parameters.rotationDirection) {
+          const degrees = parseRotationDirection(parameters.rotationDirection)
+          updates.rotation = ((targetShape.rotation || 0) + degrees) % 360
+        } else if (parameters.rotationDegrees !== undefined) {
+          if (parameters.relativeRotation) {
+            updates.rotation = ((targetShape.rotation || 0) + parameters.rotationDegrees) % 360
+          } else {
+            updates.rotation = parameters.rotationDegrees % 360
+          }
+        } else if (parameters.rotation !== undefined) {
+          updates.rotation = parameters.rotation % 360
+        }
+        
+        // Handle smart positioning
+        if (parameters.positionAnchor) {
+          const position = calculateAnchorPosition(
+            parameters.positionAnchor,
+            viewport,
+            targetShape.width,
+            targetShape.height
+          )
+          updates.x = position.x + (parameters.offsetX || 0)
+          updates.y = position.y + (parameters.offsetY || 0)
+        } else {
+          // Absolute positioning
+          if (parameters.x !== undefined) updates.x = parameters.x
+          if (parameters.y !== undefined) updates.y = parameters.y
+        }
+        
+        // Handle radius for circles
         if (parameters.radius !== undefined) {
-          // For circles, radius maps to width/height
           updates.width = parameters.radius * 2
           updates.height = parameters.radius * 2
         }
-        if (parameters.rotation !== undefined) updates.rotation = parameters.rotation
-        if (parameters.color !== undefined) updates.fill = validateColor(parameters.color) || targetShape.fill
+        
+        // Handle color
+        if (parameters.color !== undefined) {
+          updates.fill = validateColor(parameters.color) || targetShape.fill
+        }
         
         // Apply the manipulation
-        await updateShape(targetId, updates)
+        await updateShape(targetShape.id, updates)
+        
+        const actionDescription = []
+        if (updates.width || updates.height) actionDescription.push('resized')
+        if (updates.rotation !== undefined) actionDescription.push('rotated')
+        if (updates.x !== undefined || updates.y !== undefined) actionDescription.push('moved')
+        if (updates.fill) actionDescription.push('recolored')
         
         return {
           success: true,
-          details: `Manipulated ${targetShape.type} (ID: ${targetId})`,
-          createdShapes: [] // No new shapes created
+          details: `Successfully ${actionDescription.join(', ')} ${getShapeTypeName(targetShape.type)} #${targetShape.id.slice(0, 8)}`,
+          createdShapes: []
         }
       }
       

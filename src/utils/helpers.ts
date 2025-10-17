@@ -202,4 +202,197 @@ export function generateGradientColors(
   return colors
 }
 
+/**
+ * Compare two colors for similarity
+ */
+function colorMatch(color1: string, color2: string, tolerance: number = 30): boolean {
+  // Normalize colors to hex
+  const hex1 = color1.startsWith('#') ? color1 : colorNameToHex(color1)
+  const hex2 = color2.startsWith('#') ? color2 : colorNameToHex(color2)
+  
+  if (!hex1 || !hex2) return false
+  
+  // Convert to HSL for better color comparison
+  const hsl1 = hexToHsl(hex1)
+  const hsl2 = hexToHsl(hex2)
+  
+  // Compare hue, saturation, and lightness
+  const hueDiff = Math.abs(hsl1.h - hsl2.h)
+  const satDiff = Math.abs(hsl1.s - hsl2.s)
+  const lightDiff = Math.abs(hsl1.l - hsl2.l)
+  
+  return hueDiff < tolerance && satDiff < tolerance && lightDiff < tolerance
+}
+
+/**
+ * Convert color name to hex
+ */
+function colorNameToHex(colorName: string): string | null {
+  const colorMap: Record<string, string> = {
+    'red': '#EF4444',
+    'orange': '#F97316',
+    'yellow': '#EAB308',
+    'green': '#22C55E',
+    'blue': '#3B82F6',
+    'indigo': '#6366F1',
+    'violet': '#8B5CF6',
+    'purple': '#8B5CF6',
+    'pink': '#EC4899',
+    'brown': '#A3A3A3',
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'gray': '#6B7280',
+    'grey': '#6B7280'
+  }
+  return colorMap[colorName.toLowerCase()] || null
+}
+
+/**
+ * Select shapes by color
+ */
+export function selectShapesByColor(shapes: Rectangle[], color: string, tolerance: number = 30): Rectangle[] {
+  return shapes.filter(shape => colorMatch(shape.fill, color, tolerance))
+}
+
+/**
+ * Select shape by type and number
+ */
+export function selectShapeByTypeAndNumber(shapes: Rectangle[], type: CanvasShapeType, number: number): Rectangle | null {
+  const shapeNumbers = calculateShapeNumbers(shapes)
+  const shapesOfType = shapes.filter(s => (s.type || 'rect') === type)
+  
+  for (const shape of shapesOfType) {
+    if (shapeNumbers.get(shape.id) === number) {
+      return shape
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Calculate relative size based on multiplier
+ */
+export function calculateRelativeSize(currentSize: number, multiplier: number): number {
+  return Math.max(10, currentSize * multiplier) // Minimum 10px
+}
+
+/**
+ * Parse size modifier from text
+ */
+export function parseSizeModifier(text: string): number | null {
+  const lower = text.toLowerCase()
+  
+  // Handle common phrases
+  if (lower.includes('twice') || lower.includes('double') || lower === '2x') return 2
+  if (lower.includes('half') || lower === '0.5x') return 0.5
+  if (lower.includes('triple') || lower === '3x') return 3
+  if (lower.includes('quarter') || lower === '0.25x') return 0.25
+  
+  // Handle percentages
+  const percentMatch = lower.match(/(\d+)%/)
+  if (percentMatch) {
+    return parseInt(percentMatch[1]) / 100
+  }
+  
+  // Handle multipliers
+  const multMatch = lower.match(/(\d+\.?\d*)x/)
+  if (multMatch) {
+    return parseFloat(multMatch[1])
+  }
+  
+  return null
+}
+
+/**
+ * Calculate anchor position in viewport
+ */
+export function calculateAnchorPosition(
+  anchor: string,
+  viewport: ViewportTransform,
+  shapeWidth: number = 0,
+  shapeHeight: number = 0
+): { x: number; y: number } {
+  const screenWidth = window.innerWidth
+  const screenHeight = window.innerHeight
+  
+  // Convert screen position to workspace coordinates
+  const toWorkspace = (screenX: number, screenY: number) => ({
+    x: (screenX - viewport.x) / viewport.scale,
+    y: (screenY - viewport.y) / viewport.scale
+  })
+  
+  // Calculate center position (accounting for shape size)
+  const halfWidth = shapeWidth / 2
+  const halfHeight = shapeHeight / 2
+  
+  switch (anchor) {
+    case 'center':
+      return toWorkspace(screenWidth / 2 - halfWidth * viewport.scale, screenHeight / 2 - halfHeight * viewport.scale)
+    case 'top':
+      return toWorkspace(screenWidth / 2 - halfWidth * viewport.scale, 50)
+    case 'bottom':
+      return toWorkspace(screenWidth / 2 - halfWidth * viewport.scale, screenHeight - 50 - shapeHeight * viewport.scale)
+    case 'left':
+      return toWorkspace(50, screenHeight / 2 - halfHeight * viewport.scale)
+    case 'right':
+      return toWorkspace(screenWidth - 50 - shapeWidth * viewport.scale, screenHeight / 2 - halfHeight * viewport.scale)
+    case 'top-left':
+      return toWorkspace(50, 50)
+    case 'top-right':
+      return toWorkspace(screenWidth - 50 - shapeWidth * viewport.scale, 50)
+    case 'bottom-left':
+      return toWorkspace(50, screenHeight - 50 - shapeHeight * viewport.scale)
+    case 'bottom-right':
+      return toWorkspace(screenWidth - 50 - shapeWidth * viewport.scale, screenHeight - 50 - shapeHeight * viewport.scale)
+    default:
+      return toWorkspace(screenWidth / 2 - halfWidth * viewport.scale, screenHeight / 2 - halfHeight * viewport.scale)
+  }
+}
+
+/**
+ * Parse rotation direction to degrees
+ */
+export function parseRotationDirection(direction: string): number {
+  const lower = direction.toLowerCase()
+  
+  if (lower.includes('right') || lower.includes('clockwise')) return 90
+  if (lower.includes('left') || lower.includes('counterclockwise') || lower.includes('counter')) return -90
+  if (lower.includes('flip') || lower.includes('upside')) return 180
+  
+  return 0
+}
+
+/**
+ * Get approximate position description for a shape
+ */
+export function getApproximatePosition(shape: Rectangle, viewport: ViewportTransform): string {
+  const screenWidth = window.innerWidth
+  const screenHeight = window.innerHeight
+  
+  // Convert workspace coords to screen coords
+  const screenX = shape.x * viewport.scale + viewport.x
+  const screenY = shape.y * viewport.scale + viewport.y
+  
+  const xThird = screenWidth / 3
+  const yThird = screenHeight / 3
+  
+  let vertical = ''
+  let horizontal = ''
+  
+  if (screenY < yThird) vertical = 'top'
+  else if (screenY > yThird * 2) vertical = 'bottom'
+  else vertical = 'middle'
+  
+  if (screenX < xThird) horizontal = 'left'
+  else if (screenX > xThird * 2) horizontal = 'right'
+  else horizontal = 'center'
+  
+  if (vertical === 'middle' && horizontal === 'center') return 'center'
+  if (vertical === 'middle') return horizontal
+  if (horizontal === 'center') return vertical
+  
+  return `${vertical}-${horizontal}`
+}
+
 
