@@ -36,14 +36,16 @@ export default function DetailsDropdown() {
   const label = useMemo(() => '☰', [])
   const rectCount = rectangles.length
   const shapeCounts = useMemo(() => {
-    let rect = 0, circ = 0, tri = 0, star = 0
+    let rect = 0, circ = 0, tri = 0, star = 0, text = 0, arrow = 0
     for (const r of rectangles) {
       if (r.type === 'circle') circ++
       else if (r.type === 'triangle') tri++
       else if (r.type === 'star') star++
+      else if (r.type === 'text') text++
+      else if (r.type === 'arrow') arrow++
       else rect++
     }
-    return { rect, circ, tri, star, total: rectangles.length }
+    return { rect, circ, tri, star, text, arrow, total: rectangles.length }
   }, [rectangles])
   const canClear = !busy && !isLoading && rectCount > 0
   const canGenerate = !busy && !isLoading
@@ -114,6 +116,8 @@ export default function DetailsDropdown() {
             <div>Circles:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.circ}</div>
             <div>Triangles:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.tri}</div>
             <div>Stars:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.star}</div>
+            <div>Text:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.text}</div>
+            <div>Arrows:</div><div style={{ color: '#93C5FD' }}>{shapeCounts.arrow}</div>
             <div style={{ fontWeight: 600 }}>Total:</div><div style={{ color: '#60A5FA', fontWeight: 600 }}>{shapeCounts.total}</div>
           </div>
 

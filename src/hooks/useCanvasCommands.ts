@@ -275,7 +275,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         
         // 1. Try selector-based selection first
         if (parameters.selector) {
-          const { color, shapeNumber } = parameters.selector
+          const { color, shapeNumber, shapeType } = parameters.selector
           
           if (color) {
             // Select by color
@@ -287,16 +287,18 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
                 details: 'Color selection returned no results'
               }
             }
-          } else if (shapeNumber !== undefined && target) {
-            // Select by type and number
-            const shapeType = target === 'rectangle' ? 'rect' : target as any
-            const shape = selectShapeByTypeAndNumber(rectangles, shapeType, shapeNumber)
+          } else if (shapeNumber !== undefined) {
+            // Select by type and number - use shapeType from selector or fallback to target
+            const typeToUse = shapeType || target
+            const mappedType = typeToUse === 'rectangle' ? 'rect' : typeToUse as any
+            const shape = selectShapeByTypeAndNumber(rectangles, mappedType, shapeNumber)
             if (shape) {
               selectedShapes = [shape]
             } else {
+              const displayType = typeToUse || target
               return {
                 success: false,
-                error: `Could not find ${target} #${shapeNumber}. Check the shape number and try again.`,
+                error: `Could not find ${displayType} #${shapeNumber}. Check the shape number and try again.`,
                 details: 'Shape number selection failed'
               }
             }
