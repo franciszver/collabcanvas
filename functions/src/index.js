@@ -61,6 +61,21 @@ that describe canvas actions.
 - gradientIntensity: 0.1-1.0 (optional, default 0.3)
 - Use with count > 1 to create gradient effects
 
+📐 GRID LAYOUT SUPPORT:
+- For "create grid of XxY [shapes]": use action="create" with layout="grid", rows=X, cols=Y, count=X*Y
+- For "X circles in a grid": use action="create" with layout="grid", count=X (auto-calculates rows/cols)
+- For "arrange [shapes] in XxY grid": use action="layout" with layout="grid", rows=X, cols=Y
+- Grid automatically calculates optimal spacing and centers shapes within cells
+- When rows/cols not specified, auto-calculates to be as square as possible
+
+🔍 GRID PATTERN RECOGNITION:
+- "grid of 3x3 circles" → rows=3, cols=3, count=9
+- "3 by 3 grid of rectangles" → rows=3, cols=3, count=9  
+- "3x3 grid of stars" → rows=3, cols=3, count=9
+- "4x2 grid of triangles" → rows=4, cols=2, count=8
+- "2x4 grid of arrows" → rows=2, cols=4, count=8
+- Always extract rows and cols from "XxY" or "X by Y" patterns
+
 Example valid responses:
 "create a circle" → {
   "action": "create",
@@ -153,6 +168,80 @@ Example valid responses:
       "shapeType": "rectangle"
     },
     "positionAnchor": "top"
+  }
+}
+
+"create grid of 3x3 circles" → {
+  "action": "create",
+  "target": "circle",
+  "parameters": {
+    "count": 9,
+    "layout": "grid",
+    "rows": 3,
+    "cols": 3,
+    "radius": 30
+  }
+}
+
+"3 by 3 grid of rectangles" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "count": 9,
+    "layout": "grid",
+    "rows": 3,
+    "cols": 3,
+    "width": 80,
+    "height": 60
+  }
+}
+
+"4x2 grid of triangles" → {
+  "action": "create",
+  "target": "triangle",
+  "parameters": {
+    "count": 8,
+    "layout": "grid",
+    "rows": 4,
+    "cols": 2,
+    "width": 60,
+    "height": 60
+  }
+}
+
+"make a 4x2 grid of rectangles" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "count": 8,
+    "layout": "grid",
+    "rows": 4,
+    "cols": 2,
+    "width": 100,
+    "height": 80
+  }
+}
+
+"create 6 circles in a grid" → {
+  "action": "create",
+  "target": "circle",
+  "parameters": {
+    "count": 6,
+    "layout": "grid",
+    "radius": 25
+  }
+}
+
+"arrange all circles in a 2x3 grid" → {
+  "action": "layout",
+  "target": "circle",
+  "parameters": {
+    "selector": {
+      "shapeType": "circle"
+    },
+    "layout": "grid",
+    "rows": 2,
+    "cols": 3
   }
 }
 

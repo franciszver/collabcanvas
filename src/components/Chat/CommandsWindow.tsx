@@ -70,9 +70,21 @@ const commandCategories: CommandCategory[] = [
         parameters: ['count', 'color', 'target']
       },
       {
-        title: 'Create with Layout',
-        description: 'Create shapes in organized layouts',
-        example: 'Create 4 red rectangles in a grid',
+        title: 'Create Grid Layout',
+        description: 'Create shapes in a grid pattern',
+        example: 'Create grid of 3x3 circles',
+        parameters: ['count', 'color', 'target', 'layout', 'rows', 'cols']
+      },
+      {
+        title: 'Create Row Layout',
+        description: 'Create shapes in a horizontal row',
+        example: 'Create 5 blue rectangles in a row',
+        parameters: ['count', 'color', 'target', 'layout']
+      },
+      {
+        title: 'Create Column Layout',
+        description: 'Create shapes in a vertical column',
+        example: 'Create 4 green triangles in a column',
         parameters: ['count', 'color', 'target', 'layout']
       },
       {
@@ -136,8 +148,14 @@ const commandCategories: CommandCategory[] = [
       {
         title: 'Arrange in Grid',
         description: 'Arrange selected shapes in a grid pattern',
-        example: 'Arrange all shapes in a grid',
+        example: 'Arrange all circles in a 2x3 grid',
         parameters: ['selector', 'rows', 'cols', 'spacing']
+      },
+      {
+        title: 'Arrange in Square Grid',
+        description: 'Arrange shapes in a square grid (auto-calculated)',
+        example: 'Arrange all rectangles in a square grid',
+        parameters: ['selector', 'spacing']
       }
     ]
   }
