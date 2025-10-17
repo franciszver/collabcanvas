@@ -144,6 +144,18 @@ Example valid responses:
   }
 }
 
+"move rectangle #2 to the top" → {
+  "action": "manipulate",
+  "target": "rectangle",
+  "parameters": {
+    "selector": {
+      "shapeNumber": 2,
+      "shapeType": "rectangle"
+    },
+    "positionAnchor": "top"
+  }
+}
+
 ⚠️ DISAMBIGUATION RULES:
 - If a command is ambiguous or incomplete, respond with error and suggestions
 - Be specific in clarification requests
