@@ -19,6 +19,9 @@ let lastShapePosition = { x: 0, y: 0 }
 // Store last created shape ID per user (survives page refresh)
 const STORAGE_KEY = 'collabcanvas:lastCreatedShapeId'
 
+// Maximum shapes per layout command
+const MAX_LAYOUT_SHAPES = 20
+
 function getLastCreatedShapeId(): string | null {
   if (typeof window === 'undefined') return null
   return sessionStorage.getItem(STORAGE_KEY)
@@ -27,6 +30,121 @@ function getLastCreatedShapeId(): string | null {
 function setLastCreatedShapeId(shapeId: string): void {
   if (typeof window === 'undefined') return
   sessionStorage.setItem(STORAGE_KEY, shapeId)
+}
+
+// Layout utility functions
+interface LayoutOptions {
+  spacing?: number
+  alignment?: 'top' | 'center' | 'bottom'
+}
+
+function arrangeRow(
+  shapes: Rectangle[], 
+  startX: number, 
+  startY: number, 
+  options: LayoutOptions = {}
+): Rectangle[] {
+  const spacing = options.spacing ?? 20
+  const alignment = options.alignment ?? 'center'
+  
+  let currentX = startX
+  const maxHeight = Math.max(...shapes.map(s => s.height))
+  
+  return shapes.map(shape => {
+    let alignedY = startY
+    if (alignment === 'center') {
+      alignedY = startY + (maxHeight - shape.height) / 2
+    } else if (alignment === 'bottom') {
+      alignedY = startY + maxHeight - shape.height
+    }
+    
+    const positioned = {
+      ...shape,
+      x: currentX,
+      y: alignedY,
+      rotation: 0 // Reset rotation for clean layout
+    }
+    
+    currentX += shape.width + spacing
+    return positioned
+  })
+}
+
+function arrangeColumn(
+  shapes: Rectangle[], 
+  startX: number, 
+  startY: number, 
+  options: LayoutOptions = {}
+): Rectangle[] {
+  const spacing = options.spacing ?? 20
+  const alignment = options.alignment ?? 'center'
+  
+  let currentY = startY
+  const maxWidth = Math.max(...shapes.map(s => s.width))
+  
+  return shapes.map(shape => {
+    let alignedX = startX
+    if (alignment === 'center') {
+      alignedX = startX + (maxWidth - shape.width) / 2
+    } else if (alignment === 'bottom') {
+      // 'bottom' becomes 'right' for columns
+      alignedX = startX + maxWidth - shape.width
+    }
+    
+    const positioned = {
+      ...shape,
+      x: alignedX,
+      y: currentY,
+      rotation: 0
+    }
+    
+    currentY += shape.height + spacing
+    return positioned
+  })
+}
+
+function arrangeGrid(
+  shapes: Rectangle[], 
+  startX: number, 
+  startY: number,
+  rows?: number,
+  cols?: number,
+  options: LayoutOptions = {}
+): Rectangle[] {
+  const spacing = options.spacing ?? 20
+  const count = shapes.length
+  
+  // Auto-calculate grid dimensions to be roughly square
+  if (!rows && !cols) {
+    cols = Math.ceil(Math.sqrt(count))
+    rows = Math.ceil(count / cols)
+  } else if (!rows) {
+    rows = Math.ceil(count / cols!)
+  } else if (!cols) {
+    cols = Math.ceil(count / rows!)
+  }
+  
+  // Calculate cell sizes based on max width/height in each row/column
+  const cellWidth = Math.max(...shapes.map(s => s.width))
+  const cellHeight = Math.max(...shapes.map(s => s.height))
+  
+  return shapes.map((shape, index) => {
+    const row = Math.floor(index / cols!)
+    const col = index % cols!
+    
+    // Center shape within its grid cell
+    const cellX = startX + col * (cellWidth + spacing)
+    const cellY = startY + row * (cellHeight + spacing)
+    const centeredX = cellX + (cellWidth - shape.width) / 2
+    const centeredY = cellY + (cellHeight - shape.height) / 2
+    
+    return {
+      ...shape,
+      x: centeredX,
+      y: centeredY,
+      rotation: 0
+    }
+  })
 }
 
 export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): UseCanvasCommandsReturn {
@@ -42,6 +160,15 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
       // Handle create action
       if (action === 'create') {
         const count = parameters.count ?? 1
+        
+        // Validate max shapes for create-with-layout
+        if (parameters.layout && count > MAX_LAYOUT_SHAPES) {
+          return {
+            success: false,
+            error: `Cannot create more than ${MAX_LAYOUT_SHAPES} shapes with layout`,
+            details: `Requested: ${count} shapes. Maximum allowed: ${MAX_LAYOUT_SHAPES}`
+          }
+        }
         
         for (let i = 0; i < count; i++) {
           try {
@@ -81,6 +208,42 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
               } catch (defaultError) {
                 errors.push(`Failed to create ${target}: ${defaultError instanceof Error ? defaultError.message : 'Unknown error'}`)
               }
+            }
+          }
+        }
+        
+        // Apply layout if specified for create action
+        if (createdShapes.length > 1 && parameters.layout) {
+          const layoutType = parameters.layout
+          const startX = (-viewport.x + 400) / viewport.scale
+          const startY = (-viewport.y + 300) / viewport.scale
+          const spacing = parameters.spacing ?? 20
+          
+          // Get the shapes we just created
+          const shapesToArrange = rectangles.filter(r => createdShapes.includes(r.id))
+          
+          if (shapesToArrange.length > 0) {
+            // Apply layout
+            let arrangedShapes: Rectangle[]
+            if (layoutType === 'row') {
+              arrangedShapes = arrangeRow(shapesToArrange, startX, startY, { spacing })
+            } else if (layoutType === 'column') {
+              arrangedShapes = arrangeColumn(shapesToArrange, startX, startY, { spacing })
+            } else if (layoutType === 'grid') {
+              arrangedShapes = arrangeGrid(shapesToArrange, startX, startY, parameters.rows, parameters.cols, { spacing })
+            } else {
+              arrangedShapes = shapesToArrange
+            }
+            
+            // Update positions
+            try {
+              await Promise.all(
+                arrangedShapes.map(shape => 
+                  updateShape(shape.id, { x: shape.x, y: shape.y, rotation: 0 })
+                )
+              )
+            } catch (layoutError) {
+              errors.push(`Created shapes but failed to apply ${layoutType} layout: ${layoutError instanceof Error ? layoutError.message : 'Unknown error'}`)
             }
           }
         }
@@ -133,7 +296,83 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         }
       }
       
-      // TODO: Handle layout, complex actions in future epics
+      // Handle layout action
+      if (action === 'layout') {
+        // Determine which shapes to layout
+        const count = parameters.count ?? 5 // Default to 5 shapes
+        const layoutType = parameters.layout ?? 'row'
+        
+        // Enforce maximum shapes per layout
+        if (count > MAX_LAYOUT_SHAPES) {
+          return {
+            success: false,
+            error: `Cannot layout more than ${MAX_LAYOUT_SHAPES} shapes at once`,
+            details: `Requested: ${count} shapes. Maximum allowed: ${MAX_LAYOUT_SHAPES}`
+          }
+        }
+        
+        // Get last N shapes to layout
+        const shapesToLayout = rectangles.slice(-count)
+        
+        if (shapesToLayout.length === 0) {
+          return {
+            success: false,
+            error: 'No shapes available to layout. Please create shapes first.',
+            details: `Attempted to layout ${count} shapes but none exist`
+          }
+        }
+        
+        // Calculate starting position (center of viewport)
+        const startX = (-viewport.x + 400) / viewport.scale
+        const startY = (-viewport.y + 300) / viewport.scale
+        
+        // Apply layout based on type
+        let arrangedShapes: Rectangle[]
+        const spacing = parameters.spacing ?? 20
+        
+        if (layoutType === 'row') {
+          arrangedShapes = arrangeRow(shapesToLayout, startX, startY, { spacing })
+        } else if (layoutType === 'column') {
+          arrangedShapes = arrangeColumn(shapesToLayout, startX, startY, { spacing })
+        } else if (layoutType === 'grid') {
+          const rows = parameters.rows
+          const cols = parameters.cols
+          arrangedShapes = arrangeGrid(shapesToLayout, startX, startY, rows, cols, { spacing })
+        } else {
+          return {
+            success: false,
+            error: `Unsupported layout type: ${layoutType}`,
+            details: 'Supported layouts: row, column, grid'
+          }
+        }
+        
+        // Batch update all shapes
+        try {
+          await Promise.all(
+            arrangedShapes.map(shape => 
+              updateShape(shape.id, { 
+                x: shape.x, 
+                y: shape.y, 
+                rotation: shape.rotation 
+              })
+            )
+          )
+          
+          return {
+            success: true,
+            details: `Arranged ${arrangedShapes.length} shapes in ${layoutType} layout`,
+            createdShapes: []
+          }
+        } catch (error) {
+          return {
+            success: false,
+            error: 'Failed to apply layout',
+            details: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+      
+      // TODO: Handle complex actions in future epics
 
       const details = errors.length > 0 ? errors.join('; ') : undefined
       return { success: createdShapes.length > 0, error: errors.length > 0 ? errors.join('; ') : undefined, createdShapes, details }

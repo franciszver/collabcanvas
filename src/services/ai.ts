@@ -17,6 +17,9 @@ export interface CanvasAction {
     fontSize?: number
     layout?: 'grid' | 'row' | 'column'
     count?: number
+    spacing?: number // Gap between shapes in pixels for layouts
+    rows?: number // Grid rows (optional, auto-calculated if not provided)
+    cols?: number // Grid columns (optional, auto-calculated if not provided)
     fields?: string[]
     items?: string[]
   }

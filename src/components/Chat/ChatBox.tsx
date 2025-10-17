@@ -57,7 +57,12 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           
           if (response.data.action === 'create') {
             const createdCount = commandResult.createdShapes?.length || 0
-            aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
+            const hasLayout = response.data.parameters.layout
+            if (hasLayout) {
+              aiResponse = `✅ Created ${createdCount} ${response.data.target}(s) in ${hasLayout} layout`
+            } else {
+              aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
+            }
           } else if (response.data.action === 'manipulate') {
             // Parse manipulation details
             const params = response.data.parameters
@@ -69,6 +74,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             
             const actionText = actions.join(', ')
             aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
+          } else if (response.data.action === 'layout') {
+            const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
+            const layoutType = response.data.parameters.layout || 'row'
+            aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
           }
           
           if (commandResult.details) {
@@ -76,7 +85,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           }
           await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
         } else {
-          const actionText = response.data.action === 'create' ? 'create' : 'manipulate'
+          let actionText = 'create'
+          if (response.data.action === 'manipulate') actionText = 'manipulate'
+          else if (response.data.action === 'layout') actionText = 'layout'
           let aiResponse = `❌ Failed to ${actionText} shape: ${commandResult.error}`
           if (commandResult.details) {
             aiResponse += `\n\nDetails: ${commandResult.details}`

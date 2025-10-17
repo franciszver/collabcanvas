@@ -178,17 +178,17 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 5: Layout Commands (PR 5)
+## Epic 5: Layout Commands (PR 5) ✅ COMPLETED
 
-- [ ] **1. Implement layout utilities (row, column, grid).**  
+- [x] **1. Implement layout utilities (row, column, grid).**  
    **Prompt:**  
    *"Write utility functions `arrangeRow(shapes)`, `arrangeColumn(shapes)`, and `arrangeGrid(shapes, rows, cols)` that reposition shapes accordingly."*
 
-- [ ] **2. Add spacing/alignment logic.**  
+- [x] **2. Add spacing/alignment logic.**  
    **Prompt:**  
    *"Enhance layout utilities to evenly space shapes with configurable padding. Ensure deterministic positioning across clients."*
 
-- [ ] **3. Cap maximum shapes per layout command.**  
+- [x] **3. Cap maximum shapes per layout command.**  
    **Prompt:**  
    *"Add a safeguard so that layout commands cannot create or reposition more than 20 shapes at once."*
 
