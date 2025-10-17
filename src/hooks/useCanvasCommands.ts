@@ -473,7 +473,7 @@ async function createShapeFromCommand(
     const width = validateDimension(parameters.width) ?? 200
     const height = validateDimension(parameters.height) ?? 40
     // Use fontSize parameter if provided, otherwise calculate based on width
-    const fontSize = parameters.fontSize ? validateFontSize(parameters.fontSize) : Math.min(64, Math.max(8, Math.floor(width / 10)))
+    const fontSize = parameters.fontSize ? validateFontSize(parameters.fontSize) : Math.min(72, Math.max(8, Math.floor(width / 10)))
     return {
       id,
       type: 'text',
@@ -568,9 +568,9 @@ function validateDimension(dimension?: number): number | null {
     throw new Error(`Invalid dimension: ${dimension}`)
   }
   
-  // Enforce reasonable bounds
-  const min = 5
-  const max = 1000
+  // Enforce size constraints: minimum 10x10, maximum viewport size
+  const min = 10
+  const max = Math.min(window.innerWidth, window.innerHeight) // Limit to viewport size
   
   if (dimension < min || dimension > max) {
     throw new Error(`Dimension out of bounds (${min}-${max}): ${dimension}`)
@@ -586,9 +586,9 @@ function validateFontSize(fontSize?: number): number | null {
     throw new Error(`Invalid font size: ${fontSize}`)
   }
   
-  // Enforce reasonable font size bounds
+  // Enforce font size bounds: 8-72 as requested
   const min = 8
-  const max = 144
+  const max = 72
   
   if (fontSize < min || fontSize > max) {
     throw new Error(`Font size out of bounds (${min}-${max}): ${fontSize}`)

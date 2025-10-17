@@ -36,13 +36,13 @@ that describe canvas actions.
   "parameters": {
     "x": number (optional),
     "y": number (optional),
-    "width": number (optional),
-    "height": number (optional),
-    "radius": number (optional),
-    "rotation": number (optional),
-    "color": string (optional),
+    "width": number (optional, 10-1920px),
+    "height": number (optional, 10-1080px),
+    "radius": number (optional, 5-960px),
+    "rotation": number (optional, 0-360 degrees),
+    "color": string (optional, hex color or name),
     "text": string (optional),
-    "fontSize": number (optional),
+    "fontSize": number (optional, 8-72px),
     "layout": "grid" | "row" | "column" (optional),
     "count": number (optional),
     "fields": [string] (optional),
@@ -50,12 +50,36 @@ that describe canvas actions.
   }
 }
 
-Example valid response for "create a circle":
-{
+📏 SIZE CONSTRAINTS:
+- width/height: 10px minimum, viewport size maximum
+- radius: 5px minimum, half viewport size maximum  
+- fontSize: 8px minimum, 72px maximum
+- All dimensions are in pixels
+
+Example valid responses:
+"create a circle" → {
   "action": "create",
   "target": "circle",
   "parameters": {
     "radius": 50
+  }
+}
+
+"make a 200x300 rectangle" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "width": 200,
+    "height": 300
+  }
+}
+
+"create text with 24px font" → {
+  "action": "create",
+  "target": "text",
+  "parameters": {
+    "text": "Enter Text",
+    "fontSize": 24
   }
 }`;
 
