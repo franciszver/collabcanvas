@@ -29,3 +29,6 @@ coverage/
 # Generated types / cache
 *.tsbuildinfo
 .cache/
+
+# Firebase local cache and state
+.firebase/

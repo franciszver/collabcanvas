@@ -50,3 +50,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase local cache and state
+.firebase/
