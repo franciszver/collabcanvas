@@ -5,6 +5,7 @@ import { aiCanvasCommand, type CanvasAction } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import CommandsWindow from './CommandsWindow'
 import styles from './ChatBox.module.css'
 
 interface ChatBoxProps {
@@ -17,6 +18,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isAITyping, setIsAITyping] = useState(false)
   const [pendingCommand, setPendingCommand] = useState<CanvasAction | null>(null)
   const [isWaitingForColor, setIsWaitingForColor] = useState(false)
+  const [isCommandsOpen, setIsCommandsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
   const { messages, sendMessage, clearMessages } = useChatMessages()
@@ -240,6 +242,18 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     }
   }
 
+  const handleCommandSelect = (command: string) => {
+    setInputValue(command)
+    setIsCommandsOpen(false)
+    // Focus the input field
+    setTimeout(() => {
+      const inputField = document.querySelector(`.${styles.inputField}`) as HTMLInputElement
+      if (inputField) {
+        inputField.focus()
+      }
+    }, 100)
+  }
+
   if (!isOpen) {
     return (
       <button
@@ -263,6 +277,17 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           <h3 className={styles.headerTitle}>AI Assistant</h3>
         </div>
         <div className={styles.headerRight}>
+          <button
+            onClick={() => setIsCommandsOpen(true)}
+            className={styles.commandsButton}
+            aria-label="Show commands"
+            title="Show available commands"
+          >
+            <svg style={{ width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Commands
+          </button>
           {messages.length > 0 && (
             <button
               onClick={handleClearChat}
@@ -365,6 +390,13 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           </button>
         </div>
       </div>
+
+      {/* Commands Window */}
+      <CommandsWindow
+        isOpen={isCommandsOpen}
+        onClose={() => setIsCommandsOpen(false)}
+        onCommandSelect={handleCommandSelect}
+      />
     </div>
   )
 }

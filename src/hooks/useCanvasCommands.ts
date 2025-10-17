@@ -472,8 +472,54 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           }
         }
         
-        // Get last N shapes to layout
-        const shapesToLayout = rectangles.slice(-count)
+        // Select shapes based on selector or target
+        let shapesToLayout: Rectangle[] = []
+        
+        if (parameters.selector) {
+          const { color, shapeType } = parameters.selector
+          
+          if (color) {
+            // Select by color
+            shapesToLayout = selectShapesByColor(rectangles, color)
+            if (shapesToLayout.length === 0) {
+              return {
+                success: false,
+                error: `No shapes found with color "${color}". Try creating a shape with that color first.`,
+                details: 'Color selection returned no results'
+              }
+            }
+          } else if (shapeType) {
+            // Select by shape type
+            const mappedType = shapeType === 'rectangle' ? 'rect' : shapeType as any
+            shapesToLayout = rectangles.filter(shape => (shape.type || 'rect') === mappedType)
+            if (shapesToLayout.length === 0) {
+              return {
+                success: false,
+                error: `No ${shapeType} shapes found. Try creating some ${shapeType} shapes first.`,
+                details: 'Shape type selection returned no results'
+              }
+            }
+          }
+        } else if (target) {
+          // Select by target type
+          const mappedType = target === 'rectangle' ? 'rect' : target as any
+          shapesToLayout = rectangles.filter(shape => (shape.type || 'rect') === mappedType)
+          if (shapesToLayout.length === 0) {
+            return {
+              success: false,
+              error: `No ${target} shapes found. Try creating some ${target} shapes first.`,
+              details: 'Target type selection returned no results'
+            }
+          }
+        } else {
+          // Fallback: get last N shapes
+          shapesToLayout = rectangles.slice(-count)
+        }
+        
+        // Limit to requested count if we have more shapes than needed
+        if (shapesToLayout.length > count) {
+          shapesToLayout = shapesToLayout.slice(-count)
+        }
         
         if (shapesToLayout.length === 0) {
           return {
