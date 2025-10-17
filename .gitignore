@@ -52,4 +52,5 @@ dist-ssr
 *.sw?
 
 # Firebase local cache and state
-.firebase/
+.firebase/*
+.firebase/*hosting.*
