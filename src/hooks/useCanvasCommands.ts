@@ -115,13 +115,11 @@ function arrangeColumn(
 
 function arrangeGrid(
   shapes: Rectangle[], 
-  startX: number, 
-  startY: number,
+  viewport: { x: number; y: number; scale: number; width?: number; height?: number },
   rows?: number,
   cols?: number,
-  options: LayoutOptions = {}
+  _options: LayoutOptions = {}
 ): Rectangle[] {
-  const spacing = options.spacing ?? 20
   const count = shapes.length
   
   // Auto-calculate grid dimensions to be roughly square
@@ -134,19 +132,48 @@ function arrangeGrid(
     cols = Math.ceil(count / rows!)
   }
   
-  // Calculate cell sizes based on max width/height in each row/column
-  const cellWidth = Math.max(...shapes.map(s => s.width))
-  const cellHeight = Math.max(...shapes.map(s => s.height))
+  // Get viewport dimensions (default to 1920x1080 if not provided)
+  const viewportWidth = viewport.width ?? 1920
+  const viewportHeight = viewport.height ?? 1080
+  
+  // Calculate target area: middle 50% of viewport
+  const targetWidth = viewportWidth * 0.5
+  const targetHeight = viewportHeight * 0.5
+  
+  // Calculate total shape dimensions
+  const maxShapeWidth = Math.max(...shapes.map(s => s.width))
+  const maxShapeHeight = Math.max(...shapes.map(s => s.height))
+  
+  // Calculate total grid dimensions (including shapes)
+  const totalShapeWidth = cols! * maxShapeWidth
+  const totalShapeHeight = rows! * maxShapeHeight
+  
+  // Calculate spacing to fit in target area
+  const horizontalSpacing = cols! > 1 ? Math.max(10, (targetWidth - totalShapeWidth) / (cols! - 1)) : 0
+  const verticalSpacing = rows! > 1 ? Math.max(10, (targetHeight - totalShapeHeight) / (rows! - 1)) : 0
+  
+  // Use the smaller spacing to maintain square-like grid
+  const spacing = Math.min(horizontalSpacing, verticalSpacing)
+  
+  // Calculate total grid dimensions with spacing
+  const totalGridWidth = totalShapeWidth + (cols! - 1) * spacing
+  const totalGridHeight = totalShapeHeight + (rows! - 1) * spacing
+  
+  // Center the grid in the middle 50% of viewport
+  const startX = (viewportWidth - totalGridWidth) / 2
+  const startY = (viewportHeight - totalGridHeight) / 2
   
   return shapes.map((shape, index) => {
     const row = Math.floor(index / cols!)
     const col = index % cols!
     
+    // Calculate position with equal spacing
+    const cellX = startX + col * (maxShapeWidth + spacing)
+    const cellY = startY + row * (maxShapeHeight + spacing)
+    
     // Center shape within its grid cell
-    const cellX = startX + col * (cellWidth + spacing)
-    const cellY = startY + row * (cellHeight + spacing)
-    const centeredX = cellX + (cellWidth - shape.width) / 2
-    const centeredY = cellY + (cellHeight - shape.height) / 2
+    const centeredX = cellX + (maxShapeWidth - shape.width) / 2
+    const centeredY = cellY + (maxShapeHeight - shape.height) / 2
     
     return {
       ...shape,
@@ -249,7 +276,13 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             } else if (layoutType === 'column') {
               arrangedShapes = arrangeColumn(shapesToArrange, startX, startY, { spacing })
             } else if (layoutType === 'grid') {
-              arrangedShapes = arrangeGrid(shapesToArrange, startX, startY, parameters.rows, parameters.cols, { spacing })
+              // Use new grid algorithm with viewport dimensions
+              const viewportWithDims = {
+                ...viewport,
+                width: 1920, // Default viewport width
+                height: 1080 // Default viewport height
+              }
+              arrangedShapes = arrangeGrid(shapesToArrange, viewportWithDims, parameters.rows, parameters.cols, { spacing })
             } else {
               arrangedShapes = shapesToArrange
             }
@@ -546,7 +579,13 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         } else if (layoutType === 'grid') {
           const rows = parameters.rows
           const cols = parameters.cols
-          arrangedShapes = arrangeGrid(shapesToLayout, startX, startY, rows, cols, { spacing })
+          // Use new grid algorithm with viewport dimensions
+          const viewportWithDims = {
+            ...viewport,
+            width: 1920, // Default viewport width
+            height: 1080 // Default viewport height
+          }
+          arrangedShapes = arrangeGrid(shapesToLayout, viewportWithDims, rows, cols, { spacing })
         } else {
           return {
             success: false,
