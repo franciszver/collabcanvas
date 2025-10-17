@@ -1,5 +1,5 @@
 import './App.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
@@ -11,10 +11,27 @@ import ChatBox from './components/Chat/ChatBox'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
 import { PresenceProvider } from './contexts/PresenceContext'
+import { cleanupService } from './services/cleanup'
 
 function App() {
   const { user, isLoading } = useAuth()
   const [isChatOpen, setIsChatOpen] = useState(false)
+
+  // Initialize cleanup service when user is authenticated
+  useEffect(() => {
+    if (user) {
+      console.log('🧹 Starting cleanup service for authenticated user')
+      cleanupService.start()
+    } else {
+      console.log('🧹 Stopping cleanup service for unauthenticated user')
+      cleanupService.stop()
+    }
+
+    // Cleanup on unmount
+    return () => {
+      cleanupService.stop()
+    }
+  }, [user])
 
   console.log('📱 App: Current state - user:', user, 'isLoading:', isLoading)
 
@@ -24,7 +41,7 @@ function App() {
     <div>
       {!user ? (
         <>
-          <h1 style={{ marginBottom: 4 }}>Welcome to CollabCanvas</h1>
+          <h1 style={{ marginBottom: 4 }}>Welcome to Chatty Canvas</h1>
           <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 12 }}>v{APP_VERSION}</div>
           <SignInButton />
         </>
@@ -50,7 +67,7 @@ function App() {
                 }}
               >
                 <div>
-                  <h1 style={{ margin: 0 }}>Canvas</h1>
+                  <h1 style={{ margin: 0 }}>Chatty Canvas</h1>
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>v{APP_VERSION}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

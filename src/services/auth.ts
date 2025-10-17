@@ -9,7 +9,7 @@ import {
   GoogleAuthProvider,
   type User
 } from 'firebase/auth'
-import { setUserOfflineRtdb, removeUserPresenceRtdb } from './realtime'
+import { setUserOfflineRtdb, removeUserPresenceRtdb, markInactiveUsersRtdb, cleanupInactiveUsersRtdb } from './realtime'
 import type { AuthUserProfile } from '../types/user.types'
 
 function mapUser(user: User | null): AuthUserProfile | null {
@@ -76,12 +76,21 @@ export async function signOut(): Promise<void> {
       await setUserOfflineRtdb(currentUser.uid)
       // Then completely remove presence data
       await removeUserPresenceRtdb(currentUser.uid)
+      console.log('✅ User presence removed from RTDB on logout')
     } catch (err) {
       console.error('Failed to remove user presence on sign out:', err)
     }
   }
   
   await firebaseSignOut(auth)
+  
+  // Trigger cleanup of any other inactive users
+  try {
+    await markInactiveUsersRtdb(60000) // Mark users inactive after 60 seconds
+    await cleanupInactiveUsersRtdb(300000) // Remove users after 5 minutes
+  } catch (err) {
+    console.warn('Failed to cleanup inactive users on logout:', err)
+  }
 }
 
 export function onAuthStateChanged(

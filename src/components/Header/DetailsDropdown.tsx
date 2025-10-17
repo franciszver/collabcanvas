@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { generateRectId, getRandomColor, transformCanvasCoordinates } from '../../utils/helpers'
 
 export default function DetailsDropdown() {
-  const { onlineUsers, onlineCount } = usePresence()
+  const { onlineUsers, onlineCount, activeCount } = usePresence()
   const { rectangles, clearAllRectangles, isLoading, addRectangle, viewport } = useCanvas()
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
@@ -96,15 +96,32 @@ export default function DetailsDropdown() {
             gap: 8,
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Users ({onlineCount})</div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Users ({onlineCount}) - Active ({activeCount})</div>
           {onlineUsers.length === 0 ? (
             <div style={{ padding: '6px 4px', color: '#9CA3AF' }}>No one online</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
               {onlineUsers.map((u) => (
                 <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span aria-hidden style={{ width: 8, height: 8, background: '#10B981', borderRadius: 9999, display: 'inline-block' }} />
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name ?? 'Unknown'}</span>
+                  <span 
+                    aria-hidden 
+                    style={{ 
+                      width: 8, 
+                      height: 8, 
+                      background: u.isActive ? '#10B981' : '#F59E0B', 
+                      borderRadius: 9999, 
+                      display: 'inline-block' 
+                    }} 
+                  />
+                  <span style={{ 
+                    whiteSpace: 'nowrap', 
+                    overflow: 'hidden', 
+                    textOverflow: 'ellipsis',
+                    color: u.isActive ? '#F3F4F6' : '#9CA3AF'
+                  }}>
+                    {u.name ?? 'Unknown'}
+                    {!u.isActive && ' (inactive)'}
+                  </span>
                 </div>
               ))}
             </div>

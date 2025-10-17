@@ -8,6 +8,7 @@ export interface UserPresence {
   displayName: string | null
   cursor: CursorPosition | null
   updatedAt: number
+  isActive?: boolean
 }
 
 
