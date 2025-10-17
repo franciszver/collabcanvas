@@ -51,9 +51,10 @@ that describe canvas actions.
     "height": number (optional),
     "radius": number (optional),
     "rotation": number (degrees, optional),
-    "color": string (CSS color, optional),
-    "text": string (for text shapes, optional),
-    "layout": string ("grid" | "row" | "column", optional),
+        "color": string (CSS color, optional),
+        "text": string (for text shapes, optional),
+        "fontSize": number (for text shapes, optional),
+        "layout": string ("grid" | "row" | "column", optional),
     "count": number (for repeated elements, optional),
     "fields": array of strings (for forms, optional),
     "items": array of strings (for navbars, optional)

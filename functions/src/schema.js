@@ -22,6 +22,7 @@ const schema = {
         rotation: { type: "number" },
         color: { type: "string" },
         text: { type: "string" },
+        fontSize: { type: "number" },
         layout: { 
           type: "string",
           enum: ["grid", "row", "column"]

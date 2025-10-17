@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCanvas } from '../../contexts/CanvasContext'
 import { aiCanvasCommand } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
+import { useCanvasCommands } from '../../hooks/useCanvasCommands'
 
 interface ChatBoxProps {
   isOpen: boolean
@@ -19,6 +21,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     user?.id || '', 
     user?.displayName || 'User'
   )
+  const { selectedId } = useCanvas()
+  const documentId = selectedId || 'default-document'
+  const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,12 +47,30 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       // Call AI function
       const response = await aiCanvasCommand(messageContent)
       
-      // Send AI response to Firestore
-      const aiResponse = response.success 
-        ? `✅ Command processed: ${JSON.stringify(response.data, null, 2)}`
-        : `❌ ${response.error}`
+      if (response.success && response.data) {
+        // Apply the canvas command
+        const commandResult = await applyCanvasCommand(response.data)
+        
+        if (commandResult.success) {
+          const createdCount = commandResult.createdShapes?.length || 0
+          let aiResponse = `✅ Created ${createdCount} shape(s): ${response.data.target}`
+          if (commandResult.details) {
+            aiResponse += `\n\nDetails: ${commandResult.details}`
+          }
+          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          let aiResponse = `❌ Failed to create shape: ${commandResult.error}`
+          if (commandResult.details) {
+            aiResponse += `\n\nDetails: ${commandResult.details}`
+          }
+          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else {
+        // Send AI error response
+        const aiResponse = `❌ ${response.error}`
+        await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+      }
       
-      await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
       setIsAITyping(false)
     } catch (error) {
       console.error('Error sending message:', error)

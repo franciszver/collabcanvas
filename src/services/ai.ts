@@ -13,6 +13,7 @@ export interface CanvasAction {
     rotation?: number
     color?: string
     text?: string
+    fontSize?: number
     layout?: 'grid' | 'row' | 'column'
     count?: number
     fields?: string[]

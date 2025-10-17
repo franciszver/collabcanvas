@@ -106,23 +106,39 @@ The AI must respond with JSON matching this exact schema:
 
 ---
 
-## Epic 2: Command Parsing & Shape Creation (PR 2)
+## Epic 2: Command Parsing & Shape Creation (PR 2) ✅ COMPLETED
 
-- [ ] **1. Implement interpreter that maps JSON → canvas actions.**  
+- [x] **1. Implement interpreter that maps JSON → canvas actions.**  
    **Prompt:**  
    *"Write a function `applyCanvasCommand(command)` that takes a validated JSON object and applies it to the canvas (create, manipulate, layout, complex). Start with handling `create`."*
 
-- [ ] **2. Support shape creation: circle, rectangle, text.**  
+- [x] **2. Support shape creation: circle, rectangle, text.**  
    **Prompt:**  
    *"Extend `applyCanvasCommand` to support creating circles, rectangles, and text elements on the canvas. Each shape should have unique IDs and be stored in Firestore."*
 
-- [ ] **3. Add schema validation middleware.**  
+- [x] **3. Add schema validation middleware.**  
    **Prompt:**  
    *"Integrate AJV in the Firebase Function to validate AI responses against the JSON schema before returning them to the client."*
 
-- [ ] **4. Sync new shapes to Firestore shared state.**  
+- [x] **4. Sync new shapes to Firestore shared state.**  
    **Prompt:**  
    *"Update `applyCanvasCommand` so that when a shape is created, it writes to Firestore under a `shapes` collection. All clients should subscribe to this collection for real-time updates."*
+
+- [x] **5. Add fontSize parameter to AI schema.**  
+   **Prompt:**  
+   *"Add fontSize parameter to the JSON schema for text shapes, allowing AI to specify custom font sizes."*
+
+- [x] **6. Implement parameter error recovery.**  
+   **Prompt:**  
+   *"Enhance error handling to fix specific parameter issues (invalid colors, dimensions, etc.) before falling back to default values."*
+
+- [x] **7. Add cascade positioning for multiple shapes.**  
+   **Prompt:**  
+   *"Implement cascade positioning so that when multiple shapes are created, they don't overlap by offsetting each subsequent shape down and right."*
+
+- [x] **8. Support multiple shape creation from single command.**  
+   **Prompt:**  
+   *"Add support for creating multiple shapes from a single AI command using the count parameter."*
 
 ---
 
