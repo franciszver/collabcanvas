@@ -1,5 +1,5 @@
 "use strict";
-const { onCall } = require("firebase-functions/v2/https");
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { OpenAI } = require("openai");
 const Ajv = require("ajv");
@@ -60,23 +60,20 @@ async function checkRateLimit(userId) {
         return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS };
     }
 }
-exports.aiCanvasCommand = onCall(async (request) => {
-    var _a, _b;
+exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
+    var _a, _b, _c;
     try {
-        console.log('Received request:', JSON.stringify(request));
-        console.log('Request data:', JSON.stringify(request.data));
-        // In v2 callable functions, data is directly on request.data
-        const { prompt } = request.data || {};
-        const auth = request.auth;
+        console.log('Received data:', JSON.stringify(data));
+        console.log('Context auth:', context.auth);
+        const { prompt } = data;
         if (!prompt || typeof prompt !== 'string') {
             console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
-            console.error('Full request.data:', request.data);
-            throw new Error('Prompt is required and must be a string');
+            throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
         }
         // Check authentication
-        const userId = auth === null || auth === void 0 ? void 0 : auth.uid;
+        const userId = (_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid;
         if (!userId) {
-            throw new Error('User must be authenticated');
+            throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
         }
         // Check rate limit
         const rateLimit = await checkRateLimit(userId);
@@ -130,9 +127,9 @@ that describe canvas actions.
             max_tokens: 500,
             stream: false
         });
-        const response = (_b = (_a = completion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
+        const response = (_c = (_b = completion.choices[0]) === null || _b === void 0 ? void 0 : _b.message) === null || _c === void 0 ? void 0 : _c.content;
         if (!response) {
-            throw new Error('No response from OpenAI');
+            throw new functions.https.HttpsError('internal', 'No response from OpenAI');
         }
         // Try to parse the response as JSON
         let parsedResponse;
@@ -157,7 +154,10 @@ that describe canvas actions.
     }
     catch (error) {
         console.error('Error in aiCanvasCommand:', error);
-        throw error;
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', 'An error occurred processing your request');
     }
 });
 //# sourceMappingURL=index.js.map

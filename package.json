@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "firebase": "^11.10.0",
+    "firebase-functions": "^6.5.0",
     "konva": "^9.3.16",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

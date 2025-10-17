@@ -1,4 +1,4 @@
-const { onCall } = require("firebase-functions/v2/https");
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { OpenAI } = require("openai");
 const Ajv = require("ajv");
@@ -72,25 +72,22 @@ async function checkRateLimit(userId: string) {
   }
 }
 
-exports.aiCanvasCommand = onCall(async (request: any) => {
+exports.aiCanvasCommand = functions.https.onCall(async (data: any, context: any) => {
   try {
-    console.log('Received request:', JSON.stringify(request));
-    console.log('Request data:', JSON.stringify(request.data));
+    console.log('Received data:', JSON.stringify(data));
+    console.log('Context auth:', context.auth);
     
-    // In v2 callable functions, data is directly on request.data
-    const { prompt } = request.data || {};
-    const auth = request.auth;
+    const { prompt } = data;
 
     if (!prompt || typeof prompt !== 'string') {
       console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
-      console.error('Full request.data:', request.data);
-      throw new Error('Prompt is required and must be a string');
+      throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
     }
 
     // Check authentication
-    const userId = auth?.uid;
+    const userId = context.auth?.uid;
     if (!userId) {
-      throw new Error('User must be authenticated');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
     // Check rate limit
@@ -151,7 +148,7 @@ that describe canvas actions.
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      throw new Error('No response from OpenAI');
+      throw new functions.https.HttpsError('internal', 'No response from OpenAI');
     }
 
     // Try to parse the response as JSON
@@ -179,6 +176,11 @@ that describe canvas actions.
 
   } catch (error) {
     console.error('Error in aiCanvasCommand:', error);
-    throw error;
+    
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    
+    throw new functions.https.HttpsError('internal', 'An error occurred processing your request');
   }
 });
