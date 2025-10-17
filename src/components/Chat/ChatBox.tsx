@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCanvas } from '../../contexts/CanvasContext'
-import { aiCanvasCommand } from '../../services/ai'
+import { aiCanvasCommand, type CanvasAction } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
@@ -15,6 +15,8 @@ interface ChatBoxProps {
 export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [inputValue, setInputValue] = useState('')
   const [isAITyping, setIsAITyping] = useState(false)
+  const [pendingCommand, setPendingCommand] = useState<CanvasAction | null>(null)
+  const [isWaitingForColor, setIsWaitingForColor] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
   const { messages, sendMessage, clearMessages } = useChatMessages()
@@ -28,6 +30,51 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Function to extract color from user message
+  const extractColorFromMessage = (message: string): string | null => {
+    const messageLower = message.toLowerCase().trim()
+    
+    // Map of color names to CSS colors
+    const colorMap: Record<string, string> = {
+      'red': '#EF4444',
+      'orange': '#F97316', 
+      'yellow': '#EAB308',
+      'green': '#22C55E',
+      'blue': '#3B82F6',
+      'indigo': '#6366F1',
+      'violet': '#8B5CF6',
+      'purple': '#8B5CF6', // alias for violet
+      'pink': '#EC4899',
+      'brown': '#A3A3A3',
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'gray': '#6B7280',
+      'grey': '#6B7280' // alias for gray
+    }
+    
+    // Check for exact color name matches
+    for (const [colorName, cssColor] of Object.entries(colorMap)) {
+      if (messageLower === colorName) {
+        return cssColor
+      }
+    }
+    
+    // Check for color names within the message
+    for (const [colorName, cssColor] of Object.entries(colorMap)) {
+      if (messageLower.includes(colorName)) {
+        return cssColor
+      }
+    }
+    
+    // Check for hex color codes
+    const hexMatch = message.match(/#[0-9A-Fa-f]{6}/)
+    if (hexMatch) {
+      return hexMatch[0]
+    }
+    
+    return null
   }
 
   useEffect(() => {
@@ -45,59 +92,110 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       // Send user message to Firestore
       await sendMessage(messageContent, user.id, user.displayName || 'User', 'user')
 
-      // Call AI function
-      const response = await aiCanvasCommand(messageContent)
-      
-      if (response.success && response.data) {
-        // Apply the canvas command
-        const commandResult = await applyCanvasCommand(response.data)
-        
-        if (commandResult.success) {
-          let aiResponse = ''
-          
-          if (response.data.action === 'create') {
-            const createdCount = commandResult.createdShapes?.length || 0
-            const hasLayout = response.data.parameters.layout
-            if (hasLayout) {
-              aiResponse = `✅ Created ${createdCount} ${response.data.target}(s) in ${hasLayout} layout`
-            } else {
-              aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
+      // If we're waiting for a color response, handle it
+      if (isWaitingForColor && pendingCommand) {
+        const color = extractColorFromMessage(messageContent)
+        if (color) {
+          // Update the pending command with the color
+          const updatedCommand = {
+            ...pendingCommand,
+            parameters: {
+              ...pendingCommand.parameters,
+              color: color
             }
-          } else if (response.data.action === 'manipulate') {
-            // Parse manipulation details
-            const params = response.data.parameters
-            const actions: string[] = []
-            if (params.x !== undefined || params.y !== undefined) actions.push('moved')
-            if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
-            if (params.rotation !== undefined) actions.push('rotated')
-            if (params.color !== undefined) actions.push('recolored')
-            
-            const actionText = actions.join(', ')
-            aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
-          } else if (response.data.action === 'layout') {
-            const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
-            const layoutType = response.data.parameters.layout || 'row'
-            aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
           }
           
-          if (commandResult.details) {
-            aiResponse += `\n\nDetails: ${commandResult.details}`
+          // Apply the canvas command with the color
+          const commandResult = await applyCanvasCommand(updatedCommand)
+          
+          if (commandResult.success) {
+            const createdCount = commandResult.createdShapes?.length || 0
+            const hasLayout = updatedCommand.parameters.layout
+            let aiResponse = ''
+            if (hasLayout) {
+              aiResponse = `✅ Created ${createdCount} ${updatedCommand.target}(s) in ${hasLayout} layout with ${color} color`
+            } else {
+              aiResponse = `✅ Created ${createdCount} ${updatedCommand.target}(s) with ${color} color`
+            }
+            await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, 'ai', 'AI Assistant', 'assistant')
           }
-          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+          
+          // Reset state
+          setPendingCommand(null)
+          setIsWaitingForColor(false)
         } else {
-          let actionText = 'create'
-          if (response.data.action === 'manipulate') actionText = 'manipulate'
-          else if (response.data.action === 'layout') actionText = 'layout'
-          let aiResponse = `❌ Failed to ${actionText} shape: ${commandResult.error}`
-          if (commandResult.details) {
-            aiResponse += `\n\nDetails: ${commandResult.details}`
-          }
-          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+          // Invalid color, ask again with examples
+          const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+          await sendMessage(`I didn't understand that color. Please choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
         }
       } else {
-        // Send AI error response
-        const aiResponse = `❌ ${response.error}`
-        await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+        // Normal AI command processing
+        const response = await aiCanvasCommand(messageContent)
+        
+        if (response.success && response.data) {
+          // Check if this is a create command without color
+          if (response.data.action === 'create' && !response.data.parameters.color) {
+            // Ask for color clarification
+            const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+            await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+            
+            // Store the pending command and wait for color response
+            setPendingCommand(response.data)
+            setIsWaitingForColor(true)
+          } else {
+            // Apply the canvas command normally
+            const commandResult = await applyCanvasCommand(response.data)
+            
+            if (commandResult.success) {
+              let aiResponse = ''
+              
+              if (response.data.action === 'create') {
+                const createdCount = commandResult.createdShapes?.length || 0
+                const hasLayout = response.data.parameters.layout
+                if (hasLayout) {
+                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s) in ${hasLayout} layout`
+                } else {
+                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
+                }
+              } else if (response.data.action === 'manipulate') {
+                // Parse manipulation details
+                const params = response.data.parameters
+                const actions: string[] = []
+                if (params.x !== undefined || params.y !== undefined) actions.push('moved')
+                if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
+                if (params.rotation !== undefined) actions.push('rotated')
+                if (params.color !== undefined) actions.push('recolored')
+                
+                const actionText = actions.join(', ')
+                aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
+              } else if (response.data.action === 'layout') {
+                const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
+                const layoutType = response.data.parameters.layout || 'row'
+                aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
+              }
+              
+              if (commandResult.details) {
+                aiResponse += `\n\nDetails: ${commandResult.details}`
+              }
+              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            } else {
+              let actionText = 'create'
+              if (response.data.action === 'manipulate') actionText = 'manipulate'
+              else if (response.data.action === 'layout') actionText = 'layout'
+              let aiResponse = `❌ Failed to ${actionText} shape: ${commandResult.error}`
+              if (commandResult.details) {
+                aiResponse += `\n\nDetails: ${commandResult.details}`
+              }
+              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            }
+          }
+        } else {
+          // Send AI error response
+          const aiResponse = `❌ ${response.error}`
+          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+        }
       }
       
       setIsAITyping(false)
@@ -254,7 +352,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyPress={handleKeyPress}
-            placeholder="Ask me to create shapes..."
+            placeholder={isWaitingForColor ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" : "Ask me to create shapes..."}
             className={styles.inputField}
             disabled={isAITyping}
           />

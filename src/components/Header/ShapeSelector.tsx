@@ -12,17 +12,20 @@ const SHAPES = [
 ] as const
 
 export default function ShapeSelector() {
-  const { rectangles, addRectangle } = useCanvas()
+  const { addRectangle, viewport } = useCanvas()
   const [busy, setBusy] = useState(false)
   const [color, setColor] = useState<string>('#60A5FA')
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const computePosition = () => {
-    const index = rectangles.length % 10
-    const baseX = 20
-    const baseY = 80
-    return { x: baseX + index * 50, y: baseY + index * 50 }
+    // Calculate center of viewport in workspace coordinates
+    const screenCenterX = window.innerWidth / 2
+    const screenCenterY = window.innerHeight / 2
+    const workspaceX = (screenCenterX - viewport.x) / viewport.scale
+    const workspaceY = (screenCenterY - viewport.y) / viewport.scale
+    
+    return { x: workspaceX, y: workspaceY }
   }
 
   // Close menu when clicking outside or pressing Escape
