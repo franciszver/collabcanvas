@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, writeBatch, doc } from 'firebase/firestore'
 import { getFirestore } from 'firebase/firestore'
 import { getFirebaseApp } from '../services/firebase'
 
@@ -64,9 +64,30 @@ export function useChatMessages() {
     }
   }
 
+  const clearMessages = async () => {
+    try {
+      const db = getFirestore(getFirebaseApp())
+      const messagesRef = collection(db, 'chatMessages')
+      const q = query(messagesRef)
+      
+      const snapshot = await getDocs(q)
+      const batch = writeBatch(db)
+      
+      snapshot.docs.forEach((docSnapshot) => {
+        batch.delete(doc(db, 'chatMessages', docSnapshot.id))
+      })
+      
+      await batch.commit()
+    } catch (error) {
+      console.error('Error clearing messages:', error)
+      throw error
+    }
+  }
+
   return {
     messages,
     isLoading,
-    sendMessage
+    sendMessage,
+    clearMessages
   }
 }

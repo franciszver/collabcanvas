@@ -6,21 +6,9 @@ const schema = require("./schema");
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
 
-// Initialize OpenAI (lazy initialization)
-let client = null;
-
-function getOpenAI() {
-  if (!client) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-    client = new OpenAI({ apiKey });
-  }
-  return client;
-}
-
-exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
+exports.aiCanvasCommand = functions
+  .runWith({ secrets: ["OPENAI_API_KEY"] })
+  .https.onCall(async (data, context) => {
   try {
     const { prompt } = data;
 
@@ -61,7 +49,13 @@ that describe canvas actions.
   }
 }`;
 
-    const openaiClient = getOpenAI();
+    // Initialize OpenAI client with the secret
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new functions.https.HttpsError('internal', 'OPENAI_API_KEY is not configured');
+    }
+    
+    const openaiClient = new OpenAI({ apiKey });
     const completion = await openaiClient.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [

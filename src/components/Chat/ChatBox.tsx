@@ -17,7 +17,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isAITyping, setIsAITyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
-  const { messages, sendMessage } = useChatMessages()
+  const { messages, sendMessage, clearMessages } = useChatMessages()
   const { typingUsers, setUserTyping } = useTypingIndicator(
     user?.id || '', 
     user?.displayName || 'User'
@@ -130,6 +130,18 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     }
   }
 
+  const handleClearChat = async () => {
+    if (!user) return
+    
+    try {
+      await clearMessages()
+    } catch (error) {
+      console.error('Error clearing chat:', error)
+      // Show error message to user
+      await sendMessage('❌ Failed to clear chat. Please try again.', 'ai', 'AI Assistant', 'assistant')
+    }
+  }
+
   if (!isOpen) {
     return (
       <button
@@ -152,15 +164,29 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           <div className={styles.statusIndicator}></div>
           <h3 className={styles.headerTitle}>AI Assistant</h3>
         </div>
-        <button
-          onClick={onToggle}
-          className={styles.closeButton}
-          aria-label="Close chat"
-        >
-          <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className={styles.headerRight}>
+          {messages.length > 0 && (
+            <button
+              onClick={handleClearChat}
+              className={styles.clearButton}
+              aria-label="Clear chat"
+              title="Clear chat history"
+            >
+              <svg style={{ width: '1rem', height: '1rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={onToggle}
+            className={styles.closeButton}
+            aria-label="Close chat"
+          >
+            <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

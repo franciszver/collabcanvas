@@ -12,10 +12,6 @@ if (!admin.apps.length) {
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 // Rate limiting constants
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -72,17 +68,34 @@ async function checkRateLimit(userId: string) {
   }
 }
 
-exports.aiCanvasCommand = functions.https.onCall(async (data: any, context: any) => {
+exports.aiCanvasCommand = functions
+  .runWith({ secrets: ["OPENAI_API_KEY"] })
+  .https.onCall(async (data: any, context: any) => {
   try {
-    console.log('Received data:', JSON.stringify(data));
+    console.log('=== GEN 1 FUNCTION CALLED ===');
+    console.log('Full data:', JSON.stringify(data));
+    console.log('Type of data:', typeof data);
+    console.log('Data keys:', Object.keys(data || {}));
     console.log('Context auth:', context.auth);
+    console.log('Context auth uid:', context.auth?.uid);
     
+    // In Gen 1, data comes directly as the first parameter
     const { prompt } = data;
+    
+    console.log('Extracted prompt:', prompt);
+    console.log('Prompt type:', typeof prompt);
+    console.log('Prompt is truthy?', !!prompt);
+    console.log('Prompt is string?', typeof prompt === 'string');
 
     if (!prompt || typeof prompt !== 'string') {
-      console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
+      console.error('VALIDATION FAILED!');
+      console.error('Invalid prompt:', prompt);
+      console.error('Type:', typeof prompt);
+      console.error('Full data structure:', JSON.stringify(data, null, 2));
       throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
     }
+    
+    console.log('Prompt validation PASSED!');
 
     // Check authentication
     const userId = context.auth?.uid;
@@ -98,6 +111,21 @@ exports.aiCanvasCommand = functions.https.onCall(async (data: any, context: any)
         details: 'You can send up to 5 AI commands every 10 seconds.'
       };
     }
+    
+    // Initialize OpenAI client with the secret
+    console.log('Attempting to access OpenAI API key...');
+    console.log('process.env.OPENAI_API_KEY exists?', !!process.env.OPENAI_API_KEY);
+    
+    const apiKey = process.env.OPENAI_API_KEY;
+    console.log('Got API key from env (length):', apiKey?.length);
+    
+    if (!apiKey) {
+      throw new functions.https.HttpsError('internal', 'OPENAI_API_KEY is not configured');
+    }
+    
+    const client = new OpenAI({
+      apiKey: apiKey
+    });
 
     // System prompt to restrict AI to JSON schema
     const systemPrompt = `You are an AI Canvas Agent integrated into a collaborative drawing application. 

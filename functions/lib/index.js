@@ -10,9 +10,6 @@ if (!admin.apps.length) {
 }
 const ajv = new Ajv();
 const validate = ajv.compile(schema);
-const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
 // Rate limiting constants
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -60,18 +57,33 @@ async function checkRateLimit(userId) {
         return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS };
     }
 }
-exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
-    var _a, _b, _c;
+exports.aiCanvasCommand = functions
+    .runWith({ secrets: ["OPENAI_API_KEY"] })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c, _d;
     try {
-        console.log('Received data:', JSON.stringify(data));
+        console.log('=== GEN 1 FUNCTION CALLED ===');
+        console.log('Full data:', JSON.stringify(data));
+        console.log('Type of data:', typeof data);
+        console.log('Data keys:', Object.keys(data || {}));
         console.log('Context auth:', context.auth);
+        console.log('Context auth uid:', (_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid);
+        // In Gen 1, data comes directly as the first parameter
         const { prompt } = data;
+        console.log('Extracted prompt:', prompt);
+        console.log('Prompt type:', typeof prompt);
+        console.log('Prompt is truthy?', !!prompt);
+        console.log('Prompt is string?', typeof prompt === 'string');
         if (!prompt || typeof prompt !== 'string') {
-            console.error('Invalid prompt:', prompt, 'Type:', typeof prompt);
+            console.error('VALIDATION FAILED!');
+            console.error('Invalid prompt:', prompt);
+            console.error('Type:', typeof prompt);
+            console.error('Full data structure:', JSON.stringify(data, null, 2));
             throw new functions.https.HttpsError('invalid-argument', 'Prompt is required and must be a string');
         }
+        console.log('Prompt validation PASSED!');
         // Check authentication
-        const userId = (_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid;
+        const userId = (_b = context.auth) === null || _b === void 0 ? void 0 : _b.uid;
         if (!userId) {
             throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
         }
@@ -83,6 +95,17 @@ exports.aiCanvasCommand = functions.https.onCall(async (data, context) => {
                 details: 'You can send up to 5 AI commands every 10 seconds.'
             };
         }
+        // Initialize OpenAI client with the secret
+        console.log('Attempting to access OpenAI API key...');
+        console.log('process.env.OPENAI_API_KEY exists?', !!process.env.OPENAI_API_KEY);
+        const apiKey = process.env.OPENAI_API_KEY;
+        console.log('Got API key from env (length):', apiKey === null || apiKey === void 0 ? void 0 : apiKey.length);
+        if (!apiKey) {
+            throw new functions.https.HttpsError('internal', 'OPENAI_API_KEY is not configured');
+        }
+        const client = new OpenAI({
+            apiKey: apiKey
+        });
         // System prompt to restrict AI to JSON schema
         const systemPrompt = `You are an AI Canvas Agent integrated into a collaborative drawing application. 
 Your ONLY purpose is to translate natural language user commands into JSON objects 
@@ -127,7 +150,7 @@ that describe canvas actions.
             max_tokens: 500,
             stream: false
         });
-        const response = (_c = (_b = completion.choices[0]) === null || _b === void 0 ? void 0 : _b.message) === null || _c === void 0 ? void 0 : _c.content;
+        const response = (_d = (_c = completion.choices[0]) === null || _c === void 0 ? void 0 : _c.message) === null || _d === void 0 ? void 0 : _d.content;
         if (!response) {
             throw new functions.https.HttpsError('internal', 'No response from OpenAI');
         }

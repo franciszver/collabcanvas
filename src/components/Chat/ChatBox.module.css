@@ -53,6 +53,12 @@
   gap: 0.5rem;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .statusIndicator {
   width: 0.75rem;
   height: 0.75rem;
@@ -63,6 +69,21 @@
 .headerTitle {
   font-weight: 600;
   color: #1f2937;
+}
+
+.clearButton {
+  color: #6b7280;
+  transition: color 0.15s ease-in-out;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.clearButton:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
 }
 
 .closeButton {
