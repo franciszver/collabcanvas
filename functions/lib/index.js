@@ -153,15 +153,34 @@ that describe canvas actions.
 ⚠️ WRONG: { "action": "create", "target": "form", ... }
 ✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login" } }
 
-🔄 SHAPE ROTATION:
-- To rotate a shape, use action="manipulate" with rotation parameters
-- For specific shapes: Use selector with shapeNumber and shapeType (e.g., "circle #1", "rectangle #2")
+🔄 SHAPE MANIPULATION (ROTATION, MOVEMENT):
+- To manipulate a shape, use action="manipulate"
+- CRITICAL: When user specifies "#N" (like "#1", "#2"), ALWAYS include selector with shapeNumber and shapeType
+- For "shape #N" format: Extract number after # and use as shapeNumber
 - Rotation options:
   * rotation: absolute angle in degrees (0-360)
   * rotationDegrees + relativeRotation: true → rotate by X degrees from current angle
-  * rotationDirection: "right" (90°), "left" (-90°), "flip" (180°), "clockwise" (45°), "counterclockwise" (-45°)
+  * rotationDirection: "right" (90°), "left" (-90°), "flip" (180°)
 
 Example valid responses:
+"rotate rectangle #1 90 degrees" → {
+  "action": "manipulate",
+  "target": "rectangle",
+  "parameters": {
+    "selector": { "shapeNumber": 1, "shapeType": "rectangle" },
+    "rotation": 90
+  }
+}
+
+"rotate rectangle #1 to 90 degrees" → {
+  "action": "manipulate",
+  "target": "rectangle",
+  "parameters": {
+    "selector": { "shapeNumber": 1, "shapeType": "rectangle" },
+    "rotation": 90
+  }
+}
+
 "rotate circle #1 by 45 degrees" → {
   "action": "manipulate",
   "target": "circle",
@@ -172,11 +191,13 @@ Example valid responses:
   }
 }
 
-"rotate the rectangle to 90 degrees" → {
+"move circle #2 to x:100 y:200" → {
   "action": "manipulate",
-  "target": "rectangle",
+  "target": "circle",
   "parameters": {
-    "rotation": 90
+    "selector": { "shapeNumber": 2, "shapeType": "circle" },
+    "x": 100,
+    "y": 200
   }
 }
 
