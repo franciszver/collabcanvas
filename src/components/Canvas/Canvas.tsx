@@ -492,7 +492,7 @@ export default function Canvas() {
                 y={baseY}
                 width={r.width}
                 height={r.height}
-                text={r.text || 'Enter Text'}
+                text={r.text ?? ''}
                 fontSize={r.fontSize || 64}
                 fill={r.fill}
                 rotation={r.rotation || 0}
@@ -716,10 +716,10 @@ export default function Canvas() {
                 <label style={{ fontSize: 12, color: '#9CA3AF' }}>Text:</label>
                 <input
                   type="text"
-                  value={sel.text || 'Enter Text'}
+                  value={sel.text ?? ''}
                   onChange={(e) => {
                     const newText = e.target.value
-                    const dimensions = measureTextDimensions(newText, sel.fontSize || 64)
+                    const dimensions = measureTextDimensions(newText || ' ', sel.fontSize || 64)
                     updateRectangle(sel.id, { text: newText, width: dimensions.width, height: dimensions.height })
                   }}
                   placeholder="Enter text..."
@@ -747,7 +747,7 @@ export default function Canvas() {
                     value={sel.fontSize || 64}
                     onChange={(e) => {
                       const size = Math.max(8, Math.min(144, parseInt(e.target.value) || 64));
-                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', size);
+                      const dimensions = measureTextDimensions(sel.text || ' ', size);
                       updateRectangle(sel.id, { fontSize: size, width: dimensions.width, height: dimensions.height });
                     }}
                     style={{
@@ -766,7 +766,7 @@ export default function Canvas() {
                       onClick={(e) => { 
                         e.stopPropagation();
                         const newSize = Math.min(144, (sel.fontSize || 64) + 2);
-                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize);
+                        const dimensions = measureTextDimensions(sel.text || ' ', newSize);
                         updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
                       }}
                       title="Increase font size"
@@ -792,7 +792,7 @@ export default function Canvas() {
                       onClick={(e) => { 
                         e.stopPropagation();
                         const newSize = Math.max(8, (sel.fontSize || 64) - 2);
-                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize);
+                        const dimensions = measureTextDimensions(sel.text || ' ', newSize);
                         updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
                       }}
                       title="Decrease font size"
