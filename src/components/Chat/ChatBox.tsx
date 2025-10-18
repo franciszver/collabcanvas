@@ -173,7 +173,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 const actions: string[] = []
                 if (params.x !== undefined || params.y !== undefined) actions.push('moved')
                 if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
-                if (params.rotation !== undefined) actions.push('rotated')
+                if (params.rotation !== undefined || params.rotationDegrees !== undefined || params.rotationDirection !== undefined) actions.push('rotated')
                 if (params.color !== undefined) actions.push('recolored')
                 
                 const actionText = actions.join(', ')

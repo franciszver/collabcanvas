@@ -153,7 +153,42 @@ that describe canvas actions.
 ⚠️ WRONG: { "action": "create", "target": "form", ... }
 ✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login" } }
 
+🔄 SHAPE ROTATION:
+- To rotate a shape, use action="manipulate" with rotation parameters
+- For specific shapes: Use selector with shapeNumber and shapeType (e.g., "circle #1", "rectangle #2")
+- Rotation options:
+  * rotation: absolute angle in degrees (0-360)
+  * rotationDegrees + relativeRotation: true → rotate by X degrees from current angle
+  * rotationDirection: "right" (90°), "left" (-90°), "flip" (180°), "clockwise" (45°), "counterclockwise" (-45°)
+
 Example valid responses:
+"rotate circle #1 by 45 degrees" → {
+  "action": "manipulate",
+  "target": "circle",
+  "parameters": {
+    "selector": { "shapeNumber": 1, "shapeType": "circle" },
+    "rotationDegrees": 45,
+    "relativeRotation": true
+  }
+}
+
+"rotate the rectangle to 90 degrees" → {
+  "action": "manipulate",
+  "target": "rectangle",
+  "parameters": {
+    "rotation": 90
+  }
+}
+
+"flip circle #2" → {
+  "action": "manipulate",
+  "target": "circle",
+  "parameters": {
+    "selector": { "shapeNumber": 2, "shapeType": "circle" },
+    "rotationDirection": "flip"
+  }
+}
+
 "create a login form" → {
   "action": "complex",
   "target": "form",
