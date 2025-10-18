@@ -36,8 +36,6 @@ export interface ShapeDocument {
   fontSize?: number
   fontFamily?: string
   textAlign?: 'left' | 'center' | 'right'
-  fontWeight?: 'normal' | 'bold'
-  textDecoration?: 'none' | 'line-through'
   createdBy: string
   createdAt: any // Firestore Timestamp
   updatedBy: string

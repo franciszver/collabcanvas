@@ -842,9 +842,7 @@ async function createShapeFromCommand(
       rotation,
       z: 0,
       text: parameters.text ?? 'Enter Text',
-      fontSize: fontSize ?? 16,
-      fontWeight: 'normal',
-      textDecoration: 'none'
+      fontSize: fontSize ?? 16
     }
   } else if (target === 'triangle') {
     const width = validateDimension(parameters.width) ?? 100

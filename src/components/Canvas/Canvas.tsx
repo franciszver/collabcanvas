@@ -13,13 +13,13 @@ import { useCursorSync } from '../../hooks/useCursorSync'
 import { calculateShapeNumbers, getShapeTypeName } from '../../utils/helpers'
 
 // Helper to calculate text dimensions for auto-resize
-function measureTextDimensions(text: string, fontSize: number, fontWeight: 'normal' | 'bold' = 'normal'): { width: number; height: number } {
+function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
   // Create a temporary canvas to measure text
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
   if (!context) return { width: 200, height: 40 }
   
-  context.font = `${fontWeight} ${fontSize}px Arial`
+  context.font = `${fontSize}px Arial`
   const metrics = context.measureText(text)
   
   // Add padding (16px total: 8px per side)
@@ -492,8 +492,6 @@ export default function Canvas() {
                 height={r.height}
                 text={r.text || 'Enter Text'}
                 fontSize={r.fontSize || 64}
-                fontStyle={r.fontWeight === 'bold' ? 'bold' : 'normal'}
-                textDecoration={r.textDecoration === 'line-through' ? 'line-through' : ''}
                 fill={r.fill}
                 rotation={r.rotation || 0}
                 align="left"
@@ -682,7 +680,7 @@ export default function Canvas() {
                   value={sel.text || 'Enter Text'}
                   onChange={(e) => {
                     const newText = e.target.value
-                    const dimensions = measureTextDimensions(newText, sel.fontSize || 64, sel.fontWeight)
+                    const dimensions = measureTextDimensions(newText, sel.fontSize || 64)
                     updateRectangle(sel.id, { text: newText, width: dimensions.width, height: dimensions.height })
                   }}
                   placeholder="Enter text..."
@@ -710,7 +708,7 @@ export default function Canvas() {
                     value={sel.fontSize || 64}
                     onChange={(e) => {
                       const size = Math.max(8, Math.min(144, parseInt(e.target.value) || 64));
-                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', size, sel.fontWeight);
+                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', size);
                       updateRectangle(sel.id, { fontSize: size, width: dimensions.width, height: dimensions.height });
                     }}
                     style={{
@@ -729,7 +727,7 @@ export default function Canvas() {
                       onClick={(e) => { 
                         e.stopPropagation();
                         const newSize = Math.min(144, (sel.fontSize || 64) + 2);
-                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize, sel.fontWeight);
+                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize);
                         updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
                       }}
                       title="Increase font size"
@@ -756,7 +754,7 @@ export default function Canvas() {
                       onClick={(e) => { 
                         e.stopPropagation();
                         const newSize = Math.max(8, (sel.fontSize || 64) - 2);
-                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize, sel.fontWeight);
+                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize);
                         updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
                       }}
                       title="Decrease font size"
@@ -780,58 +778,6 @@ export default function Canvas() {
                       ▼
                     </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Text Formatting Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Style:</label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      const newWeight = sel.fontWeight === 'bold' ? 'normal' : 'bold';
-                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', sel.fontSize || 64, newWeight);
-                      updateRectangle(sel.id, { fontWeight: newWeight, width: dimensions.width, height: dimensions.height });
-                    }}
-                    title="Toggle bold"
-                    aria-label="Toggle bold"
-                    style={{
-                      background: sel.fontWeight === 'bold' ? '#065F46' : '#111827',
-                      color: sel.fontWeight === 'bold' ? '#D1FAE5' : '#E5E7EB',
-                      border: sel.fontWeight === 'bold' ? '1px solid #10B981' : '1px solid #374151',
-                      borderRadius: 6,
-                      padding: '6px 12px',
-                      cursor: 'pointer',
-                      flex: 1,
-                      fontSize: 14,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    B
-                  </button>
-                  <button
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      const newDecoration = sel.textDecoration === 'line-through' ? 'none' : 'line-through';
-                      updateRectangle(sel.id, { textDecoration: newDecoration });
-                    }}
-                    title="Toggle strikethrough"
-                    aria-label="Toggle strikethrough"
-                    style={{
-                      background: sel.textDecoration === 'line-through' ? '#065F46' : '#111827',
-                      color: sel.textDecoration === 'line-through' ? '#D1FAE5' : '#E5E7EB',
-                      border: sel.textDecoration === 'line-through' ? '1px solid #10B981' : '1px solid #374151',
-                      borderRadius: 6,
-                      padding: '6px 12px',
-                      cursor: 'pointer',
-                      flex: 1,
-                      fontSize: 14,
-                      textDecoration: 'line-through'
-                    }}
-                  >
-                    S
-                  </button>
                 </div>
               </div>
             </>
