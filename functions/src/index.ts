@@ -136,6 +136,8 @@ that describe canvas actions.
 - Always respond ONLY with valid JSON.
 - Never include explanations, free text, or commentary.
 - The JSON must strictly follow the schema below.
+- NEVER perform mathematical calculations or arithmetic.
+- When you see "XxY" patterns, treat them as "X by Y" (dimensions), not multiplication.
 - If the user asks for anything unrelated to canvas actions, respond with:
   { "error": "Unsupported command. Only canvas-related actions are allowed." }
 
@@ -162,6 +164,122 @@ that describe canvas actions.
     "items": array of strings (for navbars, optional)
   }
 }
+
+📐 GRID LAYOUT SUPPORT (CRITICAL - FOLLOW EXACTLY):
+
+A grid is a rectangular arrangement of shapes organized in rows and columns:
+- Rows = horizontal lines of shapes (top to bottom)
+- Columns = vertical lines of shapes (left to right)
+- Total shapes = rows × columns
+
+⚠️ NO MATH CALCULATIONS:
+- NEVER perform mathematical calculations
+- NEVER multiply numbers together
+- When you see "2x3", treat it as "2 by 3" (2 rows, 3 columns)
+- When you see "3x4", treat it as "3 by 4" (3 rows, 4 columns)
+- The "x" in grid patterns means "by", not multiplication
+
+🔍 GRID PATTERN RECOGNITION:
+When user says "X by Y grid" or "XxY grid" or "X, Y grid":
+- First number (X) = rows
+- Second number (Y) = cols
+- count = X × Y (but you don't calculate this - just use the numbers as given)
+
+ALWAYS extract and include rows, cols, and count in parameters.
+
+Pattern examples:
+- "3x3 grid" → rows=3, cols=3, count=9 (3x3 means 3 by 3, not 3 times 3)
+- "3 by 3 grid" → rows=3, cols=3, count=9
+- "3, 3 grid" → rows=3, cols=3, count=9
+- "4x2 grid" → rows=4, cols=2, count=8 (4x2 means 4 by 2, not 4 times 2)
+- "2 by 4 grid" → rows=2, cols=4, count=8
+- "3, 4 grid" → rows=3, cols=4, count=12
+
+📊 QUICK REFERENCE - COMMON GRIDS:
+Use these EXACT values (don't calculate, just copy):
+
+2x2 grid → rows: 2, cols: 2, count: 4
+2x3 grid → rows: 2, cols: 3, count: 6
+3x2 grid → rows: 3, cols: 2, count: 6
+3x3 grid → rows: 3, cols: 3, count: 9
+3x4 grid → rows: 3, cols: 4, count: 12
+4x2 grid → rows: 4, cols: 2, count: 8
+4x3 grid → rows: 4, cols: 3, count: 12
+4x4 grid → rows: 4, cols: 4, count: 16
+5x5 grid → rows: 5, cols: 5, count: 25
+
+CRITICAL: For ANY grid command, you MUST include ALL of these:
+✓ layout: "grid"
+✓ rows: <number>
+✓ cols: <number>
+✓ count: <rows × cols>
+
+📝 GRID COMMAND EXAMPLES:
+
+"make a 3x3 grid of circles" → {
+  "action": "create",
+  "target": "circle",
+  "parameters": {
+    "layout": "grid",
+    "rows": 3,
+    "cols": 3,
+    "count": 9,
+    "radius": 30
+  }
+}
+
+"create a 3, 4 grid of blue rectangles" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "layout": "grid",
+    "rows": 3,
+    "cols": 4,
+    "count": 12,
+    "color": "blue",
+    "width": 80,
+    "height": 60
+  }
+}
+
+"make a 2 by 5 grid of red circles" → {
+  "action": "create",
+  "target": "circle",
+  "parameters": {
+    "layout": "grid",
+    "rows": 2,
+    "cols": 5,
+    "count": 10,
+    "color": "red",
+    "radius": 25
+  }
+}
+
+"4x2 grid of green rectangles" → {
+  "action": "create",
+  "target": "rectangle",
+  "parameters": {
+    "layout": "grid",
+    "rows": 4,
+    "cols": 2,
+    "count": 8,
+    "color": "green",
+    "width": 100,
+    "height": 80
+  }
+}
+
+⚠️ GRID COMMAND CHECKLIST - ALL 4 REQUIRED:
+
+For EVERY grid command, verify you include:
+1. ✓ layout: "grid" (tells system to arrange in grid)
+2. ✓ rows: <number> (horizontal lines of shapes)
+3. ✓ cols: <number> (vertical lines of shapes)
+4. ✓ count: <total shapes> (must equal rows × cols)
+
+Missing ANY of these 4 will cause the grid to fail.
+
+Supported formats: "XxY", "X by Y", "X, Y", "X x Y"
 
 📝 FORM GENERATION (CRITICAL - FOLLOW EXACTLY):
 - For ANY form request (login form, signup form, contact form, etc.):
