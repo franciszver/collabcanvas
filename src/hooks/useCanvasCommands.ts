@@ -161,9 +161,16 @@ function arrangeGrid(
   const totalGridWidth = totalShapeWidth + (cols! - 1) * spacing
   const totalGridHeight = totalShapeHeight + (rows! - 1) * spacing
   
-  // Center the grid in the middle 50% of viewport
-  const startX = (viewportWidth - totalGridWidth) / 2
-  const startY = (viewportHeight - totalGridHeight) / 2
+  // Center the grid in the visible screen area (accounting for pan/zoom)
+  // Calculate the center of the visible screen in canvas coordinates
+  const screenCenterX = window.innerWidth / 2
+  const screenCenterY = window.innerHeight / 2
+  const canvasCenterX = (screenCenterX - viewport.x) / viewport.scale
+  const canvasCenterY = (screenCenterY - viewport.y) / viewport.scale
+
+  // Position grid so its center aligns with canvas center
+  const startX = canvasCenterX - (totalGridWidth / 2)
+  const startY = canvasCenterY - (totalGridHeight / 2)
   
   return shapes.map((shape, index) => {
     const row = Math.floor(index / cols!)
@@ -187,7 +194,7 @@ function arrangeGrid(
 }
 
 export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): UseCanvasCommandsReturn {
-  const { addShape, updateShape, shapes: rectangles } = useShapes({ documentId, enableLiveDrag: true })
+  const { addShape, updateShape, shapes } = useShapes({ documentId, enableLiveDrag: true })
   const { viewport, selectedId } = useCanvas()
 
   const applyCanvasCommand = useCallback(async (command: CanvasAction): Promise<{ success: boolean; error?: string; createdShapes?: string[]; details?: string }> => {
@@ -227,14 +234,21 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           gradientColors = generateGradientColors(baseColor, count, direction, intensity)
         }
         
+        // Store created shapes for layout processing
+        const createdShapeObjects: Rectangle[] = []
+        
         for (let i = 0; i < count; i++) {
           try {
-            const shape = await createShapeFromCommand(target, parameters, viewport, i, gradientColors)
+            // Pass layout info to skip cascade when layout is specified
+            const shape = await createShapeFromCommand(target, parameters, viewport, i, gradientColors, parameters.layout)
             if (shape) {
               await addShape(shape)
               createdShapes.push(shape.id)
-              // Update last position for cascade
-              lastShapePosition = { x: shape.x, y: shape.y }
+              createdShapeObjects.push(shape) // Store the shape object for layout
+              // Update last position for cascade (only if no layout specified)
+              if (!parameters.layout) {
+                lastShapePosition = { x: shape.x, y: shape.y }
+              }
               // Track last created shape ID for manipulation
               setLastCreatedShapeId(shape.id)
             }
@@ -243,23 +257,31 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             const fixedParams = fixParameters(parameters, shapeError)
             
             try {
-              const fixedShape = await createShapeFromCommand(target, fixedParams, viewport, i, gradientColors)
+              const fixedShape = await createShapeFromCommand(target, fixedParams, viewport, i, gradientColors, parameters.layout)
               if (fixedShape) {
                 await addShape(fixedShape)
                 createdShapes.push(fixedShape.id)
+                createdShapeObjects.push(fixedShape) // Store the shape object for layout
                 errors.push(`Fixed parameters for ${target}: ${shapeError instanceof Error ? shapeError.message : 'Invalid parameters'}`)
-                lastShapePosition = { x: fixedShape.x, y: fixedShape.y }
+                // Update last position for cascade (only if no layout specified)
+                if (!parameters.layout) {
+                  lastShapePosition = { x: fixedShape.x, y: fixedShape.y }
+                }
                 setLastCreatedShapeId(fixedShape.id)
               }
             } catch (fixedError) {
               // Try with default values if fixing fails
               try {
-                const defaultShape = await createShapeFromCommand(target, {}, viewport, i, gradientColors)
+                const defaultShape = await createShapeFromCommand(target, {}, viewport, i, gradientColors, parameters.layout)
                 if (defaultShape) {
                   await addShape(defaultShape)
                   createdShapes.push(defaultShape.id)
+                  createdShapeObjects.push(defaultShape) // Store the shape object for layout
                   errors.push(`Used default values for ${target} due to: ${fixedError instanceof Error ? fixedError.message : 'Invalid parameters'}`)
-                  lastShapePosition = { x: defaultShape.x, y: defaultShape.y }
+                  // Update last position for cascade (only if no layout specified)
+                  if (!parameters.layout) {
+                    lastShapePosition = { x: defaultShape.x, y: defaultShape.y }
+                  }
                   setLastCreatedShapeId(defaultShape.id)
                 }
               } catch (defaultError) {
@@ -276,8 +298,12 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           const startY = (-viewport.y + 300) / viewport.scale
           const spacing = parameters.spacing ?? 20
           
-          // Get the shapes we just created
-          const shapesToArrange = rectangles.filter(r => createdShapes.includes(r.id))
+          // Use the shapes we just created directly (no Firestore dependency)
+          const shapesToArrange = createdShapeObjects
+          
+          console.log(`[Grid Layout] Creating ${layoutType} layout for ${shapesToArrange.length} shapes`)
+          console.log(`[Grid Layout] Created shape IDs:`, createdShapes)
+          console.log(`[Grid Layout] Using created shapes directly:`, shapesToArrange.map(s => ({ id: s.id, x: s.x, y: s.y })))
           
           if (shapesToArrange.length > 0) {
             // Apply layout
@@ -287,25 +313,34 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             } else if (layoutType === 'column') {
               arrangedShapes = arrangeColumn(shapesToArrange, startX, startY, { spacing })
             } else if (layoutType === 'grid') {
-              // Use new grid algorithm with viewport dimensions
+              // Use new grid algorithm with actual window dimensions
               const viewportWithDims = {
                 ...viewport,
-                width: 1920, // Default viewport width
-                height: 1080 // Default viewport height
+                width: window.innerWidth,
+                height: window.innerHeight
               }
+              console.log(`[Grid Layout] Grid params: rows=${parameters.rows}, cols=${parameters.cols}, spacing=${spacing}`)
+              console.log(`[Grid Layout] Viewport:`, viewportWithDims)
+              
               arrangedShapes = arrangeGrid(shapesToArrange, viewportWithDims, parameters.rows, parameters.cols, { spacing })
+              
+              console.log(`[Grid Layout] Arranged shapes:`, arrangedShapes.map(s => ({ id: s.id, x: s.x, y: s.y })))
             } else {
               arrangedShapes = shapesToArrange
             }
             
             // Update positions
             try {
+              console.log(`[Grid Layout] Updating ${arrangedShapes.length} shapes with new positions`)
               await Promise.all(
-                arrangedShapes.map(shape => 
-                  updateShape(shape.id, { x: shape.x, y: shape.y, rotation: 0 })
-                )
+                arrangedShapes.map(shape => {
+                  console.log(`[Grid Layout] Updating shape ${shape.id} to position (${shape.x}, ${shape.y})`)
+                  return updateShape(shape.id, { x: shape.x, y: shape.y, rotation: 0 })
+                })
               )
+              console.log(`[Grid Layout] Successfully updated all shape positions`)
             } catch (layoutError) {
+              console.error(`[Grid Layout] Failed to update positions:`, layoutError)
               errors.push(`Created shapes but failed to apply ${layoutType} layout: ${layoutError instanceof Error ? layoutError.message : 'Unknown error'}`)
             }
           }
@@ -323,7 +358,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           
           if (color) {
             // Select by color
-            selectedShapes = selectShapesByColor(rectangles, color)
+            selectedShapes = selectShapesByColor(shapes, color)
             if (selectedShapes.length === 0) {
               return {
                 success: false,
@@ -335,7 +370,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             // Select by type and number - use shapeType from selector or fallback to target
             const typeToUse = shapeType || target
             const mappedType = typeToUse === 'rectangle' ? 'rect' : typeToUse as any
-            const shape = selectShapeByTypeAndNumber(rectangles, mappedType, shapeNumber)
+            const shape = selectShapeByTypeAndNumber(shapes, mappedType, shapeNumber)
             if (shape) {
               selectedShapes = [shape]
             } else {
@@ -349,11 +384,11 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           }
         } else if (target && !parameters.selector) {
           // 2. Handle "the [shape]" without specific identifier - ask for clarification
-          const shapesOfType = rectangles.filter(s => (s.type || 'rect') === (target === 'rectangle' ? 'rect' : target))
+          const shapesOfType = shapes.filter(s => (s.type || 'rect') === (target === 'rectangle' ? 'rect' : target))
           
           if (shapesOfType.length === 0) {
             // No shapes of this type exist, ask user to specify shape type and number
-            const allShapes = rectangles.map((s, i) => {
+            const allShapes = shapes.map((s, i) => {
               const typeName = getShapeTypeName(s.type)
               const position = getApproximatePosition(s, viewport)
               const colorName = s.fill
@@ -405,7 +440,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             }
           }
           
-          const targetShape = rectangles.find(r => r.id === targetId)
+          const targetShape = shapes.find(r => r.id === targetId)
           if (!targetShape) {
             return { 
               success: false, 
@@ -526,7 +561,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           
           if (color) {
             // Select by color
-            shapesToLayout = selectShapesByColor(rectangles, color)
+            shapesToLayout = selectShapesByColor(shapes, color)
             if (shapesToLayout.length === 0) {
               return {
                 success: false,
@@ -537,7 +572,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           } else if (shapeType) {
             // Select by shape type
             const mappedType = shapeType === 'rectangle' ? 'rect' : shapeType as any
-            shapesToLayout = rectangles.filter(shape => (shape.type || 'rect') === mappedType)
+            shapesToLayout = shapes.filter(shape => (shape.type || 'rect') === mappedType)
             if (shapesToLayout.length === 0) {
               return {
                 success: false,
@@ -549,7 +584,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         } else if (target) {
           // Select by target type
           const mappedType = target === 'rectangle' ? 'rect' : target as any
-          shapesToLayout = rectangles.filter(shape => (shape.type || 'rect') === mappedType)
+          shapesToLayout = shapes.filter(shape => (shape.type || 'rect') === mappedType)
           if (shapesToLayout.length === 0) {
             return {
               success: false,
@@ -559,7 +594,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           }
         } else {
           // Fallback: get last N shapes
-          shapesToLayout = rectangles.slice(-count)
+          shapesToLayout = shapes.slice(-count)
         }
         
         // Limit to requested count if we have more shapes than needed
@@ -671,7 +706,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           
           // Convert FormShapes to Rectangle shapes and add to canvas
           const createdShapeIds: string[] = []
-          let currentZ = getMaxZ(rectangles) + 1 // Start above existing shapes
+          let currentZ = getMaxZ(shapes) + 1 // Start above existing shapes
           
           try {
             for (const formShape of formShapes) {
@@ -732,7 +767,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         details: `Command failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
-  }, [addShape, updateShape, rectangles, viewport, selectedId])
+  }, [addShape, updateShape, shapes, viewport, selectedId])
 
   return { applyCanvasCommand }
 }
@@ -749,7 +784,8 @@ async function createShapeFromCommand(
   parameters: CanvasAction['parameters'], 
   viewport: { scale: number; x: number; y: number },
   index: number = 0,
-  gradientColors?: string[]
+  gradientColors?: string[],
+  layout?: string
 ): Promise<Rectangle | null> {
   const id = generateRectId()
   
@@ -766,7 +802,13 @@ async function createShapeFromCommand(
     const defaultX = (screenCenterX - viewport.x) / viewport.scale
     const defaultY = (screenCenterY - viewport.y) / viewport.scale
     
-    if (index === 0) {
+    if (layout) {
+      // When layout is specified, all shapes get the same default position
+      // The layout algorithm will position them correctly
+      x = defaultX
+      y = defaultY
+    } else if (index === 0) {
+      // No layout specified, use cascade for multiple shapes
       x = defaultX
       y = defaultY
     } else {

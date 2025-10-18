@@ -112,6 +112,8 @@ jest.mock('../services/realtime', () => ({
   subscribeToResizeRtdb: jest.fn(() => jest.fn()),
   clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
   cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
+  markInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
+  cleanupInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
 }))
 
 // Mock firestore service

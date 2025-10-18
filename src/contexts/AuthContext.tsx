@@ -24,24 +24,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let unsubscribe: (() => void) | undefined
 
     const handleAuth = async () => {
-      console.log('🚀 AuthProvider: Starting auth check...')
       try {
         // Check if there's a redirect result to handle
         const redirectUser = await handleRedirectResult()
         if (redirectUser) {
-          console.log('✅ AuthProvider: Redirect user found, setting user:', redirectUser)
           setUser(redirectUser)
           setIsLoading(false)
           return
         }
-        console.log('❌ AuthProvider: No redirect user, setting up listener')
       } catch (error) {
         console.error('❌ AuthProvider: Error handling redirect result:', error)
       }
 
       // Set up auth state listener
       unsubscribe = onAuthStateChanged((u) => {
-        console.log('🔄 AuthProvider: Auth state changed:', u)
         // Use setTimeout to ensure state updates happen in the next tick
         // This helps avoid act() warnings in tests
         setTimeout(() => {
@@ -61,11 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleSignIn = async () => {
-    console.log('🔐 AuthProvider: Starting sign-in process...')
     setError(null)
     try {
       await signInWithGoogle()
-      console.log('✅ AuthProvider: Sign-in process completed')
     } catch (e) {
       console.error('❌ AuthProvider: Sign-in error:', e)
       setError((e as Error).message)
@@ -73,11 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const handleSignOut = async () => {
-    console.log('🚪 AuthProvider: Starting sign-out process...')
     setError(null)
     try {
       await signOut()
-      console.log('✅ AuthProvider: Sign-out completed')
     } catch (e) {
       console.error('❌ AuthProvider: Sign-out error:', e)
       setError((e as Error).message)

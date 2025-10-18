@@ -145,7 +145,6 @@ export async function markInactiveUsersRtdb(inactiveThresholdMs: number = 60000)
     
     if (Object.keys(updates).length > 0) {
       await update(ref(rtdb()), updates)
-      console.log(`🟡 Marked ${markedCount} users as inactive (disabled green light)`)
     }
   } catch (error) {
     console.warn('Failed to mark inactive users:', error)
@@ -187,7 +186,6 @@ export async function cleanupInactiveUsersRtdb(removalThresholdMs: number = 3000
       
       await update(ref(rtdb()), updates)
       removedCount = usersToRemove.length
-      console.log(`🧹 Removed ${removedCount} inactive users from RTDB after 5 minutes`)
     }
   } catch (error) {
     console.warn('Failed to cleanup inactive users:', error)
