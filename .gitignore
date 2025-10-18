@@ -54,3 +54,4 @@ dist-ssr
 # Firebase local cache and state
 .firebase/*
 .firebase/*hosting.*
+.firebase/hosting.ZGlzdA.cache
