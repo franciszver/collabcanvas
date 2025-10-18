@@ -11,11 +11,9 @@ class CleanupService {
 
   start(): void {
     if (this.isRunning) {
-      console.log('🧹 Cleanup service is already running')
       return
     }
 
-    console.log('🧹 Starting cleanup service...')
     this.isRunning = true
     
     // Run cleanup immediately
@@ -33,22 +31,15 @@ class CleanupService {
       this.intervalId = null
     }
     this.isRunning = false
-    console.log('🧹 Cleanup service stopped')
   }
 
   private async runCleanup(): Promise<void> {
     try {
       // First, mark users as inactive after 60 seconds
-      const markedCount = await markInactiveUsersRtdb(INACTIVE_USER_THRESHOLD_MS)
-      if (markedCount > 0) {
-        console.log(`🟡 Marked ${markedCount} users as inactive (disabled green light)`)
-      }
+      await markInactiveUsersRtdb(INACTIVE_USER_THRESHOLD_MS)
       
       // Then, remove users after 5 minutes
-      const removedCount = await cleanupInactiveUsersRtdb(REMOVAL_THRESHOLD_MS)
-      if (removedCount > 0) {
-        console.log(`🧹 Removed ${removedCount} inactive users after 5 minutes`)
-      }
+      await cleanupInactiveUsersRtdb(REMOVAL_THRESHOLD_MS)
     } catch (error) {
       console.error('🧹 Cleanup service error:', error)
     }

@@ -110,8 +110,8 @@ describe('Canvas', () => {
     
     // Check that the Stage has the expected properties
     expect(stage).toHaveAttribute('data-testid', 'Stage')
-    expect(stage).toHaveAttribute('width', '819')
-    expect(stage).toHaveAttribute('height', '538')
+    expect(stage).toHaveAttribute('width', '1024')
+    expect(stage).toHaveAttribute('height', '768')
   })
 
   it('renders Canvas with grid lines', () => {
@@ -243,8 +243,8 @@ describe('Canvas', () => {
 
     // Check that the Stage has proper dimensions
     const stage = screen.getByTestId('Stage')
-    expect(stage).toHaveAttribute('width', '819')
-    expect(stage).toHaveAttribute('height', '538')
+    expect(stage).toHaveAttribute('width', '1024')
+    expect(stage).toHaveAttribute('height', '768')
     expect(stage).toHaveAttribute('scaleX', '1')
     expect(stage).toHaveAttribute('scaleY', '1')
   })

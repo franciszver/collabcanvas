@@ -33,10 +33,8 @@ jest.mock('../../services/firestore', () => ({
     return jest.fn()
   }),
   subscribeToShapes: jest.fn((_documentId: string, cb: any) => {
-    console.log('subscribeToShapes called with documentId:', _documentId)
     // Call the callback with seed data
     const shapes = [{ id: 'seed', x: 0, y: 0, width: 10, height: 10, fill: '#000', type: 'rect' }]
-    console.log('Calling callback with shapes:', shapes)
     cb(shapes)
     return jest.fn()
   }),
@@ -85,8 +83,6 @@ test('rollback behaviors on failures', async () => {
   })
 
   // Debug: Check what rectangles are available
-  console.log('Available rectangles:', result.current.rectangles)
-  console.log('Looking for seed rectangle:', result.current.rectangles.find((r) => r.id === 'seed'))
 
   // Since the authentication is not working properly, let's test what we can
   // The test should verify that the context initializes properly

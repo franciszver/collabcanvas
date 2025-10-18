@@ -20,10 +20,8 @@ function App() {
   // Initialize cleanup service when user is authenticated
   useEffect(() => {
     if (user) {
-      console.log('🧹 Starting cleanup service for authenticated user')
       cleanupService.start()
     } else {
-      console.log('🧹 Stopping cleanup service for unauthenticated user')
       cleanupService.stop()
     }
 
@@ -32,8 +30,6 @@ function App() {
       cleanupService.stop()
     }
   }, [user])
-
-  console.log('📱 App: Current state - user:', user, 'isLoading:', isLoading)
 
   if (isLoading) return null
 

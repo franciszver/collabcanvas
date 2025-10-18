@@ -40,6 +40,8 @@ jest.mock('../../services/realtime', () => ({
   subscribeToResizeRtdb: jest.fn(() => jest.fn()),
   clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
   cleanupStaleCursorsRtdb: jest.fn(() => Promise.resolve()),
+  markInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
+  cleanupInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
 }))
 
 // Import and spy on the realtime service to ensure it's properly mocked
@@ -87,7 +89,12 @@ jest.mock('../../services/realtime', () => ({
   subscribeToResizeRtdb: jest.fn(() => jest.fn()),
   clearResizePositionRtdb: jest.fn(() => Promise.resolve()),
   removeUserPresenceRtdb: jest.fn(() => Promise.resolve()),
+  markInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
+  cleanupInactiveUsersRtdb: jest.fn(() => Promise.resolve(0)),
 }))
+
+// Create a stable mock function for addRectangle
+const mockAddRectangle = jest.fn()
 
 // Mock the useCanvas hook to provide a working addRectangle function
 jest.mock('../../contexts/CanvasContext', () => ({
@@ -96,11 +103,8 @@ jest.mock('../../contexts/CanvasContext', () => ({
     rectangles: [],
     isLoading: false,
     selectedId: null,
-    addRectangle: jest.fn(async (shapeData) => {
-      // Call the mocked createShape function directly
-      const { createShape } = jest.requireMock('../../services/firestore')
-      await createShape(shapeData)
-    }),
+    viewport: { x: 0, y: 0, scale: 1 },
+    addRectangle: mockAddRectangle,
     updateRectangle: jest.fn(),
     deleteRectangle: jest.fn(),
     clearAllRectangles: jest.fn(),
@@ -126,6 +130,12 @@ describe('Shape Management Core Functionality', () => {
     mockUpdateShape.mockResolvedValue(undefined)
     mockDeleteShape.mockResolvedValue(undefined)
     mockDeleteAllShapes.mockResolvedValue(undefined)
+    
+    // Set up the mockAddRectangle implementation
+    mockAddRectangle.mockImplementation(async (shapeData) => {
+      // Call the mocked createShape function directly
+      await mockCreateShape(shapeData)
+    })
   })
 
   test('renders shape selector button', () => {
@@ -161,6 +171,11 @@ describe('Shape Management Core Functionality', () => {
     // Open dropdown
     const createButton = screen.getByRole('button', { name: /create shapes/i })
     fireEvent.click(createButton)
+    
+    // Wait for dropdown to appear
+    await waitFor(() => {
+      expect(screen.getByText('Rectangle')).toBeInTheDocument()
+    })
     
     // Click rectangle button
     const rectangleButton = screen.getByText('Rectangle')
