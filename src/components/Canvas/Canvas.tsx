@@ -10,7 +10,7 @@ import { updateCursorPositionRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
-import { calculateShapeNumbers, getShapeTypeName } from '../../utils/helpers'
+import { calculateShapeNumbers, getShapeTypeName, generateRectId } from '../../utils/helpers'
 
 // Helper to calculate text dimensions for auto-resize
 function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
@@ -36,6 +36,7 @@ export default function Canvas() {
     rectangles, 
     updateRectangle, 
     deleteRectangle, 
+    addRectangle,
     isLoading, 
     selectedId, 
     setSelectedId,
@@ -612,8 +613,10 @@ export default function Canvas() {
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
-            minWidth: 200,
-            maxWidth: 240,
+            minWidth: 220,
+            maxWidth: 260,
+            maxHeight: '90vh',
+            overflowY: 'auto',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -722,7 +725,7 @@ export default function Canvas() {
                     }}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
                     <button
                       onClick={(e) => { 
                         e.stopPropagation();
@@ -737,18 +740,17 @@ export default function Canvas() {
                         color: '#D1FAE5',
                         border: '1px solid #065F46',
                         borderRadius: 4,
-                        padding: '2px 8px',
+                        padding: '4px 10px',
                         cursor: 'pointer',
-                        fontSize: 10,
+                        fontSize: 12,
                         lineHeight: 1,
-                        minWidth: 28,
-                        height: 18,
+                        flex: 1,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      ▲
+                      +
                     </button>
                     <button
                       onClick={(e) => { 
@@ -764,18 +766,17 @@ export default function Canvas() {
                         color: '#FECACA',
                         border: '1px solid #7F1D1D',
                         borderRadius: 4,
-                        padding: '2px 8px',
+                        padding: '4px 10px',
                         cursor: 'pointer',
-                        fontSize: 10,
+                        fontSize: 12,
                         lineHeight: 1,
-                        minWidth: 28,
-                        height: 18,
+                        flex: 1,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      ▼
+                      -
                     </button>
                   </div>
                 </div>
@@ -783,12 +784,35 @@ export default function Canvas() {
             </>
           )}
 
+          {/* Copy Button */}
+          <button
+            onClick={async (e) => { 
+              e.stopPropagation();
+              const newId = generateRectId();
+              const cascadeOffset = 30;
+              const copiedShape: Rectangle = {
+                ...sel,
+                id: newId,
+                x: sel.x + cascadeOffset,
+                y: sel.y + cascadeOffset,
+                z: Math.max(...rectangles.map(r => r.z ?? 0)) + 1
+              };
+              await addRectangle(copiedShape);
+              setSelectedId(newId);
+            }}
+            title="Copy shape"
+            aria-label="Copy shape"
+            style={{ background: '#065F46', color: '#D1FAE5', border: '1px solid #10B981', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
+          >
+            Copy
+          </button>
+
           {/* Delete Button */}
           <button
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"
             aria-label="Delete selected shape"
-            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
+            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
           >
             Delete
           </button>
