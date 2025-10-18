@@ -14,6 +14,8 @@ import {
   getApproximatePosition,
   getShapeTypeName
 } from '../utils/helpers'
+import { getFormTemplate } from '../utils/formTemplates'
+import { generateFormShapes } from '../utils/formLayout'
 
 export interface UseCanvasCommandsOptions {
   documentId: string
@@ -196,6 +198,15 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
 
       // Handle create action
       if (action === 'create') {
+        // Forms and other complex targets should use action='complex' instead
+        if (target === 'form' || target === 'navbar' || target === 'card') {
+          return {
+            success: false,
+            error: `Target "${target}" requires action="complex", not action="create"`,
+            details: `Please use action="complex" with target="${target}". The AI may need to be retrained.`
+          }
+        }
+        
         const count = parameters.count ?? 1
         
         // Validate max shapes for create-with-layout
@@ -620,7 +631,96 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         }
       }
       
-      // TODO: Handle complex actions in future epics
+      // Handle complex action (forms, navbars, cards, etc.)
+      else if (action === 'complex') {
+        if (target === 'form') {
+          const formType = parameters.formType
+          
+          if (!formType) {
+            return {
+              success: false,
+              error: 'Form type is required',
+              details: 'Available types: login, signup, contact. Example: "create a login form"'
+            }
+          }
+          
+          // Get form template
+          const template = getFormTemplate(formType)
+          if (!template) {
+            return {
+              success: false,
+              error: `Unknown form type: "${formType}"`,
+              details: 'Available types: login, signup, contact'
+            }
+          }
+          
+          // Get viewport dimensions from window
+          const viewportWidth = window.innerWidth
+          const viewportHeight = window.innerHeight
+          
+          // Generate form shapes
+          const formShapes = generateFormShapes(template, {
+            viewport: {
+              x: viewport.x,
+              y: viewport.y,
+              scale: viewport.scale,
+              width: viewportWidth,
+              height: viewportHeight
+            }
+          })
+          
+          // Convert FormShapes to Rectangle shapes and add to canvas
+          const createdShapeIds: string[] = []
+          let currentZ = getMaxZ(rectangles) + 1 // Start above existing shapes
+          
+          try {
+            for (const formShape of formShapes) {
+              const shapeId = generateRectId()
+              
+              // Convert FormShape to Rectangle
+              const rectangleShape: Rectangle = {
+                id: shapeId,
+                type: formShape.type, // Direct assignment - types already match
+                x: formShape.x,
+                y: formShape.y,
+                width: formShape.width,
+                height: formShape.height,
+                radius: formShape.type === 'circle' ? formShape.width / 2 : undefined,
+                rotation: 0,
+                fill: formShape.fill,
+                stroke: formShape.stroke,
+                strokeWidth: formShape.strokeWidth,
+                text: formShape.text,
+                fontSize: formShape.fontSize,
+                z: currentZ++ // Increment z-index for each shape to maintain stacking order
+              }
+              
+              // Add to Firestore
+              await addShape(rectangleShape)
+              createdShapeIds.push(shapeId)
+            }
+            
+            return {
+              success: true,
+              createdShapes: createdShapeIds,
+              details: `Created ${formType} form with ${formShapes.length} elements`
+            }
+          } catch (error) {
+            return {
+              success: false,
+              error: 'Failed to create form',
+              details: error instanceof Error ? error.message : 'Unknown error creating form shapes'
+            }
+          }
+        }
+        
+        // Future: handle other complex targets (navbar, card, etc.)
+        return {
+          success: false,
+          error: `Complex target "${target}" is not yet implemented`,
+          details: 'Currently supported: form'
+        }
+      }
 
       const details = errors.length > 0 ? errors.join('; ') : undefined
       return { success: createdShapes.length > 0, error: errors.length > 0 ? errors.join('; ') : undefined, createdShapes, details }
@@ -635,6 +735,12 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
   }, [addShape, updateShape, rectangles, viewport, selectedId])
 
   return { applyCanvasCommand }
+}
+
+// Helper function to get maximum z-index from existing shapes
+function getMaxZ(shapes: Rectangle[]): number {
+  if (shapes.length === 0) return 0
+  return Math.max(...shapes.map(s => s.z ?? 0))
 }
 
 // Helper function to create shape from AI command

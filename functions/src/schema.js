@@ -28,6 +28,13 @@ const schema = {
           enum: ["grid", "row", "column"]
         },
         count: { type: "number" },
+        spacing: { type: "number" },
+        rows: { type: "number" },
+        cols: { type: "number" },
+        formType: { 
+          type: "string",
+          enum: ["login", "signup", "contact", "custom"]
+        },
         gradientDirection: { 
           type: "string",
           enum: ["lighter", "darker", "both"]

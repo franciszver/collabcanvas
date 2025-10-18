@@ -157,10 +157,48 @@ that describe canvas actions.
     "spacing": number (gap between shapes in pixels, optional, default 20),
     "rows": number (grid rows, optional, auto-calculated if not provided),
     "cols": number (grid columns, optional, auto-calculated if not provided),
+    "formType": string (form template type, optional),
     "fields": array of strings (for forms, optional),
     "items": array of strings (for navbars, optional)
   }
-}`;
+}
+
+📝 FORM GENERATION (CRITICAL - FOLLOW EXACTLY):
+- For ANY form request (login form, signup form, contact form, etc.):
+  * MUST use action="complex" (NOT "create")
+  * MUST use target="form"
+  * MUST include formType in parameters
+- Supported form types: "login", "signup", "contact"
+- Forms are automatically laid out with proper spacing and styling
+
+⚠️ WRONG: { "action": "create", "target": "form", ... }
+✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login" } }
+
+Example valid responses:
+"create a login form" → {
+  "action": "complex",
+  "target": "form",
+  "parameters": {
+    "formType": "login"
+  }
+}
+
+"make a signup form" → {
+  "action": "complex",
+  "target": "form",
+  "parameters": {
+    "formType": "signup"
+  }
+}
+
+"create a contact form" → {
+  "action": "complex",
+  "target": "form",
+  "parameters": {
+    "formType": "contact"
+  }
+}
+`;
 
     const completion = await client.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -168,6 +206,7 @@ that describe canvas actions.
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
+      response_format: { type: "json_object" },
       temperature: 0.1,
       max_tokens: 500,
       stream: false

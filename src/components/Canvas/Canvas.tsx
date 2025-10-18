@@ -348,6 +348,8 @@ export default function Canvas() {
                 x={cx}
                 y={cy}
                 radius={radius}
+                stroke={r.stroke}
+                strokeWidth={r.strokeWidth}
                 rotation={r.rotation || 0}
                 onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
@@ -378,6 +380,8 @@ export default function Canvas() {
                 y={cy}
                 sides={3}
                 radius={radius}
+                stroke={r.stroke}
+                strokeWidth={r.strokeWidth}
                 rotation={r.rotation || 0}
                 onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
@@ -410,6 +414,8 @@ export default function Canvas() {
                 numPoints={5}
                 innerRadius={inner}
                 outerRadius={outer}
+                stroke={r.stroke}
+                strokeWidth={r.strokeWidth}
                 rotation={r.rotation || 0}
                 onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                 onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
@@ -498,6 +504,8 @@ export default function Canvas() {
               y={baseY}
               width={r.width}
               height={r.height}
+              stroke={r.stroke}
+              strokeWidth={r.strokeWidth}
               rotation={r.rotation || 0}
               onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
               onDragEnd={(evt: any) => {

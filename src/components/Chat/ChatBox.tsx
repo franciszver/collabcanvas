@@ -137,8 +137,19 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         const response = await aiCanvasCommand(messageContent)
         
         if (response.success && response.data) {
-          // Check if this is a create command without color
-          if (response.data.action === 'create' && !response.data.parameters.color) {
+          // DEBUG: Log what the AI returned
+          console.log('🔍 AI Response:', JSON.stringify(response.data, null, 2))
+          
+          // Check if this is a create command without color (skip for complex actions like forms)
+          const skipColorCheck = response.data.action === 'complex' || 
+                                  response.data.action === 'layout' ||
+                                  response.data.target === 'form' ||
+                                  response.data.target === 'navbar' ||
+                                  response.data.target === 'card'
+          
+          console.log('🔍 Skip Color Check:', skipColorCheck, 'Action:', response.data.action, 'Target:', response.data.target)
+          
+          if (response.data.action === 'create' && !response.data.parameters.color && !skipColorCheck) {
             // Ask for color clarification
             const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
             await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
@@ -176,6 +187,15 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
                 const layoutType = response.data.parameters.layout || 'row'
                 aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
+              } else if (response.data.action === 'complex') {
+                // Handle complex actions (forms, etc.)
+                if (response.data.target === 'form') {
+                  const createdCount = commandResult.createdShapes?.length || 0
+                  const formType = response.data.parameters.formType || 'form'
+                  aiResponse = `✅ Created ${formType} form with ${createdCount} elements`
+                } else {
+                  aiResponse = `✅ Created ${response.data.target}`
+                }
               }
               
               if (commandResult.details) {
@@ -186,7 +206,8 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
               let actionText = 'create'
               if (response.data.action === 'manipulate') actionText = 'manipulate'
               else if (response.data.action === 'layout') actionText = 'layout'
-              let aiResponse = `❌ Failed to ${actionText} shape: ${commandResult.error}`
+              else if (response.data.action === 'complex') actionText = 'create'
+              let aiResponse = `❌ Failed to ${actionText} ${response.data.target || 'shape'}: ${commandResult.error}`
               if (commandResult.details) {
                 aiResponse += `\n\nDetails: ${commandResult.details}`
               }

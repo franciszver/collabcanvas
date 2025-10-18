@@ -13,6 +13,8 @@ export interface Rectangle {
   width: number
   height: number
   fill: string
+  stroke?: string
+  strokeWidth?: number
   type?: CanvasShapeType
   radius?: number
   sides?: number
