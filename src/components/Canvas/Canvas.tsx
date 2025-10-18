@@ -52,6 +52,7 @@ export default function Canvas() {
   const movedRef = useRef(false)
   const [containerSize, setContainerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
   const prevSizeRef = useRef(containerSize)
+  const [colorHistory, setColorHistory] = useState<string[]>([])
   
   // Dynamically resize canvas when window size changes
   useEffect(() => {
@@ -633,15 +634,50 @@ export default function Canvas() {
           </div>
 
           {/* Color Picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
-            <input
-              type="color"
-              value={sel.fill}
-              onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
-              style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
-              aria-label="Change shape color"
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
+              <input
+                type="color"
+                value={sel.fill}
+                onChange={(e) => {
+                  const newColor = e.target.value;
+                  updateRectangle(sel.id, { fill: newColor });
+                  // Update color history (keep last 2 unique colors)
+                  setColorHistory(prev => {
+                    const filtered = prev.filter(c => c !== newColor);
+                    return [newColor, ...filtered].slice(0, 2);
+                  });
+                }}
+                style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
+                aria-label="Change shape color"
+              />
+            </div>
+            {/* Color History */}
+            {colorHistory.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, paddingLeft: 58 }}>
+                {colorHistory.map((color, index) => (
+                  <button
+                    key={`${color}-${index}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateRectangle(sel.id, { fill: color });
+                    }}
+                    title={`Use ${color}`}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      padding: 0,
+                      background: color,
+                      border: '2px solid #374151',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                    aria-label={`Use color ${color}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Layer Controls */}
