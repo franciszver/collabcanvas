@@ -74,7 +74,9 @@ export default function ShapeSelector() {
         fill: color || getRandomColor(), 
         type: type,
         text: isText ? 'Enter Text' : undefined,
-        fontSize: isText ? 64 : undefined
+        fontSize: isText ? 64 : undefined,
+        fontWeight: isText ? ('normal' as const) : undefined,
+        textDecoration: isText ? ('none' as const) : undefined
       }
       
       await addRectangle(shapeData)

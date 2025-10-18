@@ -23,6 +23,8 @@ export interface Rectangle {
   z?: number
   text?: string
   fontSize?: number
+  fontWeight?: 'normal' | 'bold'
+  textDecoration?: 'none' | 'line-through'
 }
 
 export interface CanvasState {

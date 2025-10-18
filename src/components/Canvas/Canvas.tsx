@@ -12,6 +12,23 @@ import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 import { calculateShapeNumbers, getShapeTypeName } from '../../utils/helpers'
 
+// Helper to calculate text dimensions for auto-resize
+function measureTextDimensions(text: string, fontSize: number, fontWeight: 'normal' | 'bold' = 'normal'): { width: number; height: number } {
+  // Create a temporary canvas to measure text
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) return { width: 200, height: 40 }
+  
+  context.font = `${fontWeight} ${fontSize}px Arial`
+  const metrics = context.measureText(text)
+  
+  // Add padding (16px total: 8px per side)
+  const width = Math.max(100, Math.ceil(metrics.width) + 32)
+  const height = Math.max(40, Math.ceil(fontSize * 1.2) + 32)
+  
+  return { width, height }
+}
+
 export default function Canvas() {
   const { 
     viewport, 
@@ -475,11 +492,14 @@ export default function Canvas() {
                 height={r.height}
                 text={r.text || 'Enter Text'}
                 fontSize={r.fontSize || 64}
+                fontStyle={r.fontWeight === 'bold' ? 'bold' : 'normal'}
+                textDecoration={r.textDecoration === 'line-through' ? 'line-through' : ''}
                 fill={r.fill}
                 rotation={r.rotation || 0}
                 align="left"
                 verticalAlign="top"
                 padding={8}
+                wrap="none"
                 onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
                 onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
                 onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
@@ -572,151 +592,257 @@ export default function Canvas() {
         )
       })()}
     </div>
-    {/* Floating Properties bar at top of canvas */}
+    {/* Vertical Properties Panel on left side */}
     {selectedId ? (() => {
       const sel = rectangles.find((rr: Rectangle) => rr.id === selectedId)
       if (!sel) return null
-      const offsetX = Math.round((window.innerWidth - containerSize.width) / 2)
-      const offsetY = Math.round((window.innerHeight - containerSize.height) / 2)
       const shapeNumber = shapeNumbers.get(sel.id) || 0
       const shapeTypeName = getShapeTypeName(sel.type)
       return (
         <div
           style={{
-            position: 'absolute',
-            left: offsetX + 12,
-            top: offsetY + 12,
+            position: 'fixed',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
             pointerEvents: 'auto',
             zIndex: 26,
             background: '#0b1220',
             border: '1px solid #374151',
             borderRadius: 8,
-            padding: '6px 10px',
+            padding: '10px',
             display: 'flex',
-            alignItems: 'center',
-            gap: 10,
+            flexDirection: 'column',
+            gap: 8,
+            minWidth: 200,
+            maxWidth: 240,
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Shape Title */}
           <div style={{ 
             fontSize: 14, 
             fontWeight: 600, 
             color: '#E5E7EB',
-            paddingRight: 8,
-            borderRight: '1px solid #374151'
+            paddingBottom: 8,
+            borderBottom: '1px solid #374151',
+            textAlign: 'center'
           }}>
             {shapeTypeName} #{shapeNumber}
           </div>
-          <input
-            type="color"
-            value={sel.fill}
-            onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
-            style={{ width: 28, height: 28, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer' }}
-            aria-label="Change shape color"
-          />
-          {/* Layer buttons replaced with Top and Bottom buttons */}
-          <button
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              const maxZ = Math.max(...rectangles.map(r => r.z ?? 0));
-              updateRectangle(sel.id, { z: maxZ + 1 });
-            }}
-            title="Move to top layer"
-            aria-label="Move to top layer"
-            style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
-          >
-            Top ↑
-          </button>
-          <button
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              const minZ = Math.min(...rectangles.map(r => r.z ?? 0));
-              updateRectangle(sel.id, { z: minZ - 1 });
-            }}
-            title="Move to bottom layer"
-            aria-label="Move to bottom layer"
-            style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
-          >
-            Bottom ↓
-          </button>
+
+          {/* Color Picker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
+            <input
+              type="color"
+              value={sel.fill}
+              onChange={(e) => updateRectangle(sel.id, { fill: e.target.value })}
+              style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
+              aria-label="Change shape color"
+            />
+          </div>
+
+          {/* Layer Controls */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                const maxZ = Math.max(...rectangles.map(r => r.z ?? 0));
+                updateRectangle(sel.id, { z: maxZ + 1 });
+              }}
+              title="Move to top layer"
+              aria-label="Move to top layer"
+              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+            >
+              Top ↑
+            </button>
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                const minZ = Math.min(...rectangles.map(r => r.z ?? 0));
+                updateRectangle(sel.id, { z: minZ - 1 });
+              }}
+              title="Move to bottom layer"
+              aria-label="Move to bottom layer"
+              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+            >
+              Bottom ↓
+            </button>
+          </div>
+
+          {/* Text Controls */}
           {sel.type === 'text' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="text"
-                value={sel.text || 'Enter Text'}
-                onChange={(e) => updateRectangle(sel.id, { text: e.target.value })}
-                placeholder="Enter text..."
-                style={{
-                  background: '#111827',
-                  color: '#E5E7EB',
-                  border: '1px solid #374151',
-                  borderRadius: 6,
-                  padding: '4px 8px',
-                  fontSize: 14,
-                  minWidth: 120,
-                  maxWidth: 200,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.min(144, (sel.fontSize || 64) + 2) }) 
+            <>
+              {/* Text Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Text:</label>
+                <input
+                  type="text"
+                  value={sel.text || 'Enter Text'}
+                  onChange={(e) => {
+                    const newText = e.target.value
+                    const dimensions = measureTextDimensions(newText, sel.fontSize || 64, sel.fontWeight)
+                    updateRectangle(sel.id, { text: newText, width: dimensions.width, height: dimensions.height })
                   }}
-                  title="Increase font size"
-                  aria-label="Increase font size"
+                  placeholder="Enter text..."
                   style={{
-                    background: '#0b3a1a',
-                    color: '#D1FAE5',
-                    border: '1px solid #065F46',
-                    borderRadius: 4,
-                    padding: '2px 6px',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    lineHeight: 1,
-                    minWidth: 24,
-                    height: 16,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    background: '#111827',
+                    color: '#E5E7EB',
+                    border: '1px solid #374151',
+                    borderRadius: 6,
+                    padding: '6px 8px',
+                    fontSize: 14,
+                    width: '100%',
                   }}
-                >
-                  ▲
-                </button>
-                <button
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    updateRectangle(sel.id, { fontSize: Math.max(8, (sel.fontSize || 64) - 2) }) 
-                  }}
-                  title="Decrease font size"
-                  aria-label="Decrease font size"
-                  style={{
-                    background: '#3a0b0b',
-                    color: '#FECACA',
-                    border: '1px solid #7F1D1D',
-                    borderRadius: 4,
-                    padding: '2px 6px',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    lineHeight: 1,
-                    minWidth: 24,
-                    height: 16,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  ▼
-                </button>
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
-            </div>
+
+              {/* Font Size Controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Font Size:</label>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="8"
+                    max="144"
+                    value={sel.fontSize || 64}
+                    onChange={(e) => {
+                      const size = Math.max(8, Math.min(144, parseInt(e.target.value) || 64));
+                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', size, sel.fontWeight);
+                      updateRectangle(sel.id, { fontSize: size, width: dimensions.width, height: dimensions.height });
+                    }}
+                    style={{
+                      background: '#111827',
+                      color: '#E5E7EB',
+                      border: '1px solid #374151',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      fontSize: 14,
+                      width: '70px',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation();
+                        const newSize = Math.min(144, (sel.fontSize || 64) + 2);
+                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize, sel.fontWeight);
+                        updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
+                      }}
+                      title="Increase font size"
+                      aria-label="Increase font size"
+                      style={{
+                        background: '#0b3a1a',
+                        color: '#D1FAE5',
+                        border: '1px solid #065F46',
+                        borderRadius: 4,
+                        padding: '2px 8px',
+                        cursor: 'pointer',
+                        fontSize: 10,
+                        lineHeight: 1,
+                        minWidth: 28,
+                        height: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation();
+                        const newSize = Math.max(8, (sel.fontSize || 64) - 2);
+                        const dimensions = measureTextDimensions(sel.text || 'Enter Text', newSize, sel.fontWeight);
+                        updateRectangle(sel.id, { fontSize: newSize, width: dimensions.width, height: dimensions.height });
+                      }}
+                      title="Decrease font size"
+                      aria-label="Decrease font size"
+                      style={{
+                        background: '#3a0b0b',
+                        color: '#FECACA',
+                        border: '1px solid #7F1D1D',
+                        borderRadius: 4,
+                        padding: '2px 8px',
+                        cursor: 'pointer',
+                        fontSize: 10,
+                        lineHeight: 1,
+                        minWidth: 28,
+                        height: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Formatting Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Style:</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      const newWeight = sel.fontWeight === 'bold' ? 'normal' : 'bold';
+                      const dimensions = measureTextDimensions(sel.text || 'Enter Text', sel.fontSize || 64, newWeight);
+                      updateRectangle(sel.id, { fontWeight: newWeight, width: dimensions.width, height: dimensions.height });
+                    }}
+                    title="Toggle bold"
+                    aria-label="Toggle bold"
+                    style={{
+                      background: sel.fontWeight === 'bold' ? '#065F46' : '#111827',
+                      color: sel.fontWeight === 'bold' ? '#D1FAE5' : '#E5E7EB',
+                      border: sel.fontWeight === 'bold' ? '1px solid #10B981' : '1px solid #374151',
+                      borderRadius: 6,
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      flex: 1,
+                      fontSize: 14,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    B
+                  </button>
+                  <button
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      const newDecoration = sel.textDecoration === 'line-through' ? 'none' : 'line-through';
+                      updateRectangle(sel.id, { textDecoration: newDecoration });
+                    }}
+                    title="Toggle strikethrough"
+                    aria-label="Toggle strikethrough"
+                    style={{
+                      background: sel.textDecoration === 'line-through' ? '#065F46' : '#111827',
+                      color: sel.textDecoration === 'line-through' ? '#D1FAE5' : '#E5E7EB',
+                      border: sel.textDecoration === 'line-through' ? '1px solid #10B981' : '1px solid #374151',
+                      borderRadius: 6,
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      flex: 1,
+                      fontSize: 14,
+                      textDecoration: 'line-through'
+                    }}
+                  >
+                    S
+                  </button>
+                </div>
+              </div>
+            </>
           )}
+
+          {/* Delete Button */}
           <button
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"
             aria-label="Delete selected shape"
-            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
           >
             Delete
           </button>

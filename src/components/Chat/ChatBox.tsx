@@ -137,17 +137,12 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         const response = await aiCanvasCommand(messageContent)
         
         if (response.success && response.data) {
-          // DEBUG: Log what the AI returned
-          console.log('🔍 AI Response:', JSON.stringify(response.data, null, 2))
-          
           // Check if this is a create command without color (skip for complex actions like forms)
           const skipColorCheck = response.data.action === 'complex' || 
                                   response.data.action === 'layout' ||
                                   response.data.target === 'form' ||
                                   response.data.target === 'navbar' ||
                                   response.data.target === 'card'
-          
-          console.log('🔍 Skip Color Check:', skipColorCheck, 'Action:', response.data.action, 'Target:', response.data.target)
           
           if (response.data.action === 'create' && !response.data.parameters.color && !skipColorCheck) {
             // Ask for color clarification
