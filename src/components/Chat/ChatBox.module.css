@@ -3,7 +3,7 @@
 /* Floating chat button (closed state) */
 .floatingButton {
   position: fixed;
-  bottom: 1rem;
+  bottom: 3rem;
   right: 1rem;
   background-color: #2563eb;
   color: white;
@@ -23,7 +23,7 @@
 /* Chat container (open state) */
 .chatContainer {
   position: fixed;
-  bottom: 1rem;
+  bottom: 3rem;
   right: 1rem;
   width: 20rem;
   height: 24rem;

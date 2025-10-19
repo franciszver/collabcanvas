@@ -1325,21 +1325,6 @@ export default function Canvas() {
                 >
                   Properties
                 </button>
-                <button
-                  onClick={() => setShowGroupsPanel(true)}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #374151',
-                    borderRadius: '4px',
-                    padding: '4px 12px',
-                    color: '#9CA3AF',
-                    cursor: 'pointer',
-                    fontSize: '11px'
-                  }}
-                  title="Open groups panel"
-                >
-                  Groups
-                </button>
                 <span>•</span>
                 <span>Ctrl+G to group • Delete to remove</span>
               </>
@@ -1348,6 +1333,23 @@ export default function Canvas() {
         ) : (
           <span>Press ? for shortcuts</span>
         )}
+        {/* Groups button - always visible */}
+        <span>•</span>
+        <button
+          onClick={() => setShowGroupsPanel(true)}
+          style={{
+            background: 'transparent',
+            border: '1px solid #374151',
+            borderRadius: '4px',
+            padding: '4px 12px',
+            color: '#9CA3AF',
+            cursor: 'pointer',
+            fontSize: '11px'
+          }}
+          title="View and manage groups"
+        >
+          Groups
+        </button>
       </div>
       
       {/* Right side info */}

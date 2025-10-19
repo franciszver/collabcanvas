@@ -274,6 +274,13 @@ export default function CommandsWindow({ isOpen, onClose, onCommandSelect }: Com
               </div>
             </div>
           </div>
+
+          {/* Close button at bottom */}
+          <div className={styles.footer}>
+            <button className={styles.footerCloseButton} onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
