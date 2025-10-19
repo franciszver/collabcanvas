@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useCanvas } from '../../contexts/CanvasContext'
-import { useAuth } from '../../contexts/AuthContext'
 import styles from './MultiShapeProperties.module.css'
 
 interface MultiShapePropertiesProps {
@@ -20,7 +19,6 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     nudgeShapes,
     selectionCount
   } = useCanvas()
-  const { user } = useAuth()
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)

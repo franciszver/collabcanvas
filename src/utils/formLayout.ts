@@ -385,8 +385,8 @@ export function generateFormShapes(
         width: FORM_LAYOUT.buttonWidth,
         height: FORM_LAYOUT.buttonHeight,
         fill: buttonColor,
-        stroke: undefined,
-        strokeWidth: 0,
+        stroke: FORM_COLORS.buttonStroke,
+        strokeWidth: FORM_COLORS.buttonStrokeWidth,
         rotation: 0,
       })
       

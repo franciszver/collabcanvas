@@ -2,7 +2,6 @@ import {
   collection, 
   doc, 
   addDoc, 
-  setDoc,
   updateDoc, 
   deleteDoc, 
   getDocs, 
@@ -268,7 +267,7 @@ export async function ungroupShapes(groupId: string): Promise<void> {
       throw new Error('Group not found')
     }
     
-    const groupData = groupDoc.docs[0].data() as GroupDocument
+    // const groupData = groupDoc.docs[0].data() as GroupDocument
     
     // Delete the group
     await deleteGroup(groupId)

@@ -71,8 +71,8 @@ describe('formLayout', () => {
       const config = { viewport: defaultViewport }
       const shapes = generateFormShapes(template, config)
       
-      // Should have: 2 labels, 2 inputs, 1 checkbox, 1 checkbox label, 1 button, 1 button text
-      expect(shapes.length).toBe(8)
+      // Should have: 1 background, 2 labels, 2 inputs, 1 checkbox, 1 checkbox label, 1 button, 1 button text
+      expect(shapes.length).toBe(9)
       
       // Verify shape roles
       const labels = shapes.filter(s => s.role === 'label')
@@ -93,8 +93,8 @@ describe('formLayout', () => {
       const config = { viewport: defaultViewport }
       const shapes = generateFormShapes(template, config)
       
-      // Should have: 4 labels, 4 inputs, 1 button, 1 button text
-      expect(shapes.length).toBe(10)
+      // Should have: 1 background, 4 labels, 4 inputs, 1 button, 1 button text
+      expect(shapes.length).toBe(11)
       
       const labels = shapes.filter(s => s.role === 'label')
       const inputs = shapes.filter(s => s.role === 'input')
@@ -127,8 +127,8 @@ describe('formLayout', () => {
       const totalHeight = calculateTotalFormHeight(template)
       const expectedStartY = (1080 - totalHeight) / 2 + FORM_LAYOUT.margin
       
-      const firstShape = shapes[0]
-      expect(firstShape.y).toBeCloseTo(expectedStartY, 0)
+      const firstLabel = shapes.find(s => s.role === 'label')
+      expect(firstLabel?.y).toBeCloseTo(expectedStartY, 0)
     })
     
     it('should use correct colors for form elements', () => {
@@ -275,9 +275,9 @@ describe('formLayout', () => {
       }
       const shapes = generateFormShapes(template, config)
       
-      const firstShape = shapes[0]
+      const firstLabel = shapes.find(s => s.role === 'label')
       // Should use viewport.x + margin instead of centering
-      expect(firstShape.x).toBe(defaultViewport.x + FORM_LAYOUT.margin)
+      expect(firstLabel?.x).toBe(defaultViewport.x + FORM_LAYOUT.margin)
     })
     
     it('should respect startY configuration option', () => {
@@ -289,9 +289,9 @@ describe('formLayout', () => {
       }
       const shapes = generateFormShapes(template, config)
       
-      const firstShape = shapes[0]
+      const firstLabel = shapes.find(s => s.role === 'label')
       // Should start at specified Y + margin
-      expect(firstShape.y).toBe(startY + FORM_LAYOUT.margin)
+      expect(firstLabel?.y).toBe(startY + FORM_LAYOUT.margin)
     })
     
     it('should set rotation to 0 for all shapes', () => {
@@ -337,9 +337,9 @@ describe('formLayout', () => {
       expect(shapes.length).toBeGreaterThan(0)
       
       // Should use 1920x1080 defaults for centering
-      const firstShape = shapes[0]
+      const firstLabel = shapes.find(s => s.role === 'label')
       const expectedX = (1920 - 400) / 2 + 40
-      expect(firstShape.x).toBe(expectedX)
+      expect(firstLabel?.x).toBe(expectedX)
     })
   })
 })

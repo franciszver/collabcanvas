@@ -68,7 +68,9 @@ export default function Canvas() {
     selectionCount,
     selectSimilar,
     selectByType,
-    selectByColor
+    selectByColor,
+    bringToFront,
+    sendToBack
   } = useCanvas()
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
@@ -390,7 +392,7 @@ export default function Canvas() {
               evt.cancelBubble = true
               if (isLocked) {
                 // Show tooltip or message for locked shapes
-                console.log(`Shape is locked by ${r.lockedByName || 'another user'}`)
+                // Shape is locked by another user
                 return
               }
               if (evt.evt.shiftKey) { 

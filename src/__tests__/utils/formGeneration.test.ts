@@ -19,8 +19,8 @@ describe('Form Generation Integration', () => {
       const template = FORM_TEMPLATES.login
       const shapes = generateFormShapes(template, { viewport: defaultViewport })
       
-      // 2 labels + 2 inputs + 1 checkbox + 1 checkbox label + 1 button + 1 button text = 8
-      expect(shapes.length).toBe(8)
+      // 1 background + 2 labels + 2 inputs + 1 checkbox + 1 checkbox label + 1 button + 1 button text = 9
+      expect(shapes.length).toBe(9)
     })
 
     it('should include stroke properties on input rectangles', () => {
@@ -84,8 +84,8 @@ describe('Form Generation Integration', () => {
       const template = FORM_TEMPLATES.signup
       const shapes = generateFormShapes(template, { viewport: defaultViewport })
       
-      // 4 labels + 4 inputs + 1 button + 1 button text = 10
-      expect(shapes.length).toBe(10)
+      // 1 background + 4 labels + 4 inputs + 1 button + 1 button text = 11
+      expect(shapes.length).toBe(11)
     })
 
     it('should have no checkboxes', () => {
@@ -115,8 +115,8 @@ describe('Form Generation Integration', () => {
       const template = FORM_TEMPLATES.contact
       const shapes = generateFormShapes(template, { viewport: defaultViewport })
       
-      // 3 labels + 3 inputs (2 regular + 1 textarea) + 1 button + 1 button text = 8
-      expect(shapes.length).toBe(8)
+      // 1 background + 3 labels + 3 inputs (2 regular + 1 textarea) + 1 button + 1 button text = 9
+      expect(shapes.length).toBe(9)
     })
 
     it('should have textarea with correct height', () => {
@@ -256,7 +256,7 @@ describe('Form Generation Integration', () => {
       // Verify sequential z-indexes
       expect(shapesWithZ[0].z).toBe(100)
       expect(shapesWithZ[7].z).toBe(107)
-      expect(shapesWithZ.length).toBe(8)
+      expect(shapesWithZ.length).toBe(9)
     })
   })
 })

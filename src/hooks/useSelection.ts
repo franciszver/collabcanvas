@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { Rectangle, SelectionState, SelectionBoxCoords } from '../types/canvas.types'
-import { lockShapes, unlockShapes, canLockShapes, hasLockedShapes } from '../services/locking'
+import type { Rectangle, SelectionBoxCoords } from '../types/canvas.types'
+import { lockShapes, unlockShapes, canLockShapes } from '../services/locking'
 import { useAuth } from '../contexts/AuthContext'
 
 export interface UseSelectionOptions {
