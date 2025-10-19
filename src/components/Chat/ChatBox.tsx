@@ -27,6 +27,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isWaitingForLoginOAuth, setIsWaitingForLoginOAuth] = useState(false)
   const [pendingLoginParams, setPendingLoginParams] = useState<{ includeRememberMe?: boolean; includeForgotPassword?: boolean; oauthProviders?: string[] } | null>(null)
   const [isCommandsOpen, setIsCommandsOpen] = useState(false)
+  const [hasDeselectedForCurrentInput, setHasDeselectedForCurrentInput] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
   const { messages, sendMessage, clearMessages } = useChatMessages()
@@ -34,7 +35,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     user?.id || '', 
     user?.displayName || 'User'
   )
-  const { selectedId } = useCanvas()
+  const { selectedId, clearSelection, setViewport, viewport } = useCanvas()
   const documentId = selectedId || 'default-document'
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
@@ -146,6 +147,39 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     return null
   }
 
+  // Helper function to detect position-based create commands
+  const isPositionBasedCreateCommand = (command: any): boolean => {
+    return command.action === 'create' && 
+           command.parameters && 
+           typeof command.parameters.x === 'number' && 
+           typeof command.parameters.y === 'number'
+  }
+
+  // Helper function to move viewport to show a specific position
+  const moveViewportToPosition = (x: number, y: number, shapeWidth: number = 100, shapeHeight: number = 100) => {
+    const screenWidth = window.innerWidth
+    const screenHeight = window.innerHeight
+    
+    // Calculate the center of the screen
+    const centerX = screenWidth / 2
+    const centerY = screenHeight / 2
+    
+    // Calculate the center of the shape
+    const shapeCenterX = x + shapeWidth / 2
+    const shapeCenterY = y + shapeHeight / 2
+    
+    // Calculate the new viewport position to center the object
+    const newViewportX = centerX - shapeCenterX * viewport.scale
+    const newViewportY = centerY - shapeCenterY * viewport.scale
+    
+    // Update the viewport
+    setViewport({
+      ...viewport,
+      x: newViewportX,
+      y: newViewportY
+    })
+  }
+
   // Helper function to parse OAuth providers
   const parseOAuthProviders = (message: string): string[] | null => {
     const messageTrimmed = message.trim().toLowerCase()
@@ -177,6 +211,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     const messageContent = inputValue.trim()
     setInputValue('')
     setIsAITyping(true)
+    
+    // Reset the deselection flag for the next input
+    setHasDeselectedForCurrentInput(false)
 
     try {
       // Send user message to Firestore
@@ -383,20 +420,74 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
               setPendingCommand(response.data)
               setIsWaitingForColor(true)
             } else {
-              // Apply the canvas command normally
-              const commandResult = await applyCanvasCommand(response.data)
-              
-              if (commandResult.success) {
-                let aiResponse = ''
+              // Check if this is a position-based create command
+              if (isPositionBasedCreateCommand(response.data)) {
+                // Apply the canvas command
+                const commandResult = await applyCanvasCommand(response.data)
                 
-                if (action === 'create') {
+                if (commandResult.success) {
                   const createdCount = commandResult.createdShapes?.length || 0
                   const hasLayout = parameters.layout
-                  if (hasLayout) {
-                    aiResponse = `✅ Created ${createdCount} ${target}(s) in ${hasLayout} layout`
-                  } else {
-                    aiResponse = `✅ Created ${createdCount} ${target}(s)`
+                  
+                  // Move viewport to show the newly created object(s)
+                  if (createdCount > 0) {
+                    // Calculate shape dimensions based on type
+                    let shapeWidth = 100
+                    let shapeHeight = 60
+                    
+                    if (target === 'circle') {
+                      const radius = parameters.radius || 50
+                      shapeWidth = radius * 2
+                      shapeHeight = radius * 2
+                    } else if (target === 'rectangle') {
+                      shapeWidth = parameters.width || 100
+                      shapeHeight = parameters.height || 60
+                    } else if (target === 'text') {
+                      shapeWidth = parameters.width || 200
+                      shapeHeight = parameters.height || 40
+                    } else if (target === 'triangle') {
+                      shapeWidth = parameters.width || 100
+                      shapeHeight = parameters.height || 100
+                    } else if (target === 'star') {
+                      shapeWidth = parameters.width || 100
+                      shapeHeight = parameters.height || 100
+                    } else if (target === 'arrow') {
+                      shapeWidth = parameters.width || 100
+                      shapeHeight = parameters.height || 60
+                    }
+                    
+                    // Move viewport to show the object
+                    if (parameters.x !== undefined && parameters.y !== undefined) {
+                      moveViewportToPosition(parameters.x, parameters.y, shapeWidth, shapeHeight)
+                    }
                   }
+                  
+                  let aiResponse = ''
+                  if (hasLayout) {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s) in ${hasLayout} layout at position (${parameters.x}, ${parameters.y})`
+                  } else {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s) at position (${parameters.x}, ${parameters.y})`
+                  }
+                  
+                  await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+                } else {
+                  await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, 'ai', 'AI Assistant', 'assistant')
+                }
+              } else {
+                // Apply the canvas command normally
+                const commandResult = await applyCanvasCommand(response.data)
+                
+                if (commandResult.success) {
+                  let aiResponse = ''
+                  
+                  if (action === 'create') {
+                    const createdCount = commandResult.createdShapes?.length || 0
+                    const hasLayout = parameters.layout
+                    if (hasLayout) {
+                      aiResponse = `✅ Created ${createdCount} ${target}(s) in ${hasLayout} layout`
+                    } else {
+                      aiResponse = `✅ Created ${createdCount} ${target}(s)`
+                    }
                 } else if (action === 'manipulate') {
                   // Parse manipulation details
                   const params = parameters
@@ -440,7 +531,8 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
               }
             }
           }
-        } else {
+        }
+      } else {
           // Send AI error response
           const aiResponse = `❌ ${response.error}`
           await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
@@ -456,10 +548,17 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value)
+    const newValue = e.target.value
+    setInputValue(newValue)
+    
+    // Clear selection when user starts typing (only once per input session)
+    if (newValue.trim() && !hasDeselectedForCurrentInput) {
+      clearSelection()
+      setHasDeselectedForCurrentInput(true)
+    }
     
     // Update typing indicator
-    if (e.target.value.trim()) {
+    if (newValue.trim()) {
       setUserTyping(true)
     } else {
       setUserTyping(false)

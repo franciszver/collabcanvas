@@ -2,6 +2,7 @@ import {
   collection, 
   doc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   getDocs, 
@@ -40,27 +41,32 @@ export async function createGroup(
   name?: string
 ): Promise<string> {
   try {
-    const groupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    console.log('Creating group with data:', { documentId, shapeIds, userId, userName, name })
     
-    const groupData: Omit<GroupDocument, 'id'> = {
+    const db = getFirestore()
+    
+    const groupData = {
       name: name || `Group ${Date.now()}`,
       shapeIds,
       documentId,
       createdBy: userId,
       createdByName: userName,
-      createdAt: serverTimestamp() as Timestamp,
-      updatedAt: serverTimestamp() as Timestamp,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       color: generateGroupColor(),
       isCollapsed: false
     }
 
-    const db = getFirestore()
-    const docRef = await addDoc(collection(db, 'groups'), {
-      ...groupData,
-      id: groupId
-    })
-
-    return docRef.id
+    console.log('Group data to be saved:', groupData)
+    try {
+      const docRef = await addDoc(collection(db, 'groups'), groupData)
+      const groupId = docRef.id
+      console.log('Group created successfully with ID:', groupId)
+      return groupId
+    } catch (addDocError) {
+      console.error('Error in addDoc operation:', addDocError)
+      throw addDocError
+    }
   } catch (error) {
     console.error('Failed to create group:', error)
     throw error
@@ -165,9 +171,12 @@ export async function removeShapesFromGroup(
  */
 export function subscribeToGroups(
   documentId: string,
-  callback: (groups: ShapeGroup[]) => void
+  callback: (groups: ShapeGroup[]) => void,
+  onError?: (error: Error) => void
 ): () => void {
   const groupsRef = collection(getFirestore(), 'groups')
+  
+  // Try the full query first (with orderBy)
   const q = query(
     groupsRef,
     where('documentId', '==', documentId),
@@ -175,10 +184,11 @@ export function subscribeToGroups(
   )
 
   return onSnapshot(q, (snapshot) => {
+    console.log('Groups subscription update - snapshot size:', snapshot.docs.length)
     const groups: ShapeGroup[] = snapshot.docs.map(doc => {
       const data = doc.data() as GroupDocument
-      return {
-        id: data.id,
+      const group = {
+        id: doc.id, // Use Firestore document ID
         name: data.name,
         shapeIds: data.shapeIds,
         documentId: data.documentId,
@@ -188,10 +198,61 @@ export function subscribeToGroups(
         updatedAt: data.updatedAt.toMillis(),
         isCollapsed: data.isCollapsed || false
       }
+      console.log('Mapped group:', group)
+      return group
     })
+    console.log('Calling callback with groups:', groups)
     callback(groups)
   }, (error) => {
     console.error('Error subscribing to groups:', error)
+    
+    // If it's an index error, try a simpler query without orderBy
+    if (error.code === 'failed-precondition' && error.message.includes('index')) {
+      console.log('Retrying groups query without orderBy due to missing index...')
+      const simpleQ = query(
+        groupsRef,
+        where('documentId', '==', documentId)
+      )
+      
+      return onSnapshot(simpleQ, (snapshot) => {
+        console.log('Fallback groups query update - snapshot size:', snapshot.docs.length)
+        const groups: ShapeGroup[] = snapshot.docs
+          .map(doc => {
+            const data = doc.data() as GroupDocument
+            const group = {
+              id: doc.id, // Use Firestore document ID
+              name: data.name,
+              shapeIds: data.shapeIds,
+              documentId: data.documentId,
+              createdBy: data.createdBy,
+              createdByName: data.createdByName,
+              createdAt: data.createdAt.toMillis(),
+              updatedAt: data.updatedAt.toMillis(),
+              isCollapsed: data.isCollapsed || false
+            }
+            console.log('Fallback mapped group:', group)
+            return group
+          })
+          .sort((a, b) => a.createdAt - b.createdAt) // Sort client-side
+        console.log('Fallback calling callback with groups:', groups)
+        callback(groups)
+      }, (fallbackError) => {
+        console.error('Error in fallback groups query:', fallbackError)
+        if (onError) {
+          onError(fallbackError)
+        } else {
+          callback([])
+        }
+      })
+    }
+    
+    // Call the error callback to update loading state
+    if (onError) {
+      onError(error)
+    } else {
+      // Fallback: call the main callback with empty array to stop loading
+      callback([])
+    }
   })
 }
 
@@ -236,7 +297,7 @@ export async function getGroups(documentId: string): Promise<ShapeGroup[]> {
     return snapshot.docs.map(doc => {
       const data = doc.data() as GroupDocument
       return {
-        id: data.id,
+        id: doc.id, // Use Firestore document ID
         name: data.name,
         shapeIds: data.shapeIds,
         documentId: data.documentId,

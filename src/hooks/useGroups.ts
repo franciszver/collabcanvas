@@ -41,10 +41,19 @@ export function useGroups({ documentId }: UseGroupsOptions): UseGroupsReturn {
     setIsLoading(true)
     setError(null)
 
-    const unsubscribe = subscribeToGroups(documentId, (newGroups) => {
-      setGroups(newGroups)
-      setIsLoading(false)
-    })
+    const unsubscribe = subscribeToGroups(
+      documentId, 
+      (newGroups) => {
+        setGroups(newGroups)
+        setIsLoading(false)
+      },
+      (error) => {
+        console.error('Error in groups subscription:', error)
+        setError(error.message)
+        setIsLoading(false)
+        setGroups([]) // Clear groups on error
+      }
+    )
 
     return () => {
       unsubscribe()
