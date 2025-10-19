@@ -19,6 +19,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isAITyping, setIsAITyping] = useState(false)
   const [pendingCommand, setPendingCommand] = useState<CanvasAction | null>(null)
   const [isWaitingForColor, setIsWaitingForColor] = useState(false)
+  const [isWaitingForNavbarButtons, setIsWaitingForNavbarButtons] = useState(false)
+  const [isWaitingForNavbarConfirmation, setIsWaitingForNavbarConfirmation] = useState(false)
+  const [pendingNavbarParams, setPendingNavbarParams] = useState<{ buttonCount: number; labels: string[] } | null>(null)
   const [isCommandsOpen, setIsCommandsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
@@ -80,6 +83,50 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     return null
   }
 
+  // Helper function to parse button count from user input
+  const parseButtonCount = (message: string): number | null => {
+    const messageTrimmed = message.trim()
+    
+    // Look for numbers in the message
+    const numberMatch = messageTrimmed.match(/\d+/)
+    if (numberMatch) {
+      const count = parseInt(numberMatch[0], 10)
+      if (count >= 1 && count <= 10) {
+        return count
+      }
+    }
+    
+    return null
+  }
+
+  // Helper function to parse custom labels from user input
+  const parseCustomLabels = (message: string, expectedCount: number): string[] | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    // Check if user is confirming with "yes" or "confirm"
+    if (messageTrimmed === 'yes' || messageTrimmed === 'confirm' || messageTrimmed === 'y') {
+      return null // Use current labels
+    }
+    
+    // Parse comma-separated labels
+    const labels = messageTrimmed.split(',').map(label => label.trim()).filter(label => label.length > 0)
+    
+    if (labels.length === expectedCount) {
+      return labels
+    }
+    
+    return null // Invalid count - return null instead of undefined
+  }
+
+  // Helper function to generate default labels
+  const generateDefaultLabels = (count: number): string[] => {
+    if (count === 3) {
+      return ['Home', 'About', 'Services']
+    }
+    
+    return Array.from({ length: count }, (_, i) => `Button ${i + 1}`)
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -133,6 +180,63 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
           await sendMessage(`I didn't understand that color. Please choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
         }
+      } else if (isWaitingForNavbarButtons) {
+        // Handle button count response
+        const buttonCount = parseButtonCount(messageContent)
+        if (buttonCount) {
+          const defaultLabels = generateDefaultLabels(buttonCount)
+          setPendingNavbarParams({ buttonCount, labels: defaultLabels })
+          setIsWaitingForNavbarButtons(false)
+          setIsWaitingForNavbarConfirmation(true)
+          
+          const labelsText = defaultLabels.join(', ')
+          await sendMessage(`Great! I'll create ${buttonCount} buttons: [${labelsText}]. Reply 'yes' to confirm or type custom labels separated by commas.`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          // Invalid count, ask again
+          await sendMessage(`Please enter a number between 1 and 10 for the number of buttons.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForNavbarConfirmation && pendingNavbarParams) {
+        // Handle label confirmation/customization
+        const customLabels = parseCustomLabels(messageContent, pendingNavbarParams.buttonCount)
+        
+        if (customLabels === null) {
+          // User confirmed with "yes" - use current labels
+          const result = await createTemplateShapes('navbar', { 
+            templateId: 'navbar', 
+            buttonLabels: pendingNavbarParams.labels 
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset navbar state
+          setPendingNavbarParams(null)
+          setIsWaitingForNavbarConfirmation(false)
+        } else if (customLabels && customLabels.length > 0) {
+          // User provided custom labels
+          const result = await createTemplateShapes('navbar', { 
+            templateId: 'navbar', 
+            buttonLabels: customLabels 
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset navbar state
+          setPendingNavbarParams(null)
+          setIsWaitingForNavbarConfirmation(false)
+        } else {
+          // Invalid label count
+          await sendMessage(`Please provide exactly ${pendingNavbarParams.buttonCount} labels separated by commas, or reply 'yes' to use the default labels.`, 'ai', 'AI Assistant', 'assistant')
+        }
       } else {
         // Normal AI command processing
         const response = await aiCanvasCommand(messageContent)
@@ -142,25 +246,32 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           
           // Check if this is a template request
           if (isTemplateRequest(action, target)) {
-            // Use shared template logic
             const templateId = extractTemplateId(target)
-            const templateParams = extractTemplateParams(target, parameters)
             
-            const result = await createTemplateShapes(templateId, templateParams, applyCanvasCommand)
-            
-            if (result.success) {
-              // Show success in chat
-              const templateName = templateId === 'navbar' ? 'navigation bar' : 'login form'
-              const createdCount = result.createdShapes?.length || 0
-              let aiResponse = `✅ Created ${templateName} with ${createdCount} elements`
-              
-              if (result.details) {
-                aiResponse += `\n\nDetails: ${result.details}`
-              }
-              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            // Special handling for navbar - start interactive flow
+            if (templateId === 'navbar') {
+              setIsWaitingForNavbarButtons(true)
+              await sendMessage(`I'll create a navbar with Home, About, Services. How many buttons do you need? [1-10]`, 'ai', 'AI Assistant', 'assistant')
             } else {
-              // Show error in chat
-              await sendMessage(`❌ Failed to create template: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+              // Use shared template logic for other templates
+              const templateParams = extractTemplateParams(target, parameters)
+              
+              const result = await createTemplateShapes(templateId, templateParams, applyCanvasCommand)
+              
+              if (result.success) {
+                // Show success in chat
+                const templateName = templateId === 'login-oauth' ? 'login form' : 'template'
+                const createdCount = result.createdShapes?.length || 0
+                let aiResponse = `✅ Created ${templateName} with ${createdCount} elements`
+                
+                if (result.details) {
+                  aiResponse += `\n\nDetails: ${result.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+              } else {
+                // Show error in chat
+                await sendMessage(`❌ Failed to create template: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+              }
             }
           } else {
             // Handle non-template commands (existing logic)
@@ -421,7 +532,15 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyPress={handleKeyPress}
-            placeholder={isWaitingForColor ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" : "Ask me to create shapes..."}
+            placeholder={
+              isWaitingForColor 
+                ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" 
+                : isWaitingForNavbarButtons 
+                ? "Enter number of buttons (1-10)..." 
+                : isWaitingForNavbarConfirmation 
+                ? "Type 'yes' to confirm or enter custom labels..." 
+                : "Ask me to create shapes..."
+            }
             className={styles.inputField}
             disabled={isAITyping}
           />

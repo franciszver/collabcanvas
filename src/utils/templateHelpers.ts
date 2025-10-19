@@ -164,15 +164,24 @@ export async function createTemplateShapes(
 /**
  * Check if an AI response is a template request
  * 
- * @param action - The action from AI response
+ * @param _action - The action from AI response (unused, kept for API compatibility)
  * @param target - The target from AI response
  * @returns True if this is a template request
  */
-export function isTemplateRequest(action: string, target: string): boolean {
-  return (
-    action === 'complex' && 
-    (target === 'navbar' || target === 'form')
-  )
+export function isTemplateRequest(_action: string, target: string): boolean {
+  const targetLower = target.toLowerCase()
+  
+  // Check for navbar variations
+  if (targetLower === 'navbar' || targetLower === 'navigation bar') {
+    return true
+  }
+  
+  // Check for form/login form/template variations
+  if (targetLower === 'form' || targetLower === 'login form' || targetLower === 'template') {
+    return true
+  }
+  
+  return false
 }
 
 /**
@@ -182,12 +191,18 @@ export function isTemplateRequest(action: string, target: string): boolean {
  * @returns The template ID to use
  */
 export function extractTemplateId(target: string): string {
-  if (target === 'form') {
-    return 'login-oauth' // Currently only one form template
-  }
-  if (target === 'navbar') {
+  const targetLower = target.toLowerCase()
+  
+  // Normalize navbar variations
+  if (targetLower === 'navbar' || targetLower === 'navigation bar') {
     return 'navbar'
   }
+  
+  // Normalize form variations
+  if (targetLower === 'form' || targetLower === 'login form' || targetLower === 'template') {
+    return 'login-oauth'
+  }
+  
   return target
 }
 
@@ -217,3 +232,4 @@ export function extractTemplateParams(target: string, parameters: any): Template
     templateId: target as any
   }
 }
+
