@@ -1,4 +1,4 @@
-import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow, Text } from 'react-konva'
+import { Stage, Layer, Rect, Transformer, Circle, RegularPolygon, Star, Line, Arrow, Text, Group } from 'react-konva'
 import type Konva from 'konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './Canvas.module.css'
@@ -10,7 +10,15 @@ import { updateCursorPositionRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { calculateShapeNumbers, getShapeTypeName, generateRectId } from '../../utils/helpers'
+import { throttle, debounce } from '../../utils/performance'
+import { SimpleLockIndicator } from './LockIndicator'
+import LockTooltip from './LockTooltip'
+import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
+import SelectionBounds from './SelectionBounds'
+import MultiShapeProperties from './MultiShapeProperties'
+import GroupsPanel from './GroupsPanel'
 
 // Helper to calculate text dimensions for auto-resize
 function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
@@ -42,17 +50,39 @@ export default function Canvas() {
     setSelectedId,
     liveDragPositions,
     publishDragUpdate,
-    clearDragUpdate
+    clearDragUpdate,
+    // Multi-selection
+    selectedIds,
+    isBoxSelecting,
+    selectionBox,
+    isSpacePressed,
+    selectShape,
+    toggleShape,
+    clearSelection,
+    startBoxSelection,
+    updateBoxSelection,
+    endBoxSelection,
+    isSelected,
+    getSelectedShapes,
+    hasSelection,
+    selectionCount,
+    selectSimilar,
+    selectByType,
+    selectByColor
   } = useCanvas()
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
   useCursorSync()
+  const { showHelp, setShowHelp } = useKeyboardShortcuts({ enabled: true })
   const isPanningRef = useRef(false)
   const lastPosRef = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
   const [containerSize, setContainerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
   const prevSizeRef = useRef(containerSize)
   const [colorHistory, setColorHistory] = useState<string[]>([])
+  const [hoveredLockedShape, setHoveredLockedShape] = useState<{ id: string; x: number; y: number; lockedByName: string } | null>(null)
+  const [showMultiShapeProperties, setShowMultiShapeProperties] = useState(false)
+  const [showGroupsPanel, setShowGroupsPanel] = useState(false)
   
   // Dynamically resize canvas when window size changes
   useEffect(() => {
@@ -63,18 +93,6 @@ export default function Canvas() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   const selectedIdsRef = useRef<Set<string>>(new Set())
-  const setSingleSelection = useCallback((id: string) => {
-    selectedIdsRef.current = new Set([id])
-    setSelectedId(id)
-  }, [setSelectedId])
-  const toggleSelection = useCallback((id: string) => {
-    const next = new Set(selectedIdsRef.current)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    selectedIdsRef.current = next
-    // keep a primary selected id for UI; choose the most recently toggled
-    setSelectedId(id)
-  }, [setSelectedId])
   const transformerRef = useRef<Konva.Transformer>(null)
   
   // Calculate shape numbers by type
@@ -134,51 +152,98 @@ export default function Canvas() {
   )
 
   const onMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    isPanningRef.current = true
-    movedRef.current = false
     const stage = e.target.getStage()
     if (!stage) return
-    lastPosRef.current = stage.getPointerPosition()
-  }, [])
+    
+    const pointer = stage.getPointerPosition()
+    if (!pointer) return
+    
+    // Convert screen coordinates to canvas coordinates
+    const canvasX = (pointer.x - viewport.x) / viewport.scale
+    const canvasY = (pointer.y - viewport.y) / viewport.scale
+    
+    // Check if Space is pressed for box selection
+    if (isSpacePressed) {
+      startBoxSelection(canvasX, canvasY)
+      return
+    }
+    
+    // Normal panning behavior
+    isPanningRef.current = true
+    movedRef.current = false
+    lastPosRef.current = pointer
+  }, [isSpacePressed, startBoxSelection, viewport])
 
-  const onMouseMove = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!isPanningRef.current || !lastPosRef.current) return
+  // Throttled mouse move handler for better performance
+  const onMouseMoveThrottled = useMemo(
+    () => throttle((e: Konva.KonvaEventObject<MouseEvent>) => {
       const stage = e.target.getStage()
       if (!stage) return
       const pos = stage.getPointerPosition()
       if (!pos) return
+      
+      // Convert screen coordinates to canvas coordinates
+      const canvasX = (pos.x - viewport.x) / viewport.scale
+      const canvasY = (pos.y - viewport.y) / viewport.scale
+      
+      // Handle box selection
+      if (isBoxSelecting) {
+        updateBoxSelection(canvasX, canvasY)
+        return
+      }
+      
+      // Handle normal panning
+      if (!isPanningRef.current || !lastPosRef.current) return
+      
       const dx = pos.x - lastPosRef.current.x
       const dy = pos.y - lastPosRef.current.y
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
       lastPosRef.current = pos
       const clamped = clampViewport(viewport.x + dx, viewport.y + dy)
       setViewport({ ...viewport, x: clamped.x, y: clamped.y })
+    }, 16), // 60fps throttling
+    [viewport, setViewport, clampViewport, isBoxSelecting, updateBoxSelection]
+  )
+
+  const onMouseMove = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      onMouseMoveThrottled(e)
     },
-    [viewport, setViewport, clampViewport]
+    [onMouseMoveThrottled]
   )
 
   const onMouseUp = useCallback(() => {
+    // Handle box selection end
+    if (isBoxSelecting) {
+      endBoxSelection()
+    }
+    
+    // Reset panning
     isPanningRef.current = false
     lastPosRef.current = null
-  }, [])
+  }, [isBoxSelecting, endBoxSelection])
 
   useEffect(() => {
     const tr = transformerRef.current
     if (!tr) return
     const stage = tr.getStage && tr.getStage()
     if (!stage) return
-    if (selectedId) {
-      const node = stage.findOne(`.rect-${selectedId}`)
-      if (node) {
-        tr.nodes([node])
+    
+    // Safety check: ensure selectedIds is defined
+    if (!selectedIds) return
+    
+    if (selectedIds.size > 0) {
+      // Get all selected shape nodes
+      const nodes = Array.from(selectedIds).map(id => stage.findOne(`.rect-${id}`)).filter(Boolean) as Konva.Node[]
+      if (nodes.length > 0) {
+        tr.nodes(nodes)
         tr.getLayer()?.batchDraw()
       }
     } else {
       tr.nodes([])
       tr.getLayer()?.batchDraw()
     }
-  }, [selectedId, rectangles])
+  }, [selectedIds, rectangles])
 
   // Deselect locally if the selected rectangle was deleted remotely
   useEffect(() => {
@@ -205,34 +270,30 @@ export default function Canvas() {
     // Disable shape creation by clicking on canvas background; just clear selection
     const stage = e.target.getStage()
     if (e.target !== stage) return
-    setSelectedId(null)
-    selectedIdsRef.current = new Set()
+    
+    // Clear selection when clicking on empty canvas
+    clearSelection()
     movedRef.current = false
-  }, [setSelectedId])
+  }, [clearSelection])
 
   // Track pointer for presence updates (optimized throttling)
-  const timeoutId = useRef<any>(null)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentAt = useRef<number>(0)
   const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
   const stageRef = useRef<any>(null)
 
-  const scheduleCursorSend = useCallback(() => {
-    if (timeoutId.current != null) return
-    timeoutId.current = setTimeout(async () => {
-      timeoutId.current = null
+  // Debounced cursor update for better performance
+  const scheduleCursorSend = useMemo(
+    () => debounce(async () => {
       const now = Date.now()
-      if (now - lastSentAt.current < 100) { // Increased throttle to 100ms
-        scheduleCursorSend()
-        return
-      }
+      if (now - lastSentAt.current < 100) return // Throttle to 100ms
+      
       const p = pendingCursor.current
       if (!p || !user) return
       
       // Only send if position has changed significantly (reduces unnecessary updates)
       const lastPos = lastSentPosition.current
       if (lastPos && Math.abs(p.x - lastPos.x) < 5 && Math.abs(p.y - lastPos.y) < 5) {
-        scheduleCursorSend()
         return
       }
       
@@ -244,8 +305,9 @@ export default function Canvas() {
       } catch (error) {
         console.warn('Failed to update cursor position:', error)
       }
-    }, 100) // Increased throttle interval
-  }, [user])
+    }, 100),
+    [user]
+  )
 
   const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage()
@@ -299,22 +361,82 @@ export default function Canvas() {
       {/* Shapes Layer */}
       <Layer listening>
         {([...rectangles].sort((a, b) => (a.z ?? 0) - (b.z ?? 0))).map((r: Rectangle) => {
-          const isSelected = selectedId === r.id
+          const isShapeSelected = isSelected(r.id)
+          const isLocked = r.lockedBy && r.lockedBy !== user?.id
+          const isLockedByUser = r.lockedBy === user?.id
           const livePos = liveDragPositions[r.id]
-          const baseX = draggingIdRef.current === r.id || isSelected ? r.x : livePos ? livePos.x : r.x
-          const baseY = draggingIdRef.current === r.id || isSelected ? r.y : livePos ? livePos.y : r.y
+          const baseX = draggingIdRef.current === r.id || isShapeSelected ? r.x : livePos ? livePos.x : r.x
+          const baseY = draggingIdRef.current === r.id || isShapeSelected ? r.y : livePos ? livePos.y : r.y
           const { key, ...commonProps } = {
             key: `shape-${r.id}`,
             name: `rect-${r.id}`,
             fill: r.fill,
-            draggable: true,
+            draggable: !isLocked, // Disable dragging for locked shapes
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
-            onDragStart: (evt: Konva.KonvaEventObject<DragEvent>) => { draggingIdRef.current = r.id; if (!evt.evt.shiftKey && !selectedIdsRef.current.has(r.id)) { setSingleSelection(r.id) } },
-            onClick: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; if (evt.evt.shiftKey) { toggleSelection(r.id) } else { setSingleSelection(r.id) } },
-            onTap: (evt: Konva.KonvaEventObject<MouseEvent>) => { evt.cancelBubble = true; setSingleSelection(r.id) },
-            onMouseEnter: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(0.9); node.getLayer()?.batchDraw() } },
-            onMouseLeave: (evt: Konva.KonvaEventObject<MouseEvent>) => { const node = evt.target; if (node && node.opacity) { node.opacity(1); node.getLayer()?.batchDraw() } },
+            // Add selection visual feedback
+            stroke: isShapeSelected ? '#3B82F6' : (isLocked ? '#EF4444' : r.stroke),
+            strokeWidth: isShapeSelected ? 2 : (isLocked ? 2 : (r.strokeWidth || 0)),
+            // Add opacity for locked shapes
+            opacity: isLocked ? 0.7 : 1,
+            onDragStart: (evt: Konva.KonvaEventObject<DragEvent>) => { 
+              if (isLocked) return // Prevent dragging locked shapes
+              draggingIdRef.current = r.id
+              if (!evt.evt.shiftKey && !isSelected(r.id)) { 
+                selectShape(r.id)
+              }
+            },
+            onClick: (evt: Konva.KonvaEventObject<MouseEvent>) => { 
+              evt.cancelBubble = true
+              if (isLocked) {
+                // Show tooltip or message for locked shapes
+                console.log(`Shape is locked by ${r.lockedByName || 'another user'}`)
+                return
+              }
+              if (evt.evt.shiftKey) { 
+                toggleShape(r.id) 
+              } else { 
+                selectShape(r.id) 
+              }
+            },
+            onTap: (evt: Konva.KonvaEventObject<MouseEvent>) => { 
+              evt.cancelBubble = true
+              if (isLocked) return
+              selectShape(r.id) 
+            },
+            onMouseEnter: (evt: Konva.KonvaEventObject<MouseEvent>) => { 
+              const node = evt.target
+              if (node && node.opacity) { 
+                node.opacity(0.9)
+                node.getLayer()?.batchDraw() 
+              }
+              // Show lock tooltip for locked shapes
+              if (isLocked && r.lockedByName) {
+                const stage = node.getStage()
+                if (stage) {
+                  const pointer = stage.getPointerPosition()
+                  if (pointer) {
+                    setHoveredLockedShape({
+                      id: r.id,
+                      x: pointer.x,
+                      y: pointer.y,
+                      lockedByName: r.lockedByName
+                    })
+                  }
+                }
+              }
+            },
+            onMouseLeave: (evt: Konva.KonvaEventObject<MouseEvent>) => { 
+              const node = evt.target
+              if (node && node.opacity) { 
+                node.opacity(1)
+                node.getLayer()?.batchDraw() 
+              }
+              // Hide lock tooltip
+              if (hoveredLockedShape?.id === r.id) {
+                setHoveredLockedShape(null)
+              }
+            },
           }
           const handleDragMove = (node: Konva.Node, toTopLeft: (cx: number, cy: number) => { x: number; y: number }) => {
             const cx = node.x()
@@ -361,30 +483,42 @@ export default function Canvas() {
             const cx = baseX + r.width / 2
             const cy = baseY + r.height / 2
             return (
-              <Circle
-                key={key}
-                {...commonProps}
-                x={cx}
-                y={cy}
-                radius={radius}
-                stroke={r.stroke}
-                strokeWidth={r.strokeWidth}
-                rotation={r.rotation || 0}
-                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                  const node = evt.target as Konva.Circle
-                  const scaleX = node.scaleX()
-                  const newRadius = Math.max(5, node.radius() * scaleX)
-                  node.scaleX(1)
-                  node.scaleY(1)
-                  const newWidth = newRadius * 2
-                  const newHeight = newRadius * 2
-                  const newX = node.x() - newWidth / 2
-                  const newY = node.y() - newHeight / 2
-                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                }}
-              />
+              <Group key={key}>
+                <Circle
+                  {...commonProps}
+                  x={cx}
+                  y={cy}
+                  radius={radius}
+                  stroke={r.stroke}
+                  strokeWidth={r.strokeWidth}
+                  rotation={r.rotation || 0}
+                  onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    const node = evt.target as Konva.Circle
+                    const scaleX = node.scaleX()
+                    const newRadius = Math.max(5, node.radius() * scaleX)
+                    node.scaleX(1)
+                    node.scaleY(1)
+                    const newWidth = newRadius * 2
+                    const newHeight = newRadius * 2
+                    const newX = node.x() - newWidth / 2
+                    const newY = node.y() - newHeight / 2
+                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  }}
+                />
+                {/* Lock Indicator */}
+                {(isLocked || isLockedByUser) && (
+                  <SimpleLockIndicator
+                    x={baseX}
+                    y={baseY}
+                    width={r.width}
+                    height={r.height}
+                    isCurrentUser={isLockedByUser}
+                    scale={viewport.scale}
+                  />
+                )}
+              </Group>
             )
           }
           if (r.type === 'triangle') {
@@ -517,41 +651,92 @@ export default function Canvas() {
           }
           // default rectangle
           return (
-            <Rect
-              key={key}
-              {...commonProps}
-              x={baseX}
-              y={baseY}
-              width={r.width}
-              height={r.height}
-              stroke={r.stroke}
-              strokeWidth={r.strokeWidth}
-              rotation={r.rotation || 0}
-              onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-              onDragEnd={(evt: any) => {
-                const node = evt.target
-                updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                draggingIdRef.current = null
-                
-                // Clear RTDB drag data for this shape
-                if (user) {
-                  clearDragUpdate(r.id).catch(() => {})
-                }
-              }}
-              onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                const node = evt.target
-                const scaleX = node.scaleX ? node.scaleX() : 1
-                const scaleY = node.scaleY ? node.scaleY() : 1
-                const newWidth = Math.max(5, r.width * scaleX)
-                const newHeight = Math.max(5, r.height * scaleY)
-                if (node.scaleX) node.scaleX(1)
-                if (node.scaleY) node.scaleY(1)
-                updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-              }}
-            />
+            <Group key={key}>
+              <Rect
+                {...commonProps}
+                x={baseX}
+                y={baseY}
+                width={r.width}
+                height={r.height}
+                stroke={r.stroke}
+                strokeWidth={r.strokeWidth}
+                rotation={r.rotation || 0}
+                onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                onDragEnd={(evt: any) => {
+                  const node = evt.target
+                  updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  draggingIdRef.current = null
+                  
+                  // Clear RTDB drag data for this shape
+                  if (user) {
+                    clearDragUpdate(r.id).catch(() => {})
+                  }
+                }}
+                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                  const node = evt.target
+                  const scaleX = node.scaleX ? node.scaleX() : 1
+                  const scaleY = node.scaleY ? node.scaleY() : 1
+                  const newWidth = Math.max(5, r.width * scaleX)
+                  const newHeight = Math.max(5, r.height * scaleY)
+                  if (node.scaleX) node.scaleX(1)
+                  if (node.scaleY) node.scaleY(1)
+                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                }}
+              />
+              {/* Lock Indicator */}
+              {(isLocked || isLockedByUser) && (
+                <SimpleLockIndicator
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  isCurrentUser={isLockedByUser}
+                  scale={viewport.scale}
+                />
+              )}
+            </Group>
           )
         })}
       </Layer>
+      {/* Selection Box Layer */}
+      {isBoxSelecting && selectionBox && (
+        <Layer listening={false}>
+          <Rect
+            x={selectionBox.x}
+            y={selectionBox.y}
+            width={selectionBox.width}
+            height={selectionBox.height}
+            fill="rgba(59, 130, 246, 0.1)"
+            stroke="#3B82F6"
+            strokeWidth={1}
+            dash={[5, 5]}
+            listening={false}
+          />
+        </Layer>
+      )}
+      {/* Selection Bounds Layer */}
+      {hasSelection && (
+        <Layer listening={false}>
+          <SelectionBounds
+            selectedShapes={getSelectedShapes()}
+            visible={true}
+          />
+        </Layer>
+      )}
+      
+      {/* Lock Tooltip Layer */}
+      {hoveredLockedShape && (
+        <Layer listening={false}>
+          <LockTooltip
+            x={hoveredLockedShape.x}
+            y={hoveredLockedShape.y}
+            text={`Locked by ${hoveredLockedShape.lockedByName}`}
+            scale={viewport.scale}
+            visible={true}
+          />
+        </Layer>
+      )}
+      
       {/* Overlay Layer for Transformer only */}
       <Layer listening>
         <Transformer ref={transformerRef} rotateEnabled ignoreStroke />
@@ -855,12 +1040,178 @@ export default function Canvas() {
         </div>
       )
     })() : null}
+    {/* Status Bar */}
+    <div style={{ 
+      position: 'absolute', 
+      bottom: 0, 
+      left: 0, 
+      right: 0, 
+      height: '32px', 
+      background: '#1f2937', 
+      borderTop: '1px solid #374151',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 16px',
+      fontSize: '12px',
+      color: '#9CA3AF',
+      zIndex: 25
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {isSpacePressed ? (
+          <span>Drag to select multiple shapes</span>
+        ) : hasSelection ? (
+          <>
+            <span>
+              {selectionCount} shape{selectionCount !== 1 ? 's' : ''} selected
+            </span>
+            {selectionCount > 1 && (
+              <>
+                <span>•</span>
+                <button
+                  onClick={() => {
+                    const selectedShapes = getSelectedShapes()
+                    if (selectedShapes.length > 0) {
+                      selectSimilar(selectedShapes[0].id)
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #374151',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                  title="Select similar shapes"
+                >
+                  Select Similar
+                </button>
+                <button
+                  onClick={() => {
+                    const selectedShapes = getSelectedShapes()
+                    if (selectedShapes.length > 0) {
+                      selectByType(selectedShapes[0].type || 'rect')
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #374151',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                  title="Select all shapes of same type"
+                >
+                  Select Type
+                </button>
+                <button
+                  onClick={() => {
+                    const selectedShapes = getSelectedShapes()
+                    if (selectedShapes.length > 0) {
+                      selectByColor(selectedShapes[0].fill)
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #374151',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                  title="Select all shapes of same color"
+                >
+                  Select Color
+                </button>
+                <button
+                  onClick={() => setShowMultiShapeProperties(true)}
+                  style={{
+                    background: '#3B82F6',
+                    border: '1px solid #3B82F6',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: '500'
+                  }}
+                  title="Open bulk properties panel"
+                >
+                  Properties
+                </button>
+                <button
+                  onClick={() => setShowGroupsPanel(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #374151',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                  title="Open groups panel"
+                >
+                  Groups
+                </button>
+                <span>•</span>
+                <span>Ctrl+G to group • Delete to remove</span>
+              </>
+            )}
+          </>
+        ) : (
+          <span>Press ? for shortcuts</span>
+        )}
+      </div>
+      
+      {/* Right side info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span>Total: {rectangles.length} shapes</span>
+        {hasSelection && (
+          <span>•</span>
+        )}
+        {hasSelection && (
+          <span>
+            {(() => {
+              const selectedShapes = getSelectedShapes()
+              const types = [...new Set(selectedShapes.map(s => s.type || 'rect'))]
+              return types.length === 1 ? types[0] : `${types.length} types`
+            })()}
+          </span>
+        )}
+      </div>
+    </div>
+
     {/* Reconnection banner */}
     {!isOnline ? (
-      <div style={{ position: 'absolute', left: 16, bottom: 16, background: '#111827', color: '#FCD34D', border: '1px solid #374151', borderRadius: 8, padding: '8px 10px', zIndex: 25 }}>
+      <div style={{ position: 'absolute', left: 16, bottom: 32, background: '#111827', color: '#FCD34D', border: '1px solid #374151', borderRadius: 8, padding: '8px 10px', zIndex: 25 }}>
         Reconnecting…
       </div>
     ) : null}
+
+    {/* Keyboard Shortcuts Help Modal */}
+    <KeyboardShortcutsHelp 
+      isOpen={showHelp} 
+      onClose={() => setShowHelp(false)} 
+    />
+    
+    {/* Multi-Shape Properties Modal */}
+    {showMultiShapeProperties && hasSelection && (
+      <MultiShapeProperties 
+        onClose={() => setShowMultiShapeProperties(false)} 
+      />
+    )}
+    
+    {/* Groups Panel Modal */}
+    <GroupsPanel 
+      isOpen={showGroupsPanel}
+      onClose={() => setShowGroupsPanel(false)} 
+    />
     </div>
   )
 }

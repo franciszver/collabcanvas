@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { UserPresence } from '../types/presence.types'
 import { setUserOfflineRtdb, setUserOnlineRtdb, cleanupStaleCursorsRtdb } from '../services/realtime'
+import { unlockUserShapes } from '../services/locking'
 import { useAuth } from './AuthContext'
 
 export interface PresenceContextValue {
@@ -38,6 +39,8 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
           result.catch(() => {})
         }
       }
+      // Unlock all shapes when user disconnects
+      unlockUserShapes(user.id).catch(console.error)
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
@@ -48,6 +51,8 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
           result.catch(() => {})
         }
       }
+      // Unlock all shapes when user disconnects
+      unlockUserShapes(user.id).catch(console.error)
     }
   }, [user])
 

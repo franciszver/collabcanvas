@@ -318,4 +318,99 @@ export async function clearResizePositionRtdb(rectId: string, userId: string): P
   await remove(resizeRef)
 }
 
+// Selection broadcasting via RTDB
+export async function publishSelectionRtdb(
+  userId: string, 
+  shapeIds: string[], 
+  color: string
+): Promise<void> {
+  const selectionRef = ref(rtdb(), `selections/${userId}`)
+  
+  try {
+    await update(selectionRef, {
+      shapeIds,
+      color,
+      updatedAt: serverTimestamp() as any
+    })
+  } catch (error) {
+    console.warn('Failed to publish selection, retrying...', error)
+    // Retry once after a short delay
+    setTimeout(async () => {
+      try {
+        await update(selectionRef, {
+          shapeIds,
+          color,
+          updatedAt: serverTimestamp() as any
+        })
+      } catch (retryError) {
+        console.error('Failed to publish selection after retry:', retryError)
+      }
+    }, 100)
+  }
+}
+
+export function subscribeToSelectionsRtdb(
+  callback: (selections: Record<string, {shapeIds: string[], color: string, updatedAt: number}>) => void
+): () => void {
+  const selectionsRef = ref(rtdb(), 'selections')
+  const handler = (snap: any) => {
+    const val = snap.val() || {}
+    const selections: Record<string, {shapeIds: string[], color: string, updatedAt: number}> = {}
+    
+    for (const [userId, data] of Object.entries(val)) {
+      const userData = data as any
+      const updatedAt = typeof userData?.updatedAt === 'number' ? userData.updatedAt : 0
+      
+      // Only include recent selections (within 10 seconds)
+      if (Date.now() - updatedAt < 10000) {
+        selections[userId] = {
+          shapeIds: userData?.shapeIds || [],
+          color: userData?.color || '#3B82F6',
+          updatedAt
+        }
+      }
+    }
+    
+    callback(selections)
+  }
+  
+  onValue(selectionsRef, handler)
+  return () => off(selectionsRef, 'value', handler)
+}
+
+export async function clearSelectionRtdb(userId: string): Promise<void> {
+  const selectionRef = ref(rtdb(), `selections/${userId}`)
+  await remove(selectionRef)
+}
+
+// Clean up stale selections (call periodically)
+export async function cleanupStaleSelectionsRtdb(maxAgeMs: number = 10000): Promise<void> {
+  const selectionsRef = ref(rtdb(), 'selections')
+  const now = Date.now()
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(selectionsRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const updates: Record<string, any> = {}
+    
+    for (const [userId, userData] of Object.entries(data)) {
+      const user = userData as any
+      const updatedAt = typeof user?.updatedAt === 'number' ? user.updatedAt : 0
+      
+      if (now - updatedAt > maxAgeMs) {
+        updates[`selections/${userId}`] = null
+      }
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb()), updates)
+    }
+  } catch (error) {
+    console.warn('Failed to cleanup stale selections:', error)
+  }
+}
+
 
