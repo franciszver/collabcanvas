@@ -5,6 +5,7 @@ import { aiCanvasCommand, type CanvasAction } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import { createTemplateShapes, isTemplateRequest, extractTemplateId, extractTemplateParams } from '../../utils/templateHelpers'
 import CommandsWindow from './CommandsWindow'
 import styles from './ChatBox.module.css'
 
@@ -18,6 +19,13 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isAITyping, setIsAITyping] = useState(false)
   const [pendingCommand, setPendingCommand] = useState<CanvasAction | null>(null)
   const [isWaitingForColor, setIsWaitingForColor] = useState(false)
+  const [isWaitingForNavbarButtons, setIsWaitingForNavbarButtons] = useState(false)
+  const [isWaitingForNavbarConfirmation, setIsWaitingForNavbarConfirmation] = useState(false)
+  const [pendingNavbarParams, setPendingNavbarParams] = useState<{ buttonCount: number; labels: string[] } | null>(null)
+  const [isWaitingForLoginRememberMe, setIsWaitingForLoginRememberMe] = useState(false)
+  const [isWaitingForLoginForgotPassword, setIsWaitingForLoginForgotPassword] = useState(false)
+  const [isWaitingForLoginOAuth, setIsWaitingForLoginOAuth] = useState(false)
+  const [pendingLoginParams, setPendingLoginParams] = useState<{ includeRememberMe?: boolean; includeForgotPassword?: boolean; oauthProviders?: string[] } | null>(null)
   const [isCommandsOpen, setIsCommandsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
@@ -79,6 +87,86 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     return null
   }
 
+  // Helper function to parse button count from user input
+  const parseButtonCount = (message: string): number | null => {
+    const messageTrimmed = message.trim()
+    
+    // Look for numbers in the message
+    const numberMatch = messageTrimmed.match(/\d+/)
+    if (numberMatch) {
+      const count = parseInt(numberMatch[0], 10)
+      if (count >= 1 && count <= 10) {
+        return count
+      }
+    }
+    
+    return null
+  }
+
+  // Helper function to parse custom labels from user input
+  const parseCustomLabels = (message: string, expectedCount: number): string[] | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    // Check if user is confirming with "yes" or "confirm"
+    if (messageTrimmed === 'yes' || messageTrimmed === 'confirm' || messageTrimmed === 'y') {
+      return null // Use current labels
+    }
+    
+    // Parse comma-separated labels
+    const labels = messageTrimmed.split(',').map(label => label.trim()).filter(label => label.length > 0)
+    
+    if (labels.length === expectedCount) {
+      return labels
+    }
+    
+    return null // Invalid count - return null instead of undefined
+  }
+
+  // Helper function to generate default labels
+  const generateDefaultLabels = (count: number): string[] => {
+    if (count === 3) {
+      return ['Home', 'About', 'Services']
+    }
+    
+    return Array.from({ length: count }, (_, i) => `Button ${i + 1}`)
+  }
+
+  // Helper function to parse yes/no response
+  const parseYesNo = (message: string): boolean | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    if (messageTrimmed === 'yes' || messageTrimmed === 'y' || messageTrimmed === 'true') {
+      return true
+    }
+    
+    if (messageTrimmed === 'no' || messageTrimmed === 'n' || messageTrimmed === 'false') {
+      return false
+    }
+    
+    return null
+  }
+
+  // Helper function to parse OAuth providers
+  const parseOAuthProviders = (message: string): string[] | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    // Check for "all" response
+    if (messageTrimmed === 'all') {
+      return ['google', 'github', 'facebook']
+    }
+    
+    // Parse comma-separated providers
+    const providers = messageTrimmed.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    const validProviders = ['google', 'github', 'facebook']
+    const invalidProviders = providers.filter(p => !validProviders.includes(p))
+    
+    if (invalidProviders.length > 0) {
+      return null // Invalid providers
+    }
+    
+    return providers.length > 0 ? providers : null
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -132,81 +220,224 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
           await sendMessage(`I didn't understand that color. Please choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
         }
+      } else if (isWaitingForNavbarButtons) {
+        // Handle button count response
+        const buttonCount = parseButtonCount(messageContent)
+        if (buttonCount) {
+          const defaultLabels = generateDefaultLabels(buttonCount)
+          setPendingNavbarParams({ buttonCount, labels: defaultLabels })
+          setIsWaitingForNavbarButtons(false)
+          setIsWaitingForNavbarConfirmation(true)
+          
+          const labelsText = defaultLabels.join(', ')
+          await sendMessage(`Great! I'll create ${buttonCount} buttons: [${labelsText}]. Reply 'yes' to confirm or type custom labels separated by commas.`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          // Invalid count, ask again
+          await sendMessage(`Please enter a number between 1 and 10 for the number of buttons.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForNavbarConfirmation && pendingNavbarParams) {
+        // Handle label confirmation/customization
+        const customLabels = parseCustomLabels(messageContent, pendingNavbarParams.buttonCount)
+        
+        if (customLabels === null) {
+          // User confirmed with "yes" - use current labels
+          const result = await createTemplateShapes('navbar', { 
+            templateId: 'navbar', 
+            buttonLabels: pendingNavbarParams.labels 
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset navbar state
+          setPendingNavbarParams(null)
+          setIsWaitingForNavbarConfirmation(false)
+        } else if (customLabels && customLabels.length > 0) {
+          // User provided custom labels
+          const result = await createTemplateShapes('navbar', { 
+            templateId: 'navbar', 
+            buttonLabels: customLabels 
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset navbar state
+          setPendingNavbarParams(null)
+          setIsWaitingForNavbarConfirmation(false)
+        } else {
+          // Invalid label count
+          await sendMessage(`Please provide exactly ${pendingNavbarParams.buttonCount} labels separated by commas, or reply 'yes' to use the default labels.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForLoginRememberMe) {
+        // Handle Remember Me response
+        const rememberMe = parseYesNo(messageContent)
+        if (rememberMe !== null) {
+          setPendingLoginParams({ includeRememberMe: rememberMe })
+          setIsWaitingForLoginRememberMe(false)
+          setIsWaitingForLoginForgotPassword(true)
+          
+          await sendMessage(`Got it! Include 'Forgot Password' link? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          await sendMessage(`Please answer with 'yes' or 'no' for the Remember Me checkbox.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForLoginForgotPassword && pendingLoginParams) {
+        // Handle Forgot Password response
+        const forgotPassword = parseYesNo(messageContent)
+        if (forgotPassword !== null) {
+          setPendingLoginParams({ ...pendingLoginParams, includeForgotPassword: forgotPassword })
+          setIsWaitingForLoginForgotPassword(false)
+          setIsWaitingForLoginOAuth(true)
+          
+          await sendMessage(`Perfect! Which OAuth providers: Google, GitHub, Facebook, or all?`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          await sendMessage(`Please answer with 'yes' or 'no' for the Forgot Password link.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForLoginOAuth && pendingLoginParams) {
+        // Handle OAuth provider response
+        const oauthProviders = parseOAuthProviders(messageContent)
+        if (oauthProviders) {
+          const finalParams = { ...pendingLoginParams, oauthProviders: oauthProviders as ('google' | 'github' | 'facebook')[] }
+          
+          const result = await createTemplateShapes('login-oauth', { 
+            templateId: 'login-oauth', 
+            ...finalParams
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created login form with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create login form: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset login form state
+          setPendingLoginParams(null)
+          setIsWaitingForLoginOAuth(false)
+        } else {
+          await sendMessage(`Please specify OAuth providers: Google, GitHub, Facebook, or all.`, 'ai', 'AI Assistant', 'assistant')
+        }
       } else {
         // Normal AI command processing
         const response = await aiCanvasCommand(messageContent)
         
         if (response.success && response.data) {
-          // Check if this is a create command without color (skip for complex actions like forms)
-          const skipColorCheck = response.data.action === 'complex' || 
-                                  response.data.action === 'layout' ||
-                                  response.data.target === 'form' ||
-                                  response.data.target === 'navbar' ||
-                                  response.data.target === 'card'
+          const { action, target, parameters } = response.data
           
-          if (response.data.action === 'create' && !response.data.parameters.color && !skipColorCheck) {
-            // Ask for color clarification
-            const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
-            await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+          // Check if this is a template request
+          if (isTemplateRequest(action, target)) {
+            const templateId = extractTemplateId(target)
             
-            // Store the pending command and wait for color response
-            setPendingCommand(response.data)
-            setIsWaitingForColor(true)
-          } else {
-            // Apply the canvas command normally
-            const commandResult = await applyCanvasCommand(response.data)
-            
-            if (commandResult.success) {
-              let aiResponse = ''
-              
-              if (response.data.action === 'create') {
-                const createdCount = commandResult.createdShapes?.length || 0
-                const hasLayout = response.data.parameters.layout
-                if (hasLayout) {
-                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s) in ${hasLayout} layout`
-                } else {
-                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
-                }
-              } else if (response.data.action === 'manipulate') {
-                // Parse manipulation details
-                const params = response.data.parameters
-                const actions: string[] = []
-                if (params.x !== undefined || params.y !== undefined) actions.push('moved')
-                if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
-                if (params.rotation !== undefined || params.rotationDegrees !== undefined || params.rotationDirection !== undefined) actions.push('rotated')
-                if (params.color !== undefined) actions.push('recolored')
-                
-                const actionText = actions.join(', ')
-                aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
-              } else if (response.data.action === 'layout') {
-                const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
-                const layoutType = response.data.parameters.layout || 'row'
-                aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
-              } else if (response.data.action === 'complex') {
-                // Handle complex actions (forms, etc.)
-                if (response.data.target === 'form') {
-                  const createdCount = commandResult.createdShapes?.length || 0
-                  const formType = response.data.parameters.formType || 'form'
-                  aiResponse = `✅ Created ${formType} form with ${createdCount} elements`
-                } else {
-                  aiResponse = `✅ Created ${response.data.target}`
-                }
-              }
-              
-              if (commandResult.details) {
-                aiResponse += `\n\nDetails: ${commandResult.details}`
-              }
-              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            // Special handling for navbar - start interactive flow
+            if (templateId === 'navbar') {
+              setIsWaitingForNavbarButtons(true)
+              await sendMessage(`I'll create a navbar with Home, About, Services. How many buttons do you need? [1-10]`, 'ai', 'AI Assistant', 'assistant')
+            } else if (templateId === 'login-oauth') {
+              // Special handling for login form - start interactive flow
+              setIsWaitingForLoginRememberMe(true)
+              await sendMessage(`I'll create a login form. Include 'Remember Me' checkbox? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
             } else {
-              let actionText = 'create'
-              if (response.data.action === 'manipulate') actionText = 'manipulate'
-              else if (response.data.action === 'layout') actionText = 'layout'
-              else if (response.data.action === 'complex') actionText = 'create'
-              let aiResponse = `❌ Failed to ${actionText} ${response.data.target || 'shape'}: ${commandResult.error}`
-              if (commandResult.details) {
-                aiResponse += `\n\nDetails: ${commandResult.details}`
+              // Use shared template logic for other templates
+              const templateParams = extractTemplateParams(target, parameters)
+              
+              const result = await createTemplateShapes(templateId, templateParams, applyCanvasCommand)
+              
+              if (result.success) {
+                // Show success in chat
+                const templateName = templateId === 'login-oauth' ? 'login form' : 'template'
+                const createdCount = result.createdShapes?.length || 0
+                let aiResponse = `✅ Created ${templateName} with ${createdCount} elements`
+                
+                if (result.details) {
+                  aiResponse += `\n\nDetails: ${result.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+              } else {
+                // Show error in chat
+                await sendMessage(`❌ Failed to create template: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
               }
-              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            }
+          } else {
+            // Handle non-template commands (existing logic)
+            // Check if this is a create command without color (skip for complex actions like forms)
+            const skipColorCheck = action === 'complex' || 
+                                    action === 'layout' ||
+                                    target === 'form' ||
+                                    target === 'navbar' ||
+                                    target === 'card'
+            
+            if (action === 'create' && !parameters.color && !skipColorCheck) {
+              // Ask for color clarification
+              const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+              await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+              
+              // Store the pending command and wait for color response
+              setPendingCommand(response.data)
+              setIsWaitingForColor(true)
+            } else {
+              // Apply the canvas command normally
+              const commandResult = await applyCanvasCommand(response.data)
+              
+              if (commandResult.success) {
+                let aiResponse = ''
+                
+                if (action === 'create') {
+                  const createdCount = commandResult.createdShapes?.length || 0
+                  const hasLayout = parameters.layout
+                  if (hasLayout) {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s) in ${hasLayout} layout`
+                  } else {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s)`
+                  }
+                } else if (action === 'manipulate') {
+                  // Parse manipulation details
+                  const params = parameters
+                  const actions: string[] = []
+                  if (params.x !== undefined || params.y !== undefined) actions.push('moved')
+                  if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
+                  if (params.rotation !== undefined || params.rotationDegrees !== undefined || params.rotationDirection !== undefined) actions.push('rotated')
+                  if (params.color !== undefined) actions.push('recolored')
+                  
+                  const actionText = actions.join(', ')
+                  aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${target}`
+                } else if (action === 'layout') {
+                  const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
+                  const layoutType = parameters.layout || 'row'
+                  aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
+                } else if (action === 'complex') {
+                  // Handle complex actions (forms, etc.)
+                  if (target === 'form') {
+                    const createdCount = commandResult.createdShapes?.length || 0
+                    const formType = parameters.formType || 'form'
+                    aiResponse = `✅ Created ${formType} form with ${createdCount} elements`
+                  } else {
+                    aiResponse = `✅ Created ${target}`
+                  }
+                }
+                
+                if (commandResult.details) {
+                  aiResponse += `\n\nDetails: ${commandResult.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+              } else {
+                let actionText = 'create'
+                if (action === 'manipulate') actionText = 'manipulate'
+                else if (action === 'layout') actionText = 'layout'
+                else if (action === 'complex') actionText = 'create'
+                let aiResponse = `❌ Failed to ${actionText} ${target || 'shape'}: ${commandResult.error}`
+                if (commandResult.details) {
+                  aiResponse += `\n\nDetails: ${commandResult.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+              }
             }
           }
         } else {
@@ -393,7 +624,21 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyPress={handleKeyPress}
-            placeholder={isWaitingForColor ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" : "Ask me to create shapes..."}
+            placeholder={
+              isWaitingForColor 
+                ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" 
+                : isWaitingForNavbarButtons 
+                ? "Enter number of buttons (1-10)..." 
+                : isWaitingForNavbarConfirmation 
+                ? "Type 'yes' to confirm or enter custom labels..." 
+                : isWaitingForLoginRememberMe
+                ? "Answer yes/no for Remember Me checkbox..."
+                : isWaitingForLoginForgotPassword
+                ? "Answer yes/no for Forgot Password link..."
+                : isWaitingForLoginOAuth
+                ? "Specify OAuth providers: Google, GitHub, Facebook, or all..."
+                : "Ask me to create shapes..."
+            }
             className={styles.inputField}
             disabled={isAITyping}
           />

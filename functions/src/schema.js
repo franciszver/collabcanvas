@@ -73,6 +73,10 @@ const schema = {
         items: {
           type: "array",
           items: { type: "string" }
+        },
+        buttonLabels: {
+          type: "array",
+          items: { type: "string" }
         }
       },
       additionalProperties: false
