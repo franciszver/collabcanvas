@@ -9,10 +9,10 @@ interface GroupsPanelProps {
 }
 
 export default function GroupsPanel({ isOpen, onClose }: GroupsPanelProps) {
-  const { groups, isLoading, error, updateGroup, deleteGroup } = useGroups({ 
+  const { groups, isLoading, error, createGroup, updateGroup, deleteGroup } = useGroups({ 
     documentId: 'default-document' 
   })
-  const { getSelectedShapes, selectShape, clearSelection } = useCanvas()
+  const { getSelectedShapes, selectShape, clearSelection, rectangles } = useCanvas()
   
   const [editingGroup, setEditingGroup] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -50,22 +50,46 @@ export default function GroupsPanel({ isOpen, onClose }: GroupsPanelProps) {
     const group = groups.find(g => g.id === groupId)
     if (!group) return
     
-    // Clear current selection and select all shapes in the group
+    // Check which shapes actually exist in the canvas
+    const existingShapeIds = group.shapeIds.filter(shapeId => 
+      rectangles.some(rect => rect.id === shapeId)
+    )
+    
+    const missingCount = group.shapeIds.length - existingShapeIds.length
+    
+    // If some shapes are missing, show a warning
+    if (missingCount > 0) {
+      const message = missingCount === group.shapeIds.length
+        ? `All shapes in this group (${missingCount}) have been deleted. Would you like to delete this group?`
+        : `${missingCount} shape${missingCount > 1 ? 's' : ''} in this group ${missingCount > 1 ? 'have' : 'has'} been deleted. Select the remaining ${existingShapeIds.length} shape${existingShapeIds.length > 1 ? 's' : ''}?`
+      
+      if (!confirm(message)) {
+        return
+      }
+      
+      // If all shapes are missing, offer to delete the group
+      if (missingCount === group.shapeIds.length) {
+        handleDeleteGroup(groupId)
+        return
+      }
+    }
+    
+    // Clear current selection and select all existing shapes in the group
     clearSelection()
-    group.shapeIds.forEach(shapeId => {
+    existingShapeIds.forEach(shapeId => {
       selectShape(shapeId)
     })
   }
 
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim() || selectedShapes.length === 0) return
+    if (selectedShapes.length === 0) return
     
     try {
-      // This would typically be handled by the canvas context
-      // For now, we'll just log it
-      console.log('Create group with shapes:', selectedShapes.map(s => s.id), 'name:', newGroupName)
+      const shapeIds = selectedShapes.map(s => s.id)
+      await createGroup(shapeIds, newGroupName.trim() || undefined)
       setShowCreateForm(false)
       setNewGroupName('')
+      clearSelection()
     } catch (error) {
       console.error('Failed to create group:', error)
     }
@@ -161,7 +185,16 @@ export default function GroupsPanel({ isOpen, onClose }: GroupsPanelProps) {
                     )}
                     
                     <span className={styles.shapeCount}>
-                      {group.shapeIds.length} shape{group.shapeIds.length !== 1 ? 's' : ''}
+                      {(() => {
+                        const existingCount = group.shapeIds.filter(id => 
+                          rectangles.some(rect => rect.id === id)
+                        ).length
+                        const total = group.shapeIds.length
+                        if (existingCount < total) {
+                          return `${existingCount}/${total} shape${total !== 1 ? 's' : ''} ⚠️`
+                        }
+                        return `${total} shape${total !== 1 ? 's' : ''}`
+                      })()}
                     </span>
                   </div>
                   
@@ -186,14 +219,15 @@ export default function GroupsPanel({ isOpen, onClose }: GroupsPanelProps) {
                       
                       <div className={styles.shapesList}>
                         {group.shapeIds.map(shapeId => {
-                          const shape = selectedShapes.find(s => s.id === shapeId)
+                          const shape = rectangles.find(s => s.id === shapeId)
+                          const isMissing = !shape
                           return (
-                            <div key={shapeId} className={styles.shapeItem}>
+                            <div key={shapeId} className={styles.shapeItem} style={{ opacity: isMissing ? 0.5 : 1 }}>
                               <span className={styles.shapeType}>
-                                {shape?.type || 'rect'}
+                                {shape?.type || 'missing'}
                               </span>
                               <span className={styles.shapeId}>
-                                {shapeId.slice(-8)}
+                                {shapeId.slice(-8)} {isMissing ? '❌' : ''}
                               </span>
                             </div>
                           )

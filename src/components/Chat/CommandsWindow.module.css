@@ -216,6 +216,37 @@
   color: #374151;
 }
 
+.footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: center;
+}
+
+.footerCloseButton {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.footerCloseButton:hover {
+  background-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.footerCloseButton:active {
+  transform: translateY(0);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .window {
@@ -239,5 +270,14 @@
   
   .useButton {
     align-self: flex-end;
+  }
+  
+  .footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+  
+  .footerCloseButton {
+    width: 100%;
   }
 }
