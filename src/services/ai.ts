@@ -20,7 +20,7 @@ export interface CanvasAction {
     spacing?: number // Gap between shapes in pixels for layouts
     rows?: number // Grid rows (optional, auto-calculated if not provided)
     cols?: number // Grid columns (optional, auto-calculated if not provided)
-    formType?: 'login' | 'signup' | 'contact' | 'custom' // Form template type
+    formType?: 'login' | 'signup' | 'contact' | 'custom' | 'login-oauth' // Form template type
     gradientDirection?: 'lighter' | 'darker' | 'both'
     gradientIntensity?: number
     selector?: {

@@ -5,6 +5,7 @@ import { aiCanvasCommand, type CanvasAction } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
 import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import { createTemplateShapes, isTemplateRequest, extractTemplateId, extractTemplateParams } from '../../utils/templateHelpers'
 import CommandsWindow from './CommandsWindow'
 import styles from './ChatBox.module.css'
 
@@ -137,76 +138,103 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         const response = await aiCanvasCommand(messageContent)
         
         if (response.success && response.data) {
-          // Check if this is a create command without color (skip for complex actions like forms)
-          const skipColorCheck = response.data.action === 'complex' || 
-                                  response.data.action === 'layout' ||
-                                  response.data.target === 'form' ||
-                                  response.data.target === 'navbar' ||
-                                  response.data.target === 'card'
+          const { action, target, parameters } = response.data
           
-          if (response.data.action === 'create' && !response.data.parameters.color && !skipColorCheck) {
-            // Ask for color clarification
-            const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
-            await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+          // Check if this is a template request
+          if (isTemplateRequest(action, target)) {
+            // Use shared template logic
+            const templateId = extractTemplateId(target)
+            const templateParams = extractTemplateParams(target, parameters)
             
-            // Store the pending command and wait for color response
-            setPendingCommand(response.data)
-            setIsWaitingForColor(true)
-          } else {
-            // Apply the canvas command normally
-            const commandResult = await applyCanvasCommand(response.data)
+            const result = await createTemplateShapes(templateId, templateParams, applyCanvasCommand)
             
-            if (commandResult.success) {
-              let aiResponse = ''
+            if (result.success) {
+              // Show success in chat
+              const templateName = templateId === 'navbar' ? 'navigation bar' : 'login form'
+              const createdCount = result.createdShapes?.length || 0
+              let aiResponse = `✅ Created ${templateName} with ${createdCount} elements`
               
-              if (response.data.action === 'create') {
-                const createdCount = commandResult.createdShapes?.length || 0
-                const hasLayout = response.data.parameters.layout
-                if (hasLayout) {
-                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s) in ${hasLayout} layout`
-                } else {
-                  aiResponse = `✅ Created ${createdCount} ${response.data.target}(s)`
-                }
-              } else if (response.data.action === 'manipulate') {
-                // Parse manipulation details
-                const params = response.data.parameters
-                const actions: string[] = []
-                if (params.x !== undefined || params.y !== undefined) actions.push('moved')
-                if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
-                if (params.rotation !== undefined || params.rotationDegrees !== undefined || params.rotationDirection !== undefined) actions.push('rotated')
-                if (params.color !== undefined) actions.push('recolored')
-                
-                const actionText = actions.join(', ')
-                aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${response.data.target}`
-              } else if (response.data.action === 'layout') {
-                const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
-                const layoutType = response.data.parameters.layout || 'row'
-                aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
-              } else if (response.data.action === 'complex') {
-                // Handle complex actions (forms, etc.)
-                if (response.data.target === 'form') {
-                  const createdCount = commandResult.createdShapes?.length || 0
-                  const formType = response.data.parameters.formType || 'form'
-                  aiResponse = `✅ Created ${formType} form with ${createdCount} elements`
-                } else {
-                  aiResponse = `✅ Created ${response.data.target}`
-                }
-              }
-              
-              if (commandResult.details) {
-                aiResponse += `\n\nDetails: ${commandResult.details}`
+              if (result.details) {
+                aiResponse += `\n\nDetails: ${result.details}`
               }
               await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
             } else {
-              let actionText = 'create'
-              if (response.data.action === 'manipulate') actionText = 'manipulate'
-              else if (response.data.action === 'layout') actionText = 'layout'
-              else if (response.data.action === 'complex') actionText = 'create'
-              let aiResponse = `❌ Failed to ${actionText} ${response.data.target || 'shape'}: ${commandResult.error}`
-              if (commandResult.details) {
-                aiResponse += `\n\nDetails: ${commandResult.details}`
+              // Show error in chat
+              await sendMessage(`❌ Failed to create template: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+            }
+          } else {
+            // Handle non-template commands (existing logic)
+            // Check if this is a create command without color (skip for complex actions like forms)
+            const skipColorCheck = action === 'complex' || 
+                                    action === 'layout' ||
+                                    target === 'form' ||
+                                    target === 'navbar' ||
+                                    target === 'card'
+            
+            if (action === 'create' && !parameters.color && !skipColorCheck) {
+              // Ask for color clarification
+              const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+              await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+              
+              // Store the pending command and wait for color response
+              setPendingCommand(response.data)
+              setIsWaitingForColor(true)
+            } else {
+              // Apply the canvas command normally
+              const commandResult = await applyCanvasCommand(response.data)
+              
+              if (commandResult.success) {
+                let aiResponse = ''
+                
+                if (action === 'create') {
+                  const createdCount = commandResult.createdShapes?.length || 0
+                  const hasLayout = parameters.layout
+                  if (hasLayout) {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s) in ${hasLayout} layout`
+                  } else {
+                    aiResponse = `✅ Created ${createdCount} ${target}(s)`
+                  }
+                } else if (action === 'manipulate') {
+                  // Parse manipulation details
+                  const params = parameters
+                  const actions: string[] = []
+                  if (params.x !== undefined || params.y !== undefined) actions.push('moved')
+                  if (params.width !== undefined || params.height !== undefined || params.radius !== undefined) actions.push('resized')
+                  if (params.rotation !== undefined || params.rotationDegrees !== undefined || params.rotationDirection !== undefined) actions.push('rotated')
+                  if (params.color !== undefined) actions.push('recolored')
+                  
+                  const actionText = actions.join(', ')
+                  aiResponse = `✅ ${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${target}`
+                } else if (action === 'layout') {
+                  const count = commandResult.details?.match(/\d+/)?.[0] || 'shapes'
+                  const layoutType = parameters.layout || 'row'
+                  aiResponse = `✅ Arranged ${count} shapes in ${layoutType} layout`
+                } else if (action === 'complex') {
+                  // Handle complex actions (forms, etc.)
+                  if (target === 'form') {
+                    const createdCount = commandResult.createdShapes?.length || 0
+                    const formType = parameters.formType || 'form'
+                    aiResponse = `✅ Created ${formType} form with ${createdCount} elements`
+                  } else {
+                    aiResponse = `✅ Created ${target}`
+                  }
+                }
+                
+                if (commandResult.details) {
+                  aiResponse += `\n\nDetails: ${commandResult.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+              } else {
+                let actionText = 'create'
+                if (action === 'manipulate') actionText = 'manipulate'
+                else if (action === 'layout') actionText = 'layout'
+                else if (action === 'complex') actionText = 'create'
+                let aiResponse = `❌ Failed to ${actionText} ${target || 'shape'}: ${commandResult.error}`
+                if (commandResult.details) {
+                  aiResponse += `\n\nDetails: ${commandResult.details}`
+                }
+                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
               }
-              await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
             }
           }
         } else {

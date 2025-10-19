@@ -14,6 +14,47 @@ const validate = ajv.compile(schema);
 const RATE_LIMIT_WINDOW_MS = 10000; // 10 seconds
 const RATE_LIMIT_MAX_REQUESTS = 5;
 // Force restart to pick up environment variables
+/**
+ * Normalize AI response to handle old formats and ensure consistency
+ * This is a safety net to transform any old response formats
+ */
+function normalizeAIResponse(response) {
+    var _a, _b, _c;
+    let wasTransformed = false;
+    const original = JSON.stringify(response);
+    // Transform navbar requests
+    if (response.target === 'navbar') {
+        if (response.action === 'create') {
+            response.action = 'complex';
+            wasTransformed = true;
+        }
+        if (((_a = response.parameters) === null || _a === void 0 ? void 0 : _a.items) && !((_b = response.parameters) === null || _b === void 0 ? void 0 : _b.buttonLabels)) {
+            response.parameters.buttonLabels = response.parameters.items;
+            delete response.parameters.items;
+            wasTransformed = true;
+        }
+    }
+    // Transform form requests
+    if (response.target === 'form') {
+        if (response.action === 'create') {
+            response.action = 'complex';
+            wasTransformed = true;
+        }
+        if (!((_c = response.parameters) === null || _c === void 0 ? void 0 : _c.formType)) {
+            response.parameters = response.parameters || {};
+            response.parameters.formType = 'login-oauth';
+            wasTransformed = true;
+        }
+    }
+    // Log transformations for monitoring
+    if (wasTransformed) {
+        console.log('[AI Response Normalized]', {
+            original: original,
+            normalized: JSON.stringify(response)
+        });
+    }
+    return response;
+}
 async function checkRateLimit(userId) {
     const rateLimitRef = admin.firestore().collection('rateLimits').doc(userId);
     const now = Date.now();
@@ -260,87 +301,81 @@ Missing ANY of these 4 will cause the grid to fail.
 
 Supported formats: "XxY", "X by Y", "X, Y", "X x Y"
 
-📋 TEMPLATE GENERATION (CRITICAL - FOLLOW EXACTLY):
+📋 TEMPLATE IDENTIFICATION (CRITICAL):
 
-For ANY template request:
-- MUST use action="complex"
-- MUST use target="form" or target="navbar"
+When user requests a template (navbar, login form), identify it and return simple parameters.
+The frontend will handle all shape creation using existing template logic.
 
-SUPPORTED TEMPLATES:
+TEMPLATES AVAILABLE:
+1. Navigation Bar (navbar)
+2. Login Form with OAuth (login-oauth)
 
-1. LOGIN FORM (Hardcoded Structure):
-   - User ID text input
-   - Password input
-   - Google OAuth button
-   
-   Examples:
-   "make a login form" → {
-     "action": "complex",
-     "target": "form",
-     "parameters": {
-       "formType": "login-oauth"
-     }
-   }
-   
-   "create a login form with google oauth" → {
-     "action": "complex",
-     "target": "form",
-     "parameters": {
-       "formType": "login-oauth"
-     }
-   }
-   
-   "make a login form that has a text input for userid, password, and OAuth button for google login" → {
-     "action": "complex",
-     "target": "form",
-     "parameters": {
-       "formType": "login-oauth"
-     }
-   }
+IDENTIFICATION RULES:
+- User says "navbar", "navigation bar", "nav menu" → target: "navbar"
+- User says "login form", "login page", "sign in form" → target: "form", formType: "login-oauth"
 
-2. NAVBAR (Custom Button Labels):
-   - Accepts custom button labels from user
-   - Default: 3 menu buttons
-   
-   Examples:
-   "create a navbar" → {
-     "action": "complex",
-     "target": "navbar",
-     "parameters": {}
-   }
-   
-   "make a navbar with 4 buttons labeled up, down, cook, drive" → {
-     "action": "complex",
-     "target": "navbar",
-     "parameters": {
-       "buttonLabels": ["up", "down", "cook", "drive"]
-     }
-   }
-   
-   "create a navbar with Home, About, Services, Contact" → {
-     "action": "complex",
-     "target": "navbar",
-     "parameters": {
-       "buttonLabels": ["Home", "About", "Services", "Contact"]
-     }
-   }
-   
-   "make a blue navbar with Products, Features, Pricing" → {
-     "action": "complex",
-     "target": "navbar",
-     "parameters": {
-       "buttonLabels": ["Products", "Features", "Pricing"],
-       "color": "blue"
-     }
-   }
+PARAMETER EXTRACTION:
+- Navbar: Extract button labels from request
+  Examples:
+    "navbar with Home, About, Contact" → buttonLabels: ["Home", "About", "Contact"]
+    "create a navbar with Products, Features, Pricing" → buttonLabels: ["Products", "Features", "Pricing"]
+    "make a nav menu with Home, About, Services, Contact" → buttonLabels: ["Home", "About", "Services", "Contact"]
+    "navbar" (no labels specified) → buttonLabels: undefined (use defaults)
+- Navbar: Extract color if specified
+  Example: "blue navbar" → color: "blue"
+- Login form: No parameters needed (fixed structure)
 
-🎨 COLOR DEFAULTS:
-- If user doesn't specify color, use smart defaults:
-  - Login form: Blue buttons (#3B82F6), gray inputs (#F3F4F6), Google blue for OAuth (#4285F4)
-  - Navbar: Dark gray background (#1F2937)
+LABEL EXTRACTION RULES:
+- Look for words after "with", "labeled", "buttons", "menu items"
+- Split on commas, "and", "&"
+- Clean up labels (trim whitespace, capitalize)
+- Maximum 10 labels allowed
+- If no labels specified, return undefined (frontend will use defaults)
 
-⚠️ WRONG: { "action": "create", "target": "form", ... }
-✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login-oauth" } }
+CORRECT RESPONSES:
+
+"create a navbar" → {
+  "action": "complex",
+  "target": "navbar",
+  "parameters": {}
+}
+
+"make a navbar with Home, About, Services, Contact" → {
+  "action": "complex",
+  "target": "navbar",
+  "parameters": {
+    "buttonLabels": ["Home", "About", "Services", "Contact"]
+  }
+}
+
+"create a blue navbar with Products, Features" → {
+  "action": "complex",
+  "target": "navbar",
+  "parameters": {
+    "buttonLabels": ["Products", "Features"],
+    "color": "blue"
+  }
+}
+
+"make a login form" → {
+  "action": "complex",
+  "target": "form",
+  "parameters": {
+    "formType": "login-oauth"
+  }
+}
+
+⚠️ CRITICAL - DO NOT:
+- Generate shape definitions (frontend handles this)
+- Use action: "create" for templates (must be "complex")
+- Use "items" parameter (must be "buttonLabels")
+- Add fields or custom form logic (login-oauth is fixed)
+
+✅ DO:
+- Identify template type
+- Extract user-specified parameters (labels, colors)
+- Return simple, consistent format
+- Let frontend template logic do the work
 
 🔄 SHAPE MANIPULATION (ROTATION, MOVEMENT):
 - To manipulate a shape, use action="manipulate"
@@ -451,6 +486,8 @@ Example valid responses:
         if (parsedResponse.error) {
             return parsedResponse;
         }
+        // Apply transformation layer for safety (belt and suspenders)
+        parsedResponse = normalizeAIResponse(parsedResponse);
         // Validate against JSON schema using AJV
         const isValid = validate(parsedResponse);
         if (!isValid) {

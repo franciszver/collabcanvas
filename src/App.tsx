@@ -18,6 +18,7 @@ import { cleanupService } from './services/cleanup'
 function App() {
   const { user, isLoading } = useAuth()
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const documentId = 'default-document' // Default document ID
 
   // Initialize cleanup service when user is authenticated
   useEffect(() => {
@@ -45,7 +46,7 @@ function App() {
         </>
       ) : (
         <PresenceProvider>
-          <CanvasProvider>
+          <CanvasProvider documentId={documentId}>
             <AppLayout>
               <ErrorBoundary>
               <div
@@ -72,7 +73,7 @@ function App() {
                   <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>v{APP_VERSION}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <TemplatesDropdown />
+                  <TemplatesDropdown documentId={documentId} />
                   <ShapeSelector />
                   <StatsDropdown />
                   <UserMenu />

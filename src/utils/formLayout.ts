@@ -68,7 +68,7 @@ export const FORM_COLORS = {
  */
 export interface FormShape {
   type: 'rect' | 'circle' | 'text'
-  role: 'label' | 'input' | 'button' | 'checkbox' | 'button-text' | 'input-placeholder'
+  role: 'label' | 'input' | 'button' | 'checkbox' | 'button-text' | 'input-placeholder' | 'background'
   x: number
   y: number
   width: number
@@ -236,6 +236,27 @@ export function generateFormShapes(
     // Center vertically
     currentY = (viewportHeight - totalFormHeight) / 2 + FORM_LAYOUT.margin
   }
+  
+  // Add background frame for better visual hierarchy
+  const padding = 40 // Extra padding around form
+  const backgroundX = startX - padding
+  const backgroundY = currentY - padding
+  const backgroundWidth = formWidth + (padding * 2)
+  const backgroundHeight = totalFormHeight + (padding * 2)
+  
+  // Background frame (first shape, behind everything)
+  shapes.push({
+    type: 'rect',
+    role: 'background',
+    x: backgroundX,
+    y: backgroundY,
+    width: backgroundWidth,
+    height: backgroundHeight,
+    fill: '#1F2937', // Dark gray background
+    stroke: '#374151', // Subtle border
+    strokeWidth: 1,
+    rotation: 0,
+  })
   
   // Generate field shapes (label + input for each field)
   template.fields.forEach(field => {

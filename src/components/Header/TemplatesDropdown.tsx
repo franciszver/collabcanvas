@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { aiCanvasCommand } from '../../services/ai'
+import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import { createTemplateShapes, TEMPLATE_INFO } from '../../utils/templateHelpers'
 
 interface Template {
   id: string
@@ -11,22 +12,27 @@ interface Template {
 const TEMPLATES: Template[] = [
   {
     id: 'login-oauth',
-    name: 'Login Form',
-    description: 'User ID, password, Google OAuth',
+    name: TEMPLATE_INFO['login-oauth'].name,
+    description: TEMPLATE_INFO['login-oauth'].description,
     icon: '🔐'
   },
   {
     id: 'navbar',
-    name: 'Navigation Bar',
-    description: 'Customizable menu buttons',
+    name: TEMPLATE_INFO['navbar'].name,
+    description: TEMPLATE_INFO['navbar'].description,
     icon: '📋'
   }
 ]
 
-export default function TemplatesDropdown() {
+interface TemplatesDropdownProps {
+  documentId: string
+}
+
+export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,38 +63,20 @@ export default function TemplatesDropdown() {
     setBusy(true)
     
     try {
-      if (templateId === 'login-oauth') {
-        // Create login form with OAuth
-        const response = await aiCanvasCommand('create a login form with userid, password, and OAuth button for google login')
-        if (!response.success) {
-          console.error('Failed to create login form:', response.error)
-          alert('Failed to create login form. Please try again.')
-        }
-      } else if (templateId === 'navbar') {
-        // Prompt for navbar button labels
-        const labels = prompt('Enter button labels (comma-separated):', 'Home, About, Services, Contact')
-        if (labels === null) {
-          // User cancelled
-          setBusy(false)
-          return
-        }
-        
-        const trimmedLabels = labels.trim()
-        if (trimmedLabels === '') {
-          // Empty input, use defaults
-          const response = await aiCanvasCommand('create a navbar')
-          if (!response.success) {
-            console.error('Failed to create navbar:', response.error)
-            alert('Failed to create navbar. Please try again.')
-          }
-        } else {
-          // Use custom labels
-          const response = await aiCanvasCommand(`create a navbar with buttons labeled ${trimmedLabels}`)
-          if (!response.success) {
-            console.error('Failed to create navbar:', response.error)
-            alert('Failed to create navbar. Please try again.')
-          }
-        }
+      // Use default parameters for templates
+      let params: any = {}
+      
+      if (templateId === 'navbar') {
+        // Use default navbar labels (no prompting)
+        params.buttonLabels = ['Home', 'About', 'Services']
+      }
+      
+      // Use shared template creation logic
+      const result = await createTemplateShapes(templateId, params, applyCanvasCommand)
+      
+      if (!result.success) {
+        console.error(`Failed to create ${templateId}:`, result.error)
+        alert(`Failed to create template: ${result.error || 'Unknown error'}`)
       }
       
       setIsOpen(false)
