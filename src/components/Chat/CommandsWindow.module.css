@@ -188,7 +188,8 @@
 .colorChips,
 .layoutChips,
 .gradientChips,
-.anchorChips {
+.anchorChips,
+.oauthChips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -197,7 +198,8 @@
 .colorChip,
 .layoutChip,
 .gradientChip,
-.anchorChip {
+.anchorChip,
+.oauthChip {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
@@ -211,7 +213,8 @@
 
 .layoutChip,
 .gradientChip,
-.anchorChip {
+.anchorChip,
+.oauthChip {
   background-color: #e5e7eb;
   color: #374151;
 }

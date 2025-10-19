@@ -158,6 +158,41 @@ const commandCategories: CommandCategory[] = [
         parameters: ['selector', 'spacing']
       }
     ]
+  },
+  {
+    title: 'Create UI Components',
+    commands: [
+      {
+        title: 'Create Navigation Bar',
+        description: 'Create a horizontal navigation bar with customizable buttons',
+        example: 'Create a navbar with 3 buttons',
+        parameters: ['buttonCount', 'buttonLabels', 'color']
+      },
+      {
+        title: 'Create Custom Navbar',
+        description: 'Create a navbar with custom button labels',
+        example: 'Create a navbar with Home, About, Contact, Services',
+        parameters: ['buttonLabels (comma-separated)', 'color']
+      },
+      {
+        title: 'Create Login Form',
+        description: 'Create a login form with OAuth providers and customizable options',
+        example: 'Create a login form',
+        parameters: ['includeRememberMe', 'includeForgotPassword', 'oauthProviders']
+      },
+      {
+        title: 'Simple Login Form',
+        description: 'Create a basic login form with Google OAuth',
+        example: 'Create a simple login form',
+        parameters: []
+      },
+      {
+        title: 'Custom Login Form',
+        description: 'Create a login form with specific OAuth providers',
+        example: 'Create a login form with Google and GitHub',
+        parameters: ['oauthProviders (google, github, facebook)']
+      }
+    ]
   }
 ]
 
@@ -173,6 +208,10 @@ const supportedGradients = ['lighter', 'darker', 'both']
 const supportedAnchors = [
   'center', 'top', 'bottom', 'left', 'right', 
   'top-left', 'top-right', 'bottom-left', 'bottom-right'
+]
+
+const supportedOAuthProviders = [
+  'google', 'github', 'facebook'
 ]
 
 export default function CommandsWindow({ isOpen, onClose, onCommandSelect }: CommandsWindowProps) {
@@ -268,6 +307,17 @@ export default function CommandsWindow({ isOpen, onClose, onCommandSelect }: Com
                   {supportedAnchors.map((anchor, index) => (
                     <span key={index} className={styles.anchorChip}>
                       {anchor}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.referenceItem}>
+                <h4>OAuth Providers</h4>
+                <div className={styles.oauthChips}>
+                  {supportedOAuthProviders.map((provider, index) => (
+                    <span key={index} className={styles.oauthChip}>
+                      {provider}
                     </span>
                   ))}
                 </div>

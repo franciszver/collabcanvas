@@ -231,9 +231,12 @@ export function useKeyboardShortcuts({ enabled = true }: UseKeyboardShortcutsOpt
         break
 
       case '?':
-        // Show keyboard shortcuts help
-        e.preventDefault()
-        setShowHelp(true)
+      case '/':
+        // Show keyboard shortcuts help (? key or Shift+/)
+        if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+          e.preventDefault()
+          setShowHelp(prev => !prev)
+        }
         break
 
       default:
