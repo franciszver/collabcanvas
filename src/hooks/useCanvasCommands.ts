@@ -714,8 +714,14 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             }
           }
           
-          // Get form template
-          const template = getFormTemplate(formType)
+          // Get form template with options for login-oauth
+          const loginOptions = formType === 'login-oauth' ? {
+            includeRememberMe: (parameters as any).includeRememberMe,
+            includeForgotPassword: (parameters as any).includeForgotPassword,
+            oauthProviders: (parameters as any).oauthProviders
+          } : undefined
+          
+          const template = getFormTemplate(formType, loginOptions)
           if (!template) {
           return {
             success: false,
@@ -737,7 +743,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
               width: viewportWidth,
               height: viewportHeight
             }
-          })
+          }, loginOptions)
           
           // Convert FormShapes to Rectangle shapes and add to canvas
           const createdShapeIds: string[] = []

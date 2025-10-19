@@ -22,6 +22,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isWaitingForNavbarButtons, setIsWaitingForNavbarButtons] = useState(false)
   const [isWaitingForNavbarConfirmation, setIsWaitingForNavbarConfirmation] = useState(false)
   const [pendingNavbarParams, setPendingNavbarParams] = useState<{ buttonCount: number; labels: string[] } | null>(null)
+  const [isWaitingForLoginRememberMe, setIsWaitingForLoginRememberMe] = useState(false)
+  const [isWaitingForLoginForgotPassword, setIsWaitingForLoginForgotPassword] = useState(false)
+  const [isWaitingForLoginOAuth, setIsWaitingForLoginOAuth] = useState(false)
+  const [pendingLoginParams, setPendingLoginParams] = useState<{ includeRememberMe?: boolean; includeForgotPassword?: boolean; oauthProviders?: string[] } | null>(null)
   const [isCommandsOpen, setIsCommandsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
@@ -125,6 +129,42 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     }
     
     return Array.from({ length: count }, (_, i) => `Button ${i + 1}`)
+  }
+
+  // Helper function to parse yes/no response
+  const parseYesNo = (message: string): boolean | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    if (messageTrimmed === 'yes' || messageTrimmed === 'y' || messageTrimmed === 'true') {
+      return true
+    }
+    
+    if (messageTrimmed === 'no' || messageTrimmed === 'n' || messageTrimmed === 'false') {
+      return false
+    }
+    
+    return null
+  }
+
+  // Helper function to parse OAuth providers
+  const parseOAuthProviders = (message: string): string[] | null => {
+    const messageTrimmed = message.trim().toLowerCase()
+    
+    // Check for "all" response
+    if (messageTrimmed === 'all') {
+      return ['google', 'github', 'facebook']
+    }
+    
+    // Parse comma-separated providers
+    const providers = messageTrimmed.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    const validProviders = ['google', 'github', 'facebook']
+    const invalidProviders = providers.filter(p => !validProviders.includes(p))
+    
+    if (invalidProviders.length > 0) {
+      return null // Invalid providers
+    }
+    
+    return providers.length > 0 ? providers : null
   }
 
   useEffect(() => {
@@ -237,6 +277,54 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           // Invalid label count
           await sendMessage(`Please provide exactly ${pendingNavbarParams.buttonCount} labels separated by commas, or reply 'yes' to use the default labels.`, 'ai', 'AI Assistant', 'assistant')
         }
+      } else if (isWaitingForLoginRememberMe) {
+        // Handle Remember Me response
+        const rememberMe = parseYesNo(messageContent)
+        if (rememberMe !== null) {
+          setPendingLoginParams({ includeRememberMe: rememberMe })
+          setIsWaitingForLoginRememberMe(false)
+          setIsWaitingForLoginForgotPassword(true)
+          
+          await sendMessage(`Got it! Include 'Forgot Password' link? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          await sendMessage(`Please answer with 'yes' or 'no' for the Remember Me checkbox.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForLoginForgotPassword && pendingLoginParams) {
+        // Handle Forgot Password response
+        const forgotPassword = parseYesNo(messageContent)
+        if (forgotPassword !== null) {
+          setPendingLoginParams({ ...pendingLoginParams, includeForgotPassword: forgotPassword })
+          setIsWaitingForLoginForgotPassword(false)
+          setIsWaitingForLoginOAuth(true)
+          
+          await sendMessage(`Perfect! Which OAuth providers: Google, GitHub, Facebook, or all?`, 'ai', 'AI Assistant', 'assistant')
+        } else {
+          await sendMessage(`Please answer with 'yes' or 'no' for the Forgot Password link.`, 'ai', 'AI Assistant', 'assistant')
+        }
+      } else if (isWaitingForLoginOAuth && pendingLoginParams) {
+        // Handle OAuth provider response
+        const oauthProviders = parseOAuthProviders(messageContent)
+        if (oauthProviders) {
+          const finalParams = { ...pendingLoginParams, oauthProviders: oauthProviders as ('google' | 'github' | 'facebook')[] }
+          
+          const result = await createTemplateShapes('login-oauth', { 
+            templateId: 'login-oauth', 
+            ...finalParams
+          }, applyCanvasCommand)
+          
+          if (result.success) {
+            const createdCount = result.createdShapes?.length || 0
+            await sendMessage(`✅ Created login form with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+          } else {
+            await sendMessage(`❌ Failed to create login form: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+          }
+          
+          // Reset login form state
+          setPendingLoginParams(null)
+          setIsWaitingForLoginOAuth(false)
+        } else {
+          await sendMessage(`Please specify OAuth providers: Google, GitHub, Facebook, or all.`, 'ai', 'AI Assistant', 'assistant')
+        }
       } else {
         // Normal AI command processing
         const response = await aiCanvasCommand(messageContent)
@@ -252,6 +340,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             if (templateId === 'navbar') {
               setIsWaitingForNavbarButtons(true)
               await sendMessage(`I'll create a navbar with Home, About, Services. How many buttons do you need? [1-10]`, 'ai', 'AI Assistant', 'assistant')
+            } else if (templateId === 'login-oauth') {
+              // Special handling for login form - start interactive flow
+              setIsWaitingForLoginRememberMe(true)
+              await sendMessage(`I'll create a login form. Include 'Remember Me' checkbox? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
             } else {
               // Use shared template logic for other templates
               const templateParams = extractTemplateParams(target, parameters)
@@ -539,6 +631,12 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 ? "Enter number of buttons (1-10)..." 
                 : isWaitingForNavbarConfirmation 
                 ? "Type 'yes' to confirm or enter custom labels..." 
+                : isWaitingForLoginRememberMe
+                ? "Answer yes/no for Remember Me checkbox..."
+                : isWaitingForLoginForgotPassword
+                ? "Answer yes/no for Forgot Password link..."
+                : isWaitingForLoginOAuth
+                ? "Specify OAuth providers: Google, GitHub, Facebook, or all..."
                 : "Ask me to create shapes..."
             }
             className={styles.inputField}

@@ -28,6 +28,12 @@ export interface FormTemplate {
   options: FormOption[]
 }
 
+export interface LoginFormOptions {
+  includeRememberMe?: boolean
+  includeForgotPassword?: boolean
+  oauthProviders?: ('google' | 'github' | 'facebook')[]
+}
+
 /**
  * Predefined form templates
  */
@@ -95,11 +101,65 @@ export const FORM_TEMPLATES: Record<string, FormTemplate> = {
 }
 
 /**
+ * Generate a dynamic login-oauth template based on options
+ * @param options - Login form customization options
+ * @returns The generated form template
+ */
+export function generateLoginOAuthTemplate(options: LoginFormOptions = {}): FormTemplate {
+  const {
+    includeRememberMe = true,
+    oauthProviders = ['google']
+  } = options
+
+  const fields: FormField[] = [
+    { name: 'userid', label: 'User ID', type: 'text' },
+    { name: 'password', label: 'Password', type: 'password' }
+  ]
+
+  const buttons: FormButton[] = []
+  
+  // Add OAuth buttons based on selected providers
+  oauthProviders.forEach((provider: 'google' | 'github' | 'facebook') => {
+    let label: string
+    if (provider === 'google') {
+      label = 'Sign in with Google'
+    } else if (provider === 'github') {
+      label = 'Sign in with GitHub'
+    } else if (provider === 'facebook') {
+      label = 'Sign in with Facebook'
+    } else {
+      // This should never happen due to type constraints, but provide a fallback
+      label = `Sign in with ${provider}`
+    }
+    
+    buttons.push({ label, type: 'primary' })
+  })
+
+  const formOptions: FormOption[] = []
+  
+  // Add Remember Me checkbox if requested
+  if (includeRememberMe) {
+    formOptions.push({ label: 'Remember me', type: 'checkbox' })
+  }
+
+  return {
+    formType: 'custom',
+    fields,
+    buttons,
+    options: formOptions
+  }
+}
+
+/**
  * Get a form template by type
  * @param formType - The type of form template to retrieve
+ * @param options - Options for dynamic templates (like login-oauth)
  * @returns The form template or null if not found
  */
-export function getFormTemplate(formType: string): FormTemplate | null {
+export function getFormTemplate(formType: string, options?: LoginFormOptions): FormTemplate | null {
+  if (formType.toLowerCase() === 'login-oauth') {
+    return generateLoginOAuthTemplate(options)
+  }
   return FORM_TEMPLATES[formType.toLowerCase()] || null
 }
 

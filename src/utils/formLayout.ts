@@ -6,7 +6,7 @@
  * proper layout of labels, inputs, checkboxes, and buttons.
  */
 
-import type { FormTemplate } from './formTemplates'
+import type { FormTemplate, LoginFormOptions } from './formTemplates'
 
 /**
  * Layout constants for form generation
@@ -68,7 +68,7 @@ export const FORM_COLORS = {
  */
 export interface FormShape {
   type: 'rect' | 'circle' | 'text'
-  role: 'label' | 'input' | 'button' | 'checkbox' | 'button-text' | 'input-placeholder' | 'background'
+  role: 'label' | 'input' | 'button' | 'checkbox' | 'button-text' | 'input-placeholder' | 'background' | 'link'
   x: number
   y: number
   width: number
@@ -185,16 +185,19 @@ export function calculateTotalFormHeight(template: FormTemplate): number {
  * 2. Input rectangles
  * 3. Checkbox circles
  * 4. Checkbox labels (text)
- * 5. Button rectangles
- * 6. Button text (centered)
+ * 5. Forgot Password link (if enabled)
+ * 6. Button rectangles
+ * 7. Button text (centered)
  * 
  * @param template - The form template to generate
  * @param config - Layout configuration including viewport
+ * @param options - Login form customization options
  * @returns Array of shape definitions with calculated positions
  */
 export function generateFormShapes(
   template: FormTemplate,
-  config: FormLayoutConfig
+  config: FormLayoutConfig,
+  options?: LoginFormOptions
 ): FormShape[] {
   const shapes: FormShape[] = []
   
@@ -334,6 +337,32 @@ export function generateFormShapes(
     currentY += FORM_LAYOUT.checkboxDiameter + FORM_LAYOUT.verticalSpacing
   })
   
+  // Generate Forgot Password link if enabled for login-oauth forms
+  if (template.formType === 'custom' && options?.includeForgotPassword) {
+    // Add some spacing before the link
+    currentY += FORM_LAYOUT.verticalSpacing / 2
+    
+    // Forgot Password link (right-aligned)
+    const linkText = 'Forgot Password?'
+    const linkWidth = linkText.length * FORM_LAYOUT.labelFontSize * 0.6 // Approximate text width
+    const linkX = startX + FORM_LAYOUT.fieldWidth - linkWidth
+    
+    shapes.push({
+      type: 'text',
+      role: 'link',
+      x: linkX,
+      y: currentY,
+      width: linkWidth,
+      height: FORM_LAYOUT.labelFontSize,
+      text: linkText,
+      fontSize: FORM_LAYOUT.labelFontSize,
+      fill: '#3B82F6', // Blue color for link
+      rotation: 0,
+    })
+    
+    currentY += FORM_LAYOUT.labelFontSize + FORM_LAYOUT.verticalSpacing
+  }
+
   // Generate button shapes
   if (template.buttons.length > 0) {
     currentY += FORM_LAYOUT.buttonMarginTop

@@ -12,6 +12,10 @@ export interface TemplateCreationParams {
   templateId: 'login-oauth' | 'navbar'
   buttonLabels?: string[]
   color?: string
+  // Login form options
+  includeRememberMe?: boolean
+  includeForgotPassword?: boolean
+  oauthProviders?: ('google' | 'github' | 'facebook')[]
 }
 
 export interface TemplateCreationResult {
@@ -48,10 +52,12 @@ export const TEMPLATE_INFO = {
   },
   'login-oauth': {
     name: 'Login Form',
-    description: 'User ID, password, and Google OAuth button',
+    description: 'User ID, password, and OAuth buttons with customization options',
     example: 'create a login form',
     parameters: {
-      none: 'No parameters needed - fixed structure'
+      includeRememberMe: 'Include Remember Me checkbox (optional, defaults to true)',
+      includeForgotPassword: 'Include Forgot Password link (optional, defaults to true)',
+      oauthProviders: 'OAuth providers array (optional, defaults to [google])'
     }
   }
 } as const
@@ -83,9 +89,25 @@ export function validateTemplateParams(templateId: string, params: any): string[
   }
   
   if (templateId === 'login-oauth') {
-    // No parameters needed for login form
-    if (Object.keys(params).length > 0) {
-      errors.push('Login form does not accept custom parameters')
+    // Validate login form parameters
+    if (params.includeRememberMe !== undefined && typeof params.includeRememberMe !== 'boolean') {
+      errors.push('includeRememberMe must be a boolean')
+    }
+    
+    if (params.includeForgotPassword !== undefined && typeof params.includeForgotPassword !== 'boolean') {
+      errors.push('includeForgotPassword must be a boolean')
+    }
+    
+    if (params.oauthProviders !== undefined) {
+      if (!Array.isArray(params.oauthProviders)) {
+        errors.push('oauthProviders must be an array')
+      } else {
+        const validProviders = ['google', 'github', 'facebook']
+        const invalidProviders = params.oauthProviders.filter((provider: string) => !validProviders.includes(provider))
+        if (invalidProviders.length > 0) {
+          errors.push(`Invalid OAuth providers: ${invalidProviders.join(', ')}. Valid providers: ${validProviders.join(', ')}`)
+        }
+      }
     }
   }
   
@@ -119,13 +141,16 @@ export async function createTemplateShapes(
   }
   
   if (templateId === 'login-oauth') {
-    // Direct command for login form
+    // Direct command for login form with options
     const result = await applyCanvasCommand({
       action: 'complex',
       target: 'form',
       parameters: {
-        formType: 'login-oauth'
-      }
+        formType: 'login-oauth',
+        includeRememberMe: params.includeRememberMe,
+        includeForgotPassword: params.includeForgotPassword,
+        oauthProviders: params.oauthProviders
+      } as any
     })
     
     return {

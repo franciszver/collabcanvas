@@ -34,14 +34,18 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
   const [showNavbarForm, setShowNavbarForm] = useState(false)
   const [navbarButtonCount, setNavbarButtonCount] = useState(3)
   const [navbarLabels, setNavbarLabels] = useState(['Home', 'About', 'Services'])
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [loginIncludeRememberMe, setLoginIncludeRememberMe] = useState(true)
+  const [loginIncludeForgotPassword, setLoginIncludeForgotPassword] = useState(true)
+  const [loginOAuthProviders, setLoginOAuthProviders] = useState<('google' | 'github' | 'facebook')[]>(['google'])
   const menuRef = useRef<HTMLDivElement>(null)
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        if (showNavbarForm) {
-          // Don't close when navbar form is open - require explicit action
+        if (showNavbarForm || showLoginForm) {
+          // Don't close when forms are open - require explicit action
           return
         }
         setIsOpen(false)
@@ -52,6 +56,8 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
       if (event.key === 'Escape') {
         if (showNavbarForm) {
           setShowNavbarForm(false)
+        } else if (showLoginForm) {
+          setShowLoginForm(false)
         } else {
           setIsOpen(false)
         }
@@ -67,7 +73,7 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, showNavbarForm])
+  }, [isOpen, showNavbarForm, showLoginForm])
 
   // Helper function to manage button count changes
   const handleButtonCountChange = (count: number) => {
@@ -80,10 +86,12 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
     setNavbarLabels(newLabels.slice(0, count))
   }
 
-  // Handle template click - show form for navbar, create others directly
+  // Handle template click - show form for navbar/login, create others directly
   const handleTemplateClick = (templateId: string) => {
     if (templateId === 'navbar') {
       setShowNavbarForm(true)
+    } else if (templateId === 'login-oauth') {
+      setShowLoginForm(true)
     } else {
       createTemplate(templateId, {})
     }
@@ -93,6 +101,22 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
   const resetNavbarForm = () => {
     setNavbarButtonCount(3)
     setNavbarLabels(['Home', 'About', 'Services'])
+  }
+
+  // Reset login form to defaults
+  const resetLoginForm = () => {
+    setLoginIncludeRememberMe(true)
+    setLoginIncludeForgotPassword(true)
+    setLoginOAuthProviders(['google'])
+  }
+
+  // Handle OAuth provider toggle
+  const toggleOAuthProvider = (provider: 'google' | 'github' | 'facebook') => {
+    setLoginOAuthProviders(prev => 
+      prev.includes(provider) 
+        ? prev.filter(p => p !== provider)
+        : [...prev, provider]
+    )
   }
 
   // Create navbar with custom parameters
@@ -119,6 +143,40 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
       }
     } catch (error) {
       console.error('Error creating navbar:', error)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Create login form with custom parameters
+  const handleLoginCreate = async () => {
+    if (busy) return
+    
+    // Validate OAuth providers
+    if (loginOAuthProviders.length === 0) {
+      alert('Please select at least one OAuth provider')
+      return
+    }
+    
+    setBusy(true)
+    try {
+      const result = await createTemplateShapes('login-oauth', { 
+        templateId: 'login-oauth', 
+        includeRememberMe: loginIncludeRememberMe,
+        includeForgotPassword: loginIncludeForgotPassword,
+        oauthProviders: loginOAuthProviders
+      }, applyCanvasCommand)
+      
+      if (!result.success) {
+        console.error('Failed to create login form:', result.error)
+        alert(`Failed to create login form: ${result.error || 'Unknown error'}`)
+      } else {
+        setShowLoginForm(false)
+        setIsOpen(false)
+      }
+    } catch (error) {
+      console.error('Error creating login form:', error)
       alert('An error occurred. Please try again.')
     } finally {
       setBusy(false)
@@ -303,6 +361,128 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
                   }}
                 >
                   Create Navbar
+                </button>
+              </div>
+            </>
+          ) : showLoginForm ? (
+            // Login Form Customization Form
+            <>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: '#E5E7EB', padding: '4px 8px' }}>
+                Customize Login Form
+              </div>
+              
+              {/* Remember Me Checkbox */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={loginIncludeRememberMe}
+                  onChange={(e) => setLoginIncludeRememberMe(e.target.checked)}
+                  disabled={busy}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                  }}
+                />
+                <label htmlFor="rememberMe" style={{ fontSize: 12, color: '#9CA3AF', cursor: 'pointer' }}>
+                  Include Remember Me checkbox
+                </label>
+              </div>
+
+              {/* Forgot Password Checkbox */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <input
+                  type="checkbox"
+                  id="forgotPassword"
+                  checked={loginIncludeForgotPassword}
+                  onChange={(e) => setLoginIncludeForgotPassword(e.target.checked)}
+                  disabled={busy}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                  }}
+                />
+                <label htmlFor="forgotPassword" style={{ fontSize: 12, color: '#9CA3AF', cursor: 'pointer' }}>
+                  Include Forgot Password link
+                </label>
+              </div>
+
+              {/* OAuth Providers */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>OAuth Providers:</label>
+                {(['google', 'github', 'facebook'] as const).map(provider => (
+                  <div key={provider} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      id={`oauth-${provider}`}
+                      checked={loginOAuthProviders.includes(provider)}
+                      onChange={() => toggleOAuthProvider(provider)}
+                      disabled={busy}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        cursor: busy ? 'not-allowed' : 'pointer',
+                      }}
+                    />
+                    <label htmlFor={`oauth-${provider}`} style={{ fontSize: 12, color: '#9CA3AF', cursor: 'pointer' }}>
+                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+                <button
+                  onClick={resetLoginForm}
+                  disabled={busy}
+                  style={{
+                    background: '#374151',
+                    color: '#E5E7EB',
+                    border: '1px solid #4B5563',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                  }}
+                >
+                  Reset to Defaults
+                </button>
+                <button
+                  onClick={() => setShowLoginForm(false)}
+                  disabled={busy}
+                  style={{
+                    background: '#374151',
+                    color: '#E5E7EB',
+                    border: '1px solid #4B5563',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLoginCreate}
+                  disabled={busy}
+                  style={{
+                    background: '#3B82F6',
+                    color: '#FFFFFF',
+                    border: '1px solid #2563EB',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                    fontWeight: 500,
+                  }}
+                >
+                  Create Login Form
                 </button>
               </div>
             </>
