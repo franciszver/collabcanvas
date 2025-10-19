@@ -40,26 +40,27 @@ export const FORM_LAYOUT = {
 
 /**
  * Color scheme for form elements
+ * Following modern UI/UX best practices for login forms
  */
 export const FORM_COLORS = {
-  // Input fields
-  inputFill: '#F3F4F6',          // Light gray background
-  inputStroke: '#D1D5DB',        // Medium gray border
-  inputStrokeWidth: 2,
+  // Input fields - Clean white with subtle border for modern look
+  inputFill: '#FFFFFF',          // White background for clarity
+  inputStroke: '#E5E7EB',        // Light gray border for subtle definition
+  inputStrokeWidth: 1.5,
   
-  // Buttons
-  buttonFill: '#3B82F6',         // Blue background
-  buttonStroke: '#2563EB',       // Darker blue border
-  buttonStrokeWidth: 2,
+  // Buttons - Accessible blue with proper contrast
+  buttonFill: '#2563EB',         // Rich blue (WCAG AA compliant)
+  buttonStroke: '#1E40AF',       // Darker blue border for depth
+  buttonStrokeWidth: 0,          // Modern flat design, no border
   
-  // Text
-  labelColor: '#374151',         // Dark gray
-  buttonTextColor: '#FFFFFF',    // White
-  inputTextColor: '#6B7280',     // Medium gray (placeholder)
+  // Text - High contrast for accessibility
+  labelColor: '#111827',         // Near-black for excellent readability
+  buttonTextColor: '#FFFFFF',    // White text on blue button
+  inputTextColor: '#9CA3AF',     // Lighter gray for placeholder text
   
-  // Checkboxes
+  // Checkboxes - Clean modern style
   checkboxFill: '#FFFFFF',       // White background
-  checkboxStroke: '#3B82F6',     // Blue border
+  checkboxStroke: '#2563EB',     // Primary blue for brand consistency
   checkboxStrokeWidth: 2,
 }
 
@@ -255,8 +256,8 @@ export function generateFormShapes(
     y: backgroundY,
     width: backgroundWidth,
     height: backgroundHeight,
-    fill: '#1F2937', // Dark gray background
-    stroke: '#374151', // Subtle border
+    fill: '#F9FAFB', // Light gray background for modern, clean look
+    stroke: '#E5E7EB', // Subtle border matching input fields
     strokeWidth: 1,
     rotation: 0,
   })
@@ -356,7 +357,7 @@ export function generateFormShapes(
       height: FORM_LAYOUT.labelFontSize,
       text: linkText,
       fontSize: FORM_LAYOUT.labelFontSize,
-      fill: '#3B82F6', // Blue color for link
+      fill: '#2563EB', // Blue color for link, matching button color for consistency
       rotation: 0,
     })
     
@@ -372,9 +373,12 @@ export function generateFormShapes(
       
       // Check if this is an OAuth button
       const isOAuth = button.label.toLowerCase().includes('google') || 
+                      button.label.toLowerCase().includes('github') ||
+                      button.label.toLowerCase().includes('facebook') ||
                       button.label.toLowerCase().includes('oauth')
       
-      const buttonColor = isOAuth ? '#4285F4' : (button.type === 'primary' ? FORM_COLORS.buttonFill : FORM_COLORS.inputFill)
+      // Use consistent primary button color for better visual hierarchy
+      const buttonColor = button.type === 'primary' ? FORM_COLORS.buttonFill : FORM_COLORS.inputFill
       
       // Button rectangle
       shapes.push({
