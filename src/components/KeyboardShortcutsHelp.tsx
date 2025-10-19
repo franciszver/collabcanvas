@@ -62,21 +62,20 @@ export default function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShort
         { keys: 'Mouse Wheel', description: 'Zoom in/out' },
         { keys: 'Drag (empty space)', description: 'Pan canvas' },
         { keys: 'Ctrl+0', description: 'Reset zoom to fit' },
+        { keys: 'Ctrl+K', description: 'Locate user or shape' },
       ]
     }
   ]
 
   return (
     <div 
-      className="fixed inset-0 flex items-center justify-center" 
+      className="fixed inset-0 flex items-end" 
       style={{ 
         zIndex: 1000,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        position: 'fixed'
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+        padding: '20px'
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -89,8 +88,7 @@ export default function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShort
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           maxWidth: '42rem',
           width: '100%',
-          margin: '0 1rem',
-          maxHeight: '80vh',
+          maxHeight: '60vh',
           overflowY: 'auto',
           position: 'relative',
           zIndex: 1001

@@ -6,6 +6,19 @@ export interface ViewportTransform {
 
 export type CanvasShapeType = 'rect' | 'circle' | 'triangle' | 'star' | 'arrow' | 'text'
 
+export interface ActivityHistoryEntry {
+  type: 'comment' | 'edit'
+  // For comments
+  text?: string
+  // For edits
+  action?: string  // e.g., "changed fill color", "moved shape", "resized"
+  details?: string // e.g., "from #FF0000 to #00FF00"
+  // Common fields
+  by: string       // userId
+  byName: string
+  at: number       // timestamp
+}
+
 export interface Rectangle {
   id: string
   x: number
@@ -29,6 +42,12 @@ export interface Rectangle {
   lockedAt?: number
   // Grouping field
   groupId?: string
+  // Comments and activity tracking
+  comment?: string
+  commentBy?: string
+  commentByName?: string
+  commentAt?: number
+  history?: ActivityHistoryEntry[]
 }
 
 export interface CanvasState {
@@ -69,6 +88,12 @@ export interface ShapeGroup {
   updatedAt: number
   color?: string
   isCollapsed?: boolean
+  // Comments and activity tracking
+  comment?: string
+  commentBy?: string
+  commentByName?: string
+  commentAt?: number
+  history?: ActivityHistoryEntry[]
 }
 
 

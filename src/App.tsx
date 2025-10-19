@@ -1,5 +1,5 @@
 import './App.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
@@ -8,6 +8,7 @@ import ErrorBoundary from './components/Layout/ErrorBoundary'
 import TemplatesDropdown from './components/Header/TemplatesDropdown'
 import ShapeSelector from './components/Header/ShapeSelector'
 import StatsDropdown from './components/Header/StatsDropdown'
+import LocateDropdown, { type LocateDropdownRef } from './components/Header/LocateDropdown'
 import UserMenu from './components/Header/UserMenu'
 import ChatBox from './components/Chat/ChatBox'
 import { APP_VERSION } from './version'
@@ -21,6 +22,7 @@ function App() {
   const { user, isLoading } = useAuth()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const documentId = 'default-document' // Default document ID
+  const locateDropdownRef = useRef<LocateDropdownRef>(null)
 
   // Initialize cleanup service when user is authenticated
   useEffect(() => {
@@ -34,6 +36,27 @@ function App() {
     return () => {
       cleanupService.stop()
     }
+  }, [user])
+
+  // Global keyboard shortcut for Locate dropdown (Ctrl+K / Cmd+K)
+  useEffect(() => {
+    if (!user) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey
+      if ((e.key === 'k' || e.key === 'K') && isCtrlOrCmd) {
+        e.preventDefault()
+        locateDropdownRef.current?.openDropdown()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [user])
 
   if (isLoading) return null
@@ -182,6 +205,7 @@ function App() {
                   <TemplatesDropdown documentId={documentId} />
                   <ShapeSelector />
                   <StatsDropdown />
+                  <LocateDropdown ref={locateDropdownRef} />
                   <UserMenu />
                 </div>
               </div>

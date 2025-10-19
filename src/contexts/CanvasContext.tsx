@@ -59,6 +59,9 @@ export interface CanvasContextValue extends CanvasState {
   selectSimilar: (shapeId: string) => void
   selectByType: (type: string) => void
   selectByColor: (color: string) => void
+  // Navigation
+  panToPosition: (x: number, y: number, targetScale?: number) => void
+  panToShapePosition: (shape: Rectangle) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -392,6 +395,34 @@ export function CanvasProvider({
     }
   }, [rectangles, selectionHook])
 
+  // Navigation methods
+  const panToPosition = useCallback((x: number, y: number, targetScale?: number) => {
+    const scale = targetScale ?? viewport.scale
+    const screenCenterX = window.innerWidth / 2
+    const screenCenterY = window.innerHeight / 2
+    
+    // Calculate viewport offset to center workspace position
+    const newX = screenCenterX - (x * scale)
+    const newY = screenCenterY - (y * scale)
+    
+    handleViewportChange({ scale, x: newX, y: newY })
+  }, [viewport.scale, handleViewportChange])
+
+  const panToShapePosition = useCallback((shape: Rectangle) => {
+    // Calculate shape center
+    const centerX = shape.x + shape.width / 2
+    const centerY = shape.y + shape.height / 2
+    
+    // Calculate scale to fit shape with 40% padding
+    const screenWidth = window.innerWidth
+    const screenHeight = window.innerHeight
+    const scaleX = screenWidth / (shape.width * 1.4)
+    const scaleY = screenHeight / (shape.height * 1.4)
+    const scale = Math.min(scaleX, scaleY, 2) // Cap at 200% zoom
+    
+    panToPosition(centerX, centerY, scale)
+  }, [panToPosition])
+
   // Computed state
   const isLoading = shapesLoading || documentLoading
 
@@ -449,6 +480,9 @@ export function CanvasProvider({
       selectSimilar: selectSimilarHandler,
       selectByType: selectByTypeHandler,
       selectByColor: selectByColorHandler,
+      // Navigation
+      panToPosition,
+      panToShapePosition,
     }),
     [
       viewport,
@@ -502,6 +536,9 @@ export function CanvasProvider({
       selectSimilarHandler,
       selectByTypeHandler,
       selectByColorHandler,
+      // Navigation dependencies
+      panToPosition,
+      panToShapePosition,
     ]
   )
 

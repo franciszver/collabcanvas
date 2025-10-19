@@ -3,6 +3,7 @@ import { subscribeToShapes, createShape, updateShape, deleteShape, deleteAllShap
 import { publishDragPositionsRtdbThrottled, subscribeToDragRtdb, clearDragPositionRtdb } from '../services/realtime'
 import type { Rectangle } from '../types/canvas.types'
 import { useAuth } from '../contexts/AuthContext'
+import { createEditEntry, addToHistory } from '../utils/historyTracking'
 
 export interface UseShapesOptions {
   documentId: string
@@ -78,6 +79,9 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     if (!user) throw new Error('User not authenticated')
     
     try {
+      // Find the current shape to track changes
+      const currentShape = shapes.find(s => s.id === id)
+      
       // Convert Rectangle updates to ShapeDocument updates
       const shapeUpdates: any = {}
       if (updates.type !== undefined) shapeUpdates.type = updates.type
@@ -90,13 +94,39 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
       if (updates.fill !== undefined) shapeUpdates.fill = updates.fill
       if (updates.text !== undefined) shapeUpdates.text = updates.text
       if (updates.fontSize !== undefined) shapeUpdates.fontSize = updates.fontSize
+      if (updates.stroke !== undefined) shapeUpdates.stroke = updates.stroke
+      if (updates.strokeWidth !== undefined) shapeUpdates.strokeWidth = updates.strokeWidth
+      if (updates.opacity !== undefined) shapeUpdates.opacity = updates.opacity
+      
+      // Handle comment and history fields (pass through without tracking)
+      if (updates.comment !== undefined) shapeUpdates.comment = updates.comment
+      if (updates.commentBy !== undefined) shapeUpdates.commentBy = updates.commentBy
+      if (updates.commentByName !== undefined) shapeUpdates.commentByName = updates.commentByName
+      if (updates.commentAt !== undefined) shapeUpdates.commentAt = updates.commentAt
+      if (updates.history !== undefined) {
+        shapeUpdates.history = updates.history
+      } else if (currentShape) {
+        // Only auto-track if history is not explicitly provided (avoid double-tracking)
+        // Create edit entry for automatic tracking
+        const editEntry = createEditEntry(
+          currentShape,
+          updates,
+          user.id,
+          user.displayName || 'Unknown User'
+        )
+        
+        if (editEntry) {
+          // Add to history
+          shapeUpdates.history = addToHistory(currentShape.history, editEntry, 10)
+        }
+      }
       
       await updateShape(id, shapeUpdates)
     } catch (err) {
       setError(err as Error)
       throw err
     }
-  }, [user])
+  }, [user, shapes])
 
   const deleteShapeHandler = useCallback(async (id: string) => {
     try {

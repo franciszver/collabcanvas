@@ -44,8 +44,32 @@ interface ShapeDocument {
   isLocked?: boolean
   lockedBy?: string // userId
   lockedAt?: Timestamp
+  
+  // Comments and Activity Tracking
+  comment?: string // Current comment text
+  commentBy?: string // userId who added comment
+  commentByName?: string // Display name of commenter
+  commentAt?: number // Timestamp of last comment update
+  history?: Array<{
+    type: 'comment' | 'edit'
+    // For comments
+    text?: string
+    // For edits
+    action?: string // e.g., "changed fill color", "moved shape"
+    details?: string // e.g., "from #FF0000 to #00FF00"
+    // Common fields
+    by: string // userId
+    byName: string // Display name
+    at: number // Timestamp
+  }> // Limited to last 10 entries
 }
 ```
+
+**Activity Tracking Behavior:**
+- Manual comments are added via `comment` field and create a "comment" history entry
+- Shape edits automatically create "edit" history entries when properties change
+- History is limited to the 10 most recent entries (newest first)
+- Tracked changes include: position, size, rotation, fill, stroke, text, fontSize, opacity, z-index
 
 ### `/documents/{documentId}`
 Document-level metadata and settings.

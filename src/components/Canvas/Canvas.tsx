@@ -19,6 +19,8 @@ import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
 import SelectionBounds from './SelectionBounds'
 import MultiShapeProperties from './MultiShapeProperties'
 import GroupsPanel from './GroupsPanel'
+import ActivityPanel from './ActivityPanel'
+import ActivityBadge from './ActivityBadge'
 import canvasBackground from '../../assets/user_images/background_2.jpg'
 
 // Helper to calculate text dimensions for auto-resize
@@ -86,6 +88,7 @@ export default function Canvas() {
   const [hoveredLockedShape, setHoveredLockedShape] = useState<{ id: string; x: number; y: number; lockedByName: string } | null>(null)
   const [showMultiShapeProperties, setShowMultiShapeProperties] = useState(false)
   const [showGroupsPanel, setShowGroupsPanel] = useState(false)
+  const [showActivityPanel, setShowActivityPanel] = useState(false)
   
   // Dynamically resize canvas when window size changes
   useEffect(() => {
@@ -515,50 +518,68 @@ export default function Canvas() {
                     updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
                   }}
                 />
-                {/* Lock Indicator */}
-                {(isLocked || isLockedByUser) && (
-                  <SimpleLockIndicator
-                    x={baseX}
-                    y={baseY}
-                    width={r.width}
-                    height={r.height}
-                    isCurrentUser={isLockedByUser}
-                    scale={viewport.scale}
-                  />
-                )}
-              </Group>
-            )
-          }
-          if (r.type === 'triangle') {
+              {/* Lock Indicator */}
+              {(isLocked || isLockedByUser) && (
+                <SimpleLockIndicator
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  isCurrentUser={isLockedByUser}
+                  scale={viewport.scale}
+                />
+              )}
+              {/* Activity Badge */}
+              <ActivityBadge
+                shape={r}
+                x={baseX}
+                y={baseY}
+                width={r.width}
+                height={r.height}
+                scale={viewport.scale}
+              />
+            </Group>
+          )
+        }
+        if (r.type === 'triangle') {
             const radius = Math.min(r.width, r.height) / 2
             const cx = baseX + r.width / 2
             const cy = baseY + r.height / 2
             return (
-              <RegularPolygon
-                key={key}
-                {...commonProps}
-                x={cx}
-                y={cy}
-                sides={3}
-                radius={radius}
-                stroke={r.stroke}
-                strokeWidth={r.strokeWidth}
-                rotation={r.rotation || 0}
-                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                  const node = evt.target
-                  const scaleX = node.scaleX ? node.scaleX() : 1
-                  const scaleY = node.scaleY ? node.scaleY() : 1
-                  const newWidth = Math.max(5, r.width * scaleX)
-                  const newHeight = Math.max(5, r.height * scaleY)
-                  if (node.scaleX) node.scaleX(1)
-                  if (node.scaleY) node.scaleY(1)
-                  const newX = node.x() - newWidth / 2
-                  const newY = node.y() - newHeight / 2
-                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                }}
-              />
+              <Group key={key}>
+                <RegularPolygon
+                  {...commonProps}
+                  x={cx}
+                  y={cy}
+                  sides={3}
+                  radius={radius}
+                  stroke={r.stroke}
+                  strokeWidth={r.strokeWidth}
+                  rotation={r.rotation || 0}
+                  onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    const node = evt.target
+                    const scaleX = node.scaleX ? node.scaleX() : 1
+                    const scaleY = node.scaleY ? node.scaleY() : 1
+                    const newWidth = Math.max(5, r.width * scaleX)
+                    const newHeight = Math.max(5, r.height * scaleY)
+                    if (node.scaleX) node.scaleX(1)
+                    if (node.scaleY) node.scaleY(1)
+                    const newX = node.x() - newWidth / 2
+                    const newY = node.y() - newHeight / 2
+                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  }}
+                />
+                <ActivityBadge
+                  shape={r}
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  scale={viewport.scale}
+                />
+              </Group>
             )
           }
           if (r.type === 'star') {
@@ -567,94 +588,121 @@ export default function Canvas() {
             const cx = baseX + r.width / 2
             const cy = baseY + r.height / 2
             return (
-              <Star
-                key={key}
-                {...commonProps}
-                x={cx}
-                y={cy}
-                numPoints={5}
-                innerRadius={inner}
-                outerRadius={outer}
-                stroke={r.stroke}
-                strokeWidth={r.strokeWidth}
-                rotation={r.rotation || 0}
-                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
-                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                  const node = evt.target
-                  const scaleX = node.scaleX ? node.scaleX() : 1
-                  const scaleY = node.scaleY ? node.scaleY() : 1
-                  const newWidth = Math.max(5, r.width * scaleX)
-                  const newHeight = Math.max(5, r.height * scaleY)
-                  if (node.scaleX) node.scaleX(1)
-                  if (node.scaleY) node.scaleY(1)
-                  const newX = node.x() - newWidth / 2
-                  const newY = node.y() - newHeight / 2
-                  updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                }}
-              />
+              <Group key={key}>
+                <Star
+                  {...commonProps}
+                  x={cx}
+                  y={cy}
+                  numPoints={5}
+                  innerRadius={inner}
+                  outerRadius={outer}
+                  stroke={r.stroke}
+                  strokeWidth={r.strokeWidth}
+                  rotation={r.rotation || 0}
+                  onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
+                  onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    const node = evt.target
+                    const scaleX = node.scaleX ? node.scaleX() : 1
+                    const scaleY = node.scaleY ? node.scaleY() : 1
+                    const newWidth = Math.max(5, r.width * scaleX)
+                    const newHeight = Math.max(5, r.height * scaleY)
+                    if (node.scaleX) node.scaleX(1)
+                    if (node.scaleY) node.scaleY(1)
+                    const newX = node.x() - newWidth / 2
+                    const newY = node.y() - newHeight / 2
+                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  }}
+                />
+                <ActivityBadge
+                  shape={r}
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  scale={viewport.scale}
+                />
+              </Group>
             )
           }
           if (r.type === 'arrow') {
             const points = [0, r.height / 2, r.width, r.height / 2]
             return (
-              <Arrow
-                key={key}
-                {...commonProps}
-                x={baseX}
-                y={baseY}
-                points={points}
-                stroke={r.fill}
-                fill={r.fill}
-                strokeWidth={Math.max(2, Math.min(10, r.height / 4))}
-                pointerLength={Math.max(8, Math.min(24, r.height))}
-                pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
-                rotation={r.rotation || 0}
-                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
-                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                  const node = evt.target
-                  const scaleX = node.scaleX ? node.scaleX() : 1
-                  const scaleY = node.scaleY ? node.scaleY() : 1
-                  const newWidth = Math.max(5, r.width * scaleX)
-                  const newHeight = Math.max(5, r.height * scaleY)
-                  if (node.scaleX) node.scaleX(1)
-                  if (node.scaleY) node.scaleY(1)
-                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                }}
-              />
+              <Group key={key}>
+                <Arrow
+                  {...commonProps}
+                  x={baseX}
+                  y={baseY}
+                  points={points}
+                  stroke={r.fill}
+                  fill={r.fill}
+                  strokeWidth={Math.max(2, Math.min(10, r.height / 4))}
+                  pointerLength={Math.max(8, Math.min(24, r.height))}
+                  pointerWidth={Math.max(8, Math.min(24, r.height / 1.5))}
+                  rotation={r.rotation || 0}
+                  onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                  onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                  onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    const node = evt.target
+                    const scaleX = node.scaleX ? node.scaleX() : 1
+                    const scaleY = node.scaleY ? node.scaleY() : 1
+                    const newWidth = Math.max(5, r.width * scaleX)
+                    const newHeight = Math.max(5, r.height * scaleY)
+                    if (node.scaleX) node.scaleX(1)
+                    if (node.scaleY) node.scaleY(1)
+                    updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  }}
+                />
+                <ActivityBadge
+                  shape={r}
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  scale={viewport.scale}
+                />
+              </Group>
             )
           }
           if (r.type === 'text') {
             return (
-              <Text
-                key={key}
-                {...commonProps}
-                x={baseX}
-                y={baseY}
-                width={r.width}
-                height={r.height}
-                text={r.text ?? ''}
-                fontSize={r.fontSize || 64}
-                fill={r.fill}
-                rotation={r.rotation || 0}
-                align="left"
-                verticalAlign="top"
-                padding={8}
-                wrap="none"
-                onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-                onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
-                onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
-                  const node = evt.target
-                  const scaleX = node.scaleX ? node.scaleX() : 1
-                  const scaleY = node.scaleY ? node.scaleY() : 1
-                  const newWidth = Math.max(50, r.width * scaleX)
-                  const newHeight = Math.max(30, r.height * scaleY)
-                  if (node.scaleX) node.scaleX(1)
-                  if (node.scaleY) node.scaleY(1)
-                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                }}
-              />
+              <Group key={key}>
+                <Text
+                  {...commonProps}
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  text={r.text ?? ''}
+                  fontSize={r.fontSize || 64}
+                  fill={r.fill}
+                  rotation={r.rotation || 0}
+                  align="left"
+                  verticalAlign="top"
+                  padding={8}
+                  wrap="none"
+                  onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
+                  onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
+                  onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    const node = evt.target
+                    const scaleX = node.scaleX ? node.scaleX() : 1
+                    const scaleY = node.scaleY ? node.scaleY() : 1
+                    const newWidth = Math.max(50, r.width * scaleX)
+                    const newHeight = Math.max(30, r.height * scaleY)
+                    if (node.scaleX) node.scaleX(1)
+                    if (node.scaleY) node.scaleY(1)
+                    updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  }}
+                />
+                <ActivityBadge
+                  shape={r}
+                  x={baseX}
+                  y={baseY}
+                  width={r.width}
+                  height={r.height}
+                  scale={viewport.scale}
+                />
+              </Group>
             )
           }
           // default rectangle
@@ -702,6 +750,15 @@ export default function Canvas() {
                   scale={viewport.scale}
                 />
               )}
+              {/* Activity Badge */}
+              <ActivityBadge
+                shape={r}
+                x={baseX}
+                y={baseY}
+                width={r.width}
+                height={r.height}
+                scale={viewport.scale}
+              />
             </Group>
           )
         })}
@@ -1360,6 +1417,28 @@ export default function Canvas() {
         >
           Groups
         </button>
+        {/* Activity button - visible when shape selected */}
+        {hasSelection && selectionCount === 1 && (
+          <>
+            <span>•</span>
+            <button
+              onClick={() => setShowActivityPanel(!showActivityPanel)}
+              style={{
+                background: showActivityPanel ? '#5B8FA3' : 'transparent',
+                border: '1px solid #5B8FA3',
+                borderRadius: '4px',
+                padding: '4px 12px',
+                color: showActivityPanel ? '#FFFFFF' : '#5B8FA3',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: showActivityPanel ? '500' : 'normal'
+              }}
+              title="View shape activity and comments"
+            >
+              Activity
+            </button>
+          </>
+        )}
       </div>
       
       {/* Right side info */}
@@ -1405,6 +1484,14 @@ export default function Canvas() {
       isOpen={showGroupsPanel}
       onClose={() => setShowGroupsPanel(false)} 
     />
+    
+    {/* Activity Panel */}
+    {showActivityPanel && (
+      <ActivityPanel 
+        shape={selectedId ? rectangles.find(r => r.id === selectedId) || null : null}
+        onClose={() => setShowActivityPanel(false)} 
+      />
+    )}
     </div>
   )
 }
