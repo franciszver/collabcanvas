@@ -19,6 +19,7 @@ import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
 import SelectionBounds from './SelectionBounds'
 import MultiShapeProperties from './MultiShapeProperties'
 import GroupsPanel from './GroupsPanel'
+import canvasBackground from '../../assets/user_images/background_2.jpg'
 
 // Helper to calculate text dimensions for auto-resize
 function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
@@ -327,11 +328,16 @@ export default function Canvas() {
 
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} style={{
+      backgroundImage: `url(${canvasBackground})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    }}>
     {/* Loading overlay */}
     {isLoading ? (
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.6)', zIndex: 20 }}>
-        <div style={{ color: '#E5E7EB' }}>Loading canvas…</div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(250, 248, 243, 0.9)', zIndex: 20 }}>
+        <div style={{ color: '#3E3832' }}>Loading canvas…</div>
       </div>
     ) : null}
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
@@ -354,10 +360,10 @@ export default function Canvas() {
       {/* Grid Layer */}
       <Layer listening={false}>
         {gridLines.xs.map((x) => (
-          <Line key={`gx-${x}`} points={[x, gridLines.minY, x, gridLines.maxY]} stroke="#374151" strokeWidth={1.5} opacity={0.4} />
+          <Line key={`gx-${x}`} points={[x, gridLines.minY, x, gridLines.maxY]} stroke="#E0D8C8" strokeWidth={1} opacity={0.6} />
         ))}
         {gridLines.ys.map((y) => (
-          <Line key={`gy-${y}`} points={[gridLines.minX, y, gridLines.maxX, y]} stroke="#374151" strokeWidth={1.5} opacity={0.4} />
+          <Line key={`gy-${y}`} points={[gridLines.minX, y, gridLines.maxX, y]} stroke="#E0D8C8" strokeWidth={1} opacity={0.6} />
         ))}
       </Layer>
       {/* Shapes Layer */}
@@ -377,7 +383,7 @@ export default function Canvas() {
             perfectDrawEnabled: false,
             shadowForStrokeEnabled: false,
             // Add selection visual feedback
-            stroke: isShapeSelected ? '#3B82F6' : (isLocked ? '#EF4444' : r.stroke),
+            stroke: isShapeSelected ? '#5B8FA3' : (isLocked ? '#B07768' : r.stroke),
             strokeWidth: isShapeSelected ? 2 : (isLocked ? 2 : (r.strokeWidth || 0)),
             // Add opacity for locked shapes
             opacity: isLocked ? 0.7 : 1,
@@ -708,8 +714,8 @@ export default function Canvas() {
             y={selectionBox.y}
             width={selectionBox.width}
             height={selectionBox.height}
-            fill="rgba(59, 130, 246, 0.1)"
-            stroke="#3B82F6"
+            fill="rgba(91, 143, 163, 0.1)"
+            stroke="#5B8FA3"
             strokeWidth={1}
             dash={[5, 5]}
             listening={false}
@@ -840,8 +846,8 @@ export default function Canvas() {
             transform: 'translateY(-50%)',
             pointerEvents: 'auto',
             zIndex: 26,
-            background: '#0b1220',
-            border: '1px solid #374151',
+            background: '#FFFFFF',
+            border: '1px solid #D4C5A9',
             borderRadius: 8,
             padding: '10px',
             display: 'flex',
@@ -851,6 +857,7 @@ export default function Canvas() {
             maxWidth: 260,
             maxHeight: '90vh',
             overflowY: 'auto',
+            boxShadow: '0 4px 12px rgba(62, 56, 50, 0.1)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -858,9 +865,9 @@ export default function Canvas() {
           <div style={{ 
             fontSize: 14, 
             fontWeight: 600, 
-            color: '#E5E7EB',
+            color: '#3E3832',
             paddingBottom: 8,
-            borderBottom: '1px solid #374151',
+            borderBottom: '1px solid #D4C5A9',
             textAlign: 'center'
           }}>
             {selectedIds.size} Shapes Selected
@@ -869,12 +876,12 @@ export default function Canvas() {
           {/* Color Picker */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
+              <label style={{ fontSize: 12, color: '#6B5F54', minWidth: 50 }}>Color:</label>
               <input
                 type="color"
                 value="#FFFFFF"
                 onChange={handleMultiColorChange}
-                style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
+                style={{ width: 40, height: 40, padding: 0, background: '#FFFFFF', border: '1px solid #D4C5A9', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
                 aria-label="Change shape color"
               />
             </div>
@@ -896,7 +903,7 @@ export default function Canvas() {
                       height: 24,
                       padding: 0,
                       background: color,
-                      border: '2px solid #374151',
+                      border: '2px solid #D4C5A9',
                       borderRadius: 4,
                       cursor: 'pointer',
                     }}
@@ -916,7 +923,7 @@ export default function Canvas() {
               }}
               title="Move to top layer"
               aria-label="Move to top layer"
-              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+              style={{ background: '#E8F4E7', color: '#3D5A39', border: '1px solid #7A9B76', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
             >
               Top ↑
             </button>
@@ -927,7 +934,7 @@ export default function Canvas() {
               }}
               title="Move to bottom layer"
               aria-label="Move to bottom layer"
-              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+              style={{ background: '#F8E8E5', color: '#5A3D39', border: '1px solid #B07768', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
             >
               Bottom ↓
             </button>
@@ -941,7 +948,7 @@ export default function Canvas() {
             }}
             title="Copy shapes"
             aria-label="Copy selected shapes"
-            style={{ background: '#065F46', color: '#D1FAE5', border: '1px solid #10B981', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
+            style={{ background: '#7A9B76', color: '#FFFFFF', border: '1px solid #7A9B76', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
           >
             Copy
           </button>
@@ -954,7 +961,7 @@ export default function Canvas() {
             }}
             title="Delete shapes"
             aria-label="Delete selected shapes"
-            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
+            style={{ background: '#B07768', color: '#FFFFFF', border: '1px solid #B07768', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
           >
             Delete
           </button>
@@ -975,8 +982,8 @@ export default function Canvas() {
             transform: 'translateY(-50%)',
             pointerEvents: 'auto',
             zIndex: 26,
-            background: '#0b1220',
-            border: '1px solid #374151',
+            background: '#FFFFFF',
+            border: '1px solid #D4C5A9',
             borderRadius: 8,
             padding: '10px',
             display: 'flex',
@@ -986,6 +993,7 @@ export default function Canvas() {
             maxWidth: 260,
             maxHeight: '90vh',
             overflowY: 'auto',
+            boxShadow: '0 4px 12px rgba(62, 56, 50, 0.1)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -993,9 +1001,9 @@ export default function Canvas() {
           <div style={{ 
             fontSize: 14, 
             fontWeight: 600, 
-            color: '#E5E7EB',
+            color: '#3E3832',
             paddingBottom: 8,
-            borderBottom: '1px solid #374151',
+            borderBottom: '1px solid #D4C5A9',
             textAlign: 'center'
           }}>
             {shapeTypeName} #{shapeNumber}
@@ -1004,7 +1012,7 @@ export default function Canvas() {
           {/* Color Picker */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
+              <label style={{ fontSize: 12, color: '#6B5F54', minWidth: 50 }}>Color:</label>
               <input
                 type="color"
                 value={sel.fill}
@@ -1017,7 +1025,7 @@ export default function Canvas() {
                     return [newColor, ...filtered].slice(0, 2);
                   });
                 }}
-                style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
+                style={{ width: 40, height: 40, padding: 0, background: '#FFFFFF', border: '1px solid #D4C5A9', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
                 aria-label="Change shape color"
               />
             </div>
@@ -1037,7 +1045,7 @@ export default function Canvas() {
                       height: 24,
                       padding: 0,
                       background: color,
-                      border: '2px solid #374151',
+                      border: '2px solid #D4C5A9',
                       borderRadius: 4,
                       cursor: 'pointer',
                     }}
@@ -1058,7 +1066,7 @@ export default function Canvas() {
               }}
               title="Move to top layer"
               aria-label="Move to top layer"
-              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+              style={{ background: '#E8F4E7', color: '#3D5A39', border: '1px solid #7A9B76', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
             >
               Top ↑
             </button>
@@ -1070,7 +1078,7 @@ export default function Canvas() {
               }}
               title="Move to bottom layer"
               aria-label="Move to bottom layer"
-              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+              style={{ background: '#F8E8E5', color: '#5A3D39', border: '1px solid #B07768', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
             >
               Bottom ↓
             </button>
@@ -1081,7 +1089,7 @@ export default function Canvas() {
             <>
               {/* Text Input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Text:</label>
+                <label style={{ fontSize: 12, color: '#6B5F54' }}>Text:</label>
                 <input
                   type="text"
                   value={sel.text ?? ''}
@@ -1092,9 +1100,9 @@ export default function Canvas() {
                   }}
                   placeholder="Enter text..."
                   style={{
-                    background: '#111827',
-                    color: '#E5E7EB',
-                    border: '1px solid #374151',
+                    background: '#FFFFFF',
+                    color: '#3E3832',
+                    border: '1px solid #D4C5A9',
                     borderRadius: 6,
                     padding: '6px 8px',
                     fontSize: 14,
@@ -1106,7 +1114,7 @@ export default function Canvas() {
 
               {/* Font Size Controls */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Font Size:</label>
+                <label style={{ fontSize: 12, color: '#6B5F54' }}>Font Size:</label>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   <input
                     type="number"
@@ -1119,9 +1127,9 @@ export default function Canvas() {
                       updateRectangle(sel.id, { fontSize: size, width: dimensions.width, height: dimensions.height });
                     }}
                     style={{
-                      background: '#111827',
-                      color: '#E5E7EB',
-                      border: '1px solid #374151',
+                      background: '#FFFFFF',
+                      color: '#3E3832',
+                      border: '1px solid #D4C5A9',
                       borderRadius: 6,
                       padding: '4px 8px',
                       fontSize: 14,
@@ -1140,9 +1148,9 @@ export default function Canvas() {
                       title="Increase font size"
                       aria-label="Increase font size"
                       style={{
-                        background: '#0b3a1a',
-                        color: '#D1FAE5',
-                        border: '1px solid #065F46',
+                        background: '#E8F4E7',
+                        color: '#3D5A39',
+                        border: '1px solid #7A9B76',
                         borderRadius: 4,
                         padding: '4px 10px',
                         cursor: 'pointer',
@@ -1166,9 +1174,9 @@ export default function Canvas() {
                       title="Decrease font size"
                       aria-label="Decrease font size"
                       style={{
-                        background: '#3a0b0b',
-                        color: '#FECACA',
-                        border: '1px solid #7F1D1D',
+                        background: '#F8E8E5',
+                        color: '#5A3D39',
+                        border: '1px solid #B07768',
                         borderRadius: 4,
                         padding: '4px 10px',
                         cursor: 'pointer',
@@ -1206,7 +1214,7 @@ export default function Canvas() {
             }}
             title="Copy shape"
             aria-label="Copy shape"
-            style={{ background: '#065F46', color: '#D1FAE5', border: '1px solid #10B981', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
+            style={{ background: '#7A9B76', color: '#FFFFFF', border: '1px solid #7A9B76', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
           >
             Copy
           </button>
@@ -1216,7 +1224,7 @@ export default function Canvas() {
             onClick={(e) => { e.stopPropagation(); deleteRectangle(sel.id); setSelectedId(null) }}
             title="Delete shape"
             aria-label="Delete selected shape"
-            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
+            style={{ background: '#B07768', color: '#FFFFFF', border: '1px solid #B07768', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
           >
             Delete
           </button>
@@ -1230,14 +1238,14 @@ export default function Canvas() {
       left: 0, 
       right: 0, 
       height: '32px', 
-      background: '#1f2937', 
-      borderTop: '1px solid #374151',
+      background: '#FFFFFF', 
+      borderTop: '1px solid #D4C5A9',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 16px',
       fontSize: '12px',
-      color: '#9CA3AF',
+      color: '#6B5F54',
       zIndex: 25
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1260,10 +1268,10 @@ export default function Canvas() {
                   }}
                   style={{
                     background: 'transparent',
-                    border: '1px solid #374151',
+                    border: '1px solid #D4C5A9',
                     borderRadius: '4px',
                     padding: '2px 8px',
-                    color: '#9CA3AF',
+                    color: '#6B5F54',
                     cursor: 'pointer',
                     fontSize: '11px'
                   }}
@@ -1280,10 +1288,10 @@ export default function Canvas() {
                   }}
                   style={{
                     background: 'transparent',
-                    border: '1px solid #374151',
+                    border: '1px solid #D4C5A9',
                     borderRadius: '4px',
                     padding: '2px 8px',
-                    color: '#9CA3AF',
+                    color: '#6B5F54',
                     cursor: 'pointer',
                     fontSize: '11px'
                   }}
@@ -1300,10 +1308,10 @@ export default function Canvas() {
                   }}
                   style={{
                     background: 'transparent',
-                    border: '1px solid #374151',
+                    border: '1px solid #D4C5A9',
                     borderRadius: '4px',
                     padding: '2px 8px',
-                    color: '#9CA3AF',
+                    color: '#6B5F54',
                     cursor: 'pointer',
                     fontSize: '11px'
                   }}
@@ -1314,8 +1322,8 @@ export default function Canvas() {
                 <button
                   onClick={() => setShowMultiShapeProperties(true)}
                   style={{
-                    background: '#3B82F6',
-                    border: '1px solid #3B82F6',
+                    background: '#5B8FA3',
+                    border: '1px solid #5B8FA3',
                     borderRadius: '4px',
                     padding: '4px 12px',
                     color: 'white',
@@ -1374,7 +1382,7 @@ export default function Canvas() {
 
     {/* Reconnection banner */}
     {!isOnline ? (
-      <div style={{ position: 'absolute', left: 16, bottom: 32, background: '#111827', color: '#FCD34D', border: '1px solid #374151', borderRadius: 8, padding: '8px 10px', zIndex: 25 }}>
+      <div style={{ position: 'absolute', left: 16, bottom: 32, background: '#FFFFFF', color: '#C9A66B', border: '1px solid #D4C5A9', borderRadius: 8, padding: '8px 10px', zIndex: 25, boxShadow: '0 4px 12px rgba(62, 56, 50, 0.1)' }}>
         Reconnecting…
       </div>
     ) : null}

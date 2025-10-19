@@ -3,15 +3,14 @@
   height: 100%;
   position: fixed;
   inset: 0;
-  background: #1f2937; /* lighter workspace background */
   box-sizing: border-box;
 }
 
 .stageFrame {
   box-sizing: border-box;
-  border: 1px solid rgba(255,255,255,0.3); /* subtle white border around Konva presentation area */
+  border: 1px solid rgba(212, 197, 169, 0.3); /* subtle tan border around canvas area */
   border-radius: 8px;
-  background: #111827; /* slightly darker than root to delineate surface */
+  background: rgba(250, 248, 243, 0.85); /* semi-transparent napkin surface to show background */
 }
 
 
