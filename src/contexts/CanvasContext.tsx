@@ -1,8 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import type { CanvasState, Rectangle, ViewportTransform } from '../types/canvas.types'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import type { CanvasState, Rectangle, ViewportTransform, ShapeLock } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
 import { useShapes } from '../hooks/useShapes'
 import { useDocument } from '../hooks/useDocument'
+import { useSelection } from '../hooks/useSelection'
+import { useAuth } from './AuthContext'
+import { lockShapes, unlockShapes } from '../services/locking'
+// import { publishSelectionRtdb, clearSelectionRtdb } from '../services/realtime'
 
 export interface CanvasContextValue extends CanvasState {
   setViewport: (v: ViewportTransform) => void
@@ -19,6 +23,42 @@ export interface CanvasContextValue extends CanvasState {
   isDragging: boolean
   publishDragUpdate: (shapeId: string, position: { x: number; y: number }) => Promise<void>
   clearDragUpdate: (shapeId: string) => Promise<void>
+  // Multi-selection
+  selectedIds: Set<string>
+  isBoxSelecting: boolean
+  selectionBox: { x: number; y: number; width: number; height: number } | null
+  isSpacePressed: boolean
+  selectShape: (shapeId: string) => void
+  deselectShape: (shapeId: string) => void
+  toggleShape: (shapeId: string) => void
+  selectAll: () => void
+  clearSelection: () => void
+  selectInBox: (box: { x: number; y: number; width: number; height: number }) => void
+  startBoxSelection: (x: number, y: number) => void
+  updateBoxSelection: (x: number, y: number) => void
+  endBoxSelection: () => void
+  lockSelectedShapes: () => Promise<void>
+  unlockSelectedShapes: () => Promise<void>
+  isSelected: (shapeId: string) => boolean
+  getSelectedShapes: () => Rectangle[]
+  canSelect: (shapeId: string) => boolean
+  hasSelection: boolean
+  selectionCount: number
+  // Locking
+  shapeLocks: Record<string, ShapeLock>
+  lockShapes: (shapeIds: string[]) => Promise<void>
+  unlockShapes: (shapeIds: string[]) => Promise<void>
+  // Layer management
+  bringToFront: (shapeIds: string[]) => Promise<void>
+  sendToBack: (shapeIds: string[]) => Promise<void>
+  nudgeShapes: (shapeIds: string[], deltaX: number, deltaY: number) => Promise<void>
+  // Grouping
+  groupShapes: (shapeIds: string[]) => Promise<void>
+  ungroupShapes: (shapeIds: string[]) => Promise<void>
+  // Smart selection
+  selectSimilar: (shapeId: string) => void
+  selectByType: (type: string) => void
+  selectByColor: (color: string) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -58,7 +98,9 @@ export function CanvasProvider({
   })
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [shapeLocks, setShapeLocks] = useState<Record<string, ShapeLock>>({})
   const selectedTool: CanvasState['selectedTool'] = 'pan'
+  const { user } = useAuth()
 
   // Use hybrid hooks
   const shapesHook = useShapes({ 
@@ -76,6 +118,16 @@ export function CanvasProvider({
     liveDragPositions,
     isDragging,
   } = shapesHook
+
+  // Selection system
+  const selectionHook = useSelection({
+    shapes: rectangles,
+    onSelectionChange: (selectedIds) => {
+      // Update primary selectedId to the first selected shape for backward compatibility
+      const firstSelected = Array.from(selectedIds)[0] || null
+      setSelectedId(firstSelected)
+    }
+  })
 
   const {
     isLoading: documentLoading,
@@ -138,6 +190,208 @@ export function CanvasProvider({
     }
   }, [clearAllShapes])
 
+  // Extract lock information from shapes and update lock state
+  useEffect(() => {
+    const locks: Record<string, ShapeLock> = {}
+    rectangles.forEach(shape => {
+      if (shape.lockedBy && shape.lockedAt) {
+        locks[shape.id] = {
+          lockedBy: shape.lockedBy,
+          lockedByName: shape.lockedByName || 'Unknown User',
+          lockedAt: shape.lockedAt
+        }
+      }
+    })
+    setShapeLocks(locks)
+  }, [rectangles])
+
+  // Locking methods
+  const lockShapesHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length === 0 || !user) return
+    
+    try {
+      await lockShapes(shapeIds, user.id, user.displayName || 'Unknown User')
+    } catch (err) {
+      console.error('Failed to lock shapes:', err)
+      throw err
+    }
+  }, [user])
+
+  const unlockShapesHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length === 0) return
+    
+    try {
+      await unlockShapes(shapeIds)
+    } catch (err) {
+      console.error('Failed to unlock shapes:', err)
+      throw err
+    }
+  }, [])
+
+  // Layer management methods
+  const bringToFrontHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length === 0) return
+    
+    try {
+      const maxZ = Math.max(...rectangles.map(r => r.z ?? 0))
+      const updatePromises = shapeIds.map((shapeId, index) => 
+        updateShape(shapeId, { z: maxZ + index + 1 })
+      )
+      await Promise.all(updatePromises)
+    } catch (err) {
+      console.error('Failed to bring shapes to front:', err)
+      throw err
+    }
+  }, [rectangles, updateShape])
+
+  const sendToBackHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length === 0) return
+    
+    try {
+      const minZ = Math.min(...rectangles.map(r => r.z ?? 0))
+      const updatePromises = shapeIds.map((shapeId, index) => 
+        updateShape(shapeId, { z: minZ - index - 1 })
+      )
+      await Promise.all(updatePromises)
+    } catch (err) {
+      console.error('Failed to send shapes to back:', err)
+      throw err
+    }
+  }, [rectangles, updateShape])
+
+  const nudgeShapesHandler = useCallback(async (shapeIds: string[], deltaX: number, deltaY: number) => {
+    if (shapeIds.length === 0) return
+    
+    try {
+      const updatePromises = shapeIds.map(async (shapeId) => {
+        const shape = rectangles.find(r => r.id === shapeId)
+        if (shape) {
+          await updateShape(shapeId, { 
+            x: shape.x + deltaX, 
+            y: shape.y + deltaY 
+          })
+        }
+      })
+      await Promise.all(updatePromises)
+    } catch (err) {
+      console.error('Failed to nudge shapes:', err)
+      throw err
+    }
+  }, [rectangles, updateShape])
+
+  // Grouping methods
+  const groupShapesHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length < 2) return
+    
+    try {
+      // Generate a unique group ID
+      const groupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Update all selected shapes to have the same group ID
+      const updatePromises = shapeIds.map(shapeId => 
+        updateShape(shapeId, { groupId })
+      )
+      await Promise.all(updatePromises)
+    } catch (err) {
+      console.error('Failed to group shapes:', err)
+      throw err
+    }
+  }, [updateShape])
+
+  const ungroupShapesHandler = useCallback(async (shapeIds: string[]) => {
+    if (shapeIds.length === 0) return
+    
+    try {
+      // Remove group ID from all selected shapes
+      const updatePromises = shapeIds.map(shapeId => 
+        updateShape(shapeId, { groupId: undefined })
+      )
+      await Promise.all(updatePromises)
+    } catch (err) {
+      console.error('Failed to ungroup shapes:', err)
+      throw err
+    }
+  }, [updateShape])
+
+  // Smart selection methods
+  const selectSimilarHandler = useCallback((shapeId: string) => {
+    try {
+      const targetShape = rectangles.find(r => r.id === shapeId)
+      if (!targetShape) {
+        console.warn('Target shape not found for similar selection')
+        return
+      }
+
+      // Find shapes with similar properties
+      const similarShapes = rectangles.filter(shape => {
+        if (shape.id === shapeId) return false // Don't include the target shape
+        
+        // Match by type, color, and similar size
+        const typeMatch = shape.type === targetShape.type
+        const colorMatch = shape.fill === targetShape.fill
+        const sizeMatch = Math.abs(shape.width - targetShape.width) < 50 && 
+                         Math.abs(shape.height - targetShape.height) < 50
+        
+        return typeMatch && colorMatch && sizeMatch
+      })
+
+      // Select all similar shapes using the selection hook
+      const similarIds = similarShapes.map(s => s.id)
+      if (similarIds.length > 0) {
+        // Clear current selection and select similar shapes
+        selectionHook.clearSelection()
+        similarIds.forEach(id => {
+          selectionHook.selectShape(id)
+        })
+        console.log(`Selected ${similarIds.length} similar shapes`)
+      } else {
+        console.log('No similar shapes found')
+      }
+    } catch (error) {
+      console.error('Failed to select similar shapes:', error)
+    }
+  }, [rectangles, selectionHook])
+
+  const selectByTypeHandler = useCallback((type: string) => {
+    try {
+      const shapesOfType = rectangles.filter(shape => shape.type === type)
+      const typeIds = shapesOfType.map(s => s.id)
+      
+      if (typeIds.length > 0) {
+        // Clear current selection and select all shapes of this type
+        selectionHook.clearSelection()
+        typeIds.forEach(id => {
+          selectionHook.selectShape(id)
+        })
+        console.log(`Selected ${typeIds.length} shapes of type: ${type}`)
+      } else {
+        console.log(`No shapes of type '${type}' found`)
+      }
+    } catch (error) {
+      console.error('Failed to select by type:', error)
+    }
+  }, [rectangles, selectionHook])
+
+  const selectByColorHandler = useCallback((color: string) => {
+    try {
+      const shapesOfColor = rectangles.filter(shape => shape.fill === color)
+      const colorIds = shapesOfColor.map(s => s.id)
+      
+      if (colorIds.length > 0) {
+        // Clear current selection and select all shapes of this color
+        selectionHook.clearSelection()
+        colorIds.forEach(id => {
+          selectionHook.selectShape(id)
+        })
+        console.log(`Selected ${colorIds.length} shapes of color: ${color}`)
+      } else {
+        console.log(`No shapes of color '${color}' found`)
+      }
+    } catch (error) {
+      console.error('Failed to select by color:', error)
+    }
+  }, [rectangles, selectionHook])
+
   // Computed state
   const isLoading = shapesLoading || documentLoading
 
@@ -159,6 +413,42 @@ export function CanvasProvider({
       isDragging,
       publishDragUpdate: shapesHook.publishDragUpdate,
       clearDragUpdate: shapesHook.clearDragUpdate,
+      // Multi-selection
+      selectedIds: selectionHook.selectedIds,
+      isBoxSelecting: selectionHook.isBoxSelecting,
+      selectionBox: selectionHook.selectionBox,
+      isSpacePressed: selectionHook.isSpacePressed,
+      selectShape: selectionHook.selectShape,
+      deselectShape: selectionHook.deselectShape,
+      toggleShape: selectionHook.toggleShape,
+      selectAll: selectionHook.selectAll,
+      clearSelection: selectionHook.clearSelection,
+      selectInBox: selectionHook.selectInBox,
+      startBoxSelection: selectionHook.startBoxSelection,
+      updateBoxSelection: selectionHook.updateBoxSelection,
+      endBoxSelection: selectionHook.endBoxSelection,
+      lockSelectedShapes: selectionHook.lockSelectedShapes,
+      unlockSelectedShapes: selectionHook.unlockSelectedShapes,
+      isSelected: selectionHook.isSelected,
+      getSelectedShapes: selectionHook.getSelectedShapes,
+      canSelect: selectionHook.canSelect,
+      hasSelection: selectionHook.hasSelection,
+      selectionCount: selectionHook.selectionCount,
+      // Locking
+      shapeLocks,
+      lockShapes: lockShapesHandler,
+      unlockShapes: unlockShapesHandler,
+      // Layer management
+      bringToFront: bringToFrontHandler,
+      sendToBack: sendToBackHandler,
+      nudgeShapes: nudgeShapesHandler,
+      // Grouping
+      groupShapes: groupShapesHandler,
+      ungroupShapes: ungroupShapesHandler,
+      // Smart selection
+      selectSimilar: selectSimilarHandler,
+      selectByType: selectByTypeHandler,
+      selectByColor: selectByColorHandler,
     }),
     [
       viewport,
@@ -176,6 +466,42 @@ export function CanvasProvider({
       isDragging,
       shapesHook.publishDragUpdate,
       shapesHook.clearDragUpdate,
+      // Selection dependencies
+      selectionHook.selectedIds,
+      selectionHook.isBoxSelecting,
+      selectionHook.selectionBox,
+      selectionHook.isSpacePressed,
+      selectionHook.selectShape,
+      selectionHook.deselectShape,
+      selectionHook.toggleShape,
+      selectionHook.selectAll,
+      selectionHook.clearSelection,
+      selectionHook.selectInBox,
+      selectionHook.startBoxSelection,
+      selectionHook.updateBoxSelection,
+      selectionHook.endBoxSelection,
+      selectionHook.lockSelectedShapes,
+      selectionHook.unlockSelectedShapes,
+      selectionHook.isSelected,
+      selectionHook.getSelectedShapes,
+      selectionHook.canSelect,
+      selectionHook.hasSelection,
+      selectionHook.selectionCount,
+      // Locking dependencies
+      shapeLocks,
+      lockShapesHandler,
+      unlockShapesHandler,
+      // Layer management dependencies
+      bringToFrontHandler,
+      sendToBackHandler,
+      nudgeShapesHandler,
+      // Grouping dependencies
+      groupShapesHandler,
+      ungroupShapesHandler,
+      // Smart selection dependencies
+      selectSimilarHandler,
+      selectByTypeHandler,
+      selectByColorHandler,
     ]
   )
 
