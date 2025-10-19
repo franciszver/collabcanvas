@@ -1,6 +1,35 @@
 import type { Rectangle } from '../types/canvas.types'
 import { generateRectId } from './helpers'
 
+// Helper function to convert hex color to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 }
+}
+
+// Calculate button color based on position
+function getButtonColor(index: number, total: number): string {
+  if (index === 0) return '#3B82F6' // Primary (blue)
+  if (total >= 3 && index === total - 1) return '#10B981' // CTA (green)
+  return '#374151' // Secondary (gray)
+}
+
+// Auto-calculate text color for readability
+function getTextColor(bgColor: string): string {
+  const rgb = hexToRgb(bgColor)
+  const luminance = (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114)
+  return luminance > 186 ? '#1F2937' : '#FFFFFF'
+}
+
+// Estimate text width for dynamic button sizing
+function estimateTextWidth(text: string): number {
+  return text.length * 8 + 40 // ~8px per char + padding
+}
+
 export function generateNavbarShapes(
   buttonLabels: string[] | undefined,
   color: string | undefined,
@@ -17,10 +46,42 @@ export function generateNavbarShapes(
   const bgColor = color || '#1F2937'
   
   // Navbar dimensions
-  const navbarWidth = viewportWidth * 0.9
   const navbarHeight = 60
-  const startX = (viewportWidth - navbarWidth) / 2
+  const navbarPadding = 40 // 20px on each side
   const startY = viewportHeight * 0.1
+  
+  // Calculate dynamic button dimensions
+  const buttonHeight = 40
+  let buttonSpacing = 20
+  
+  // Calculate ideal button widths based on text length
+  const idealButtonWidths = labels.map(label => 
+    Math.max(100, Math.min(200, estimateTextWidth(label)))
+  )
+  
+  // Calculate total ideal width
+  const totalButtonsWidth = idealButtonWidths.reduce((sum, width) => sum + width, 0) + 
+                           (labels.length - 1) * buttonSpacing
+  const idealNavbarWidth = totalButtonsWidth + navbarPadding
+  
+  // Apply max-width constraint (90% of viewport)
+  const maxNavbarWidth = viewportWidth * 0.9
+  let navbarWidth: number
+  let buttonWidths: number[]
+  
+  if (idealNavbarWidth <= maxNavbarWidth) {
+    // Use ideal dimensions
+    navbarWidth = idealNavbarWidth
+    buttonWidths = idealButtonWidths
+  } else {
+    // Scale down proportionally
+    const scaleFactor = maxNavbarWidth / idealNavbarWidth
+    navbarWidth = maxNavbarWidth
+    buttonWidths = idealButtonWidths.map(width => Math.max(80, width * scaleFactor))
+    buttonSpacing = Math.max(12, buttonSpacing * scaleFactor)
+  }
+  
+  const startX = (viewportWidth - navbarWidth) / 2
   
   let zIndex = 0
   
@@ -37,16 +98,16 @@ export function generateNavbarShapes(
     z: zIndex++
   })
   
-  // Calculate button layout
-  const buttonWidth = 120
-  const buttonHeight = 40
-  const spacing = 20
-  const totalButtonsWidth = labels.length * buttonWidth + (labels.length - 1) * spacing
-  let currentX = startX + (navbarWidth - totalButtonsWidth) / 2
+  // Calculate button positions
+  let currentX = startX + navbarPadding / 2
   
   // Create buttons
-  labels.forEach((label) => {
-    // Button background (transparent, just for hover effect in future)
+  labels.forEach((label, index) => {
+    const buttonWidth = buttonWidths[index]
+    const buttonColor = getButtonColor(index, labels.length)
+    const textColor = getTextColor(buttonColor)
+    
+    // Button background
     shapes.push({
       id: generateRectId(),
       type: 'rect',
@@ -54,7 +115,7 @@ export function generateNavbarShapes(
       y: startY + (navbarHeight - buttonHeight) / 2,
       width: buttonWidth,
       height: buttonHeight,
-      fill: 'transparent',
+      fill: buttonColor,
       rotation: 0,
       z: zIndex++
     })
@@ -69,12 +130,12 @@ export function generateNavbarShapes(
       height: 20,
       text: label,
       fontSize: 14,
-      fill: '#FFFFFF',
+      fill: textColor,
       rotation: 0,
       z: zIndex++
     })
     
-    currentX += buttonWidth + spacing
+    currentX += buttonWidth + buttonSpacing
   })
   
   return shapes
