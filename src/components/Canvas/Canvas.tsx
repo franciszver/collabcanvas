@@ -21,6 +21,7 @@ import MultiShapeProperties from './MultiShapeProperties'
 import GroupsPanel from './GroupsPanel'
 import ActivityPanel from './ActivityPanel'
 import ActivityBadge from './ActivityBadge'
+import ZoomControls from './ZoomControls'
 import canvasBackground from '../../assets/user_images/background_2.jpg'
 
 // Helper to calculate text dimensions for auto-resize
@@ -1510,6 +1511,12 @@ export default function Canvas() {
         onClose={() => setShowActivityPanel(false)} 
       />
     )}
+    
+    {/* Zoom Controls */}
+    <ZoomControls 
+      containerWidth={containerSize.width}
+      containerHeight={containerSize.height}
+    />
     </div>
   )
 }
