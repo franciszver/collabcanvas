@@ -778,7 +778,188 @@ export default function Canvas() {
       })()}
     </div>
     {/* Vertical Properties Panel on left side */}
-    {selectedId ? (() => {
+    {selectedIds.size > 1 ? (() => {
+      // Multi-select panel
+      const handleMultiColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newColor = e.target.value
+        Array.from(selectedIds).forEach(id => {
+          updateRectangle(id, { fill: newColor })
+        })
+        // Update color history (keep last 2 unique colors)
+        setColorHistory(prev => {
+          const filtered = prev.filter(c => c !== newColor);
+          return [newColor, ...filtered].slice(0, 2);
+        });
+      }
+
+      const handleMultiCopy = async () => {
+        const selectedShapes = getSelectedShapes()
+        const maxZ = Math.max(...rectangles.map(r => r.z ?? 0))
+        
+        for (let i = 0; i < selectedShapes.length; i++) {
+          const shape = selectedShapes[i]
+          const newId = generateRectId()
+          const copiedShape = {
+            ...shape,
+            id: newId,
+            x: shape.x + 30,
+            y: shape.y + 30,
+            z: maxZ + i + 1
+          }
+          await addRectangle(copiedShape)
+        }
+      }
+
+      const handleMultiDelete = () => {
+        const selectedShapes = getSelectedShapes()
+        
+        if (selectedShapes.length > 5) {
+          if (!confirm(`Delete ${selectedShapes.length} shapes?`)) return
+        }
+        
+        selectedShapes.forEach(shape => deleteRectangle(shape.id))
+        clearSelection()
+      }
+
+      const handleMultiBringToFront = async () => {
+        await bringToFront(Array.from(selectedIds))
+      }
+
+      const handleMultiSendToBack = async () => {
+        await sendToBack(Array.from(selectedIds))
+      }
+
+      return (
+        <div
+          style={{
+            position: 'fixed',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'auto',
+            zIndex: 26,
+            background: '#0b1220',
+            border: '1px solid #374151',
+            borderRadius: 8,
+            padding: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            minWidth: 220,
+            maxWidth: 260,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Multi-select Title */}
+          <div style={{ 
+            fontSize: 14, 
+            fontWeight: 600, 
+            color: '#E5E7EB',
+            paddingBottom: 8,
+            borderBottom: '1px solid #374151',
+            textAlign: 'center'
+          }}>
+            {selectedIds.size} Shapes Selected
+          </div>
+
+          {/* Color Picker */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 12, color: '#9CA3AF', minWidth: 50 }}>Color:</label>
+              <input
+                type="color"
+                value="#FFFFFF"
+                onChange={handleMultiColorChange}
+                style={{ width: 40, height: 40, padding: 0, background: '#0b1220', border: '1px solid #1f2937', borderRadius: 4, cursor: 'pointer', flexGrow: 1 }}
+                aria-label="Change shape color"
+              />
+            </div>
+            {/* Color History */}
+            {colorHistory.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, paddingLeft: 58 }}>
+                {colorHistory.map((color, index) => (
+                  <button
+                    key={`${color}-${index}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      Array.from(selectedIds).forEach(id => {
+                        updateRectangle(id, { fill: color });
+                      });
+                    }}
+                    title={`Use ${color}`}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      padding: 0,
+                      background: color,
+                      border: '2px solid #374151',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                    aria-label={`Use color ${color}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Layer Controls */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                handleMultiBringToFront();
+              }}
+              title="Move to top layer"
+              aria-label="Move to top layer"
+              style={{ background: '#0b3a1a', color: '#D1FAE5', border: '1px solid #065F46', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+            >
+              Top ↑
+            </button>
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                handleMultiSendToBack();
+              }}
+              title="Move to bottom layer"
+              aria-label="Move to bottom layer"
+              style={{ background: '#3a0b0b', color: '#FECACA', border: '1px solid #7F1D1D', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', flex: 1, fontSize: 12 }}
+            >
+              Bottom ↓
+            </button>
+          </div>
+
+          {/* Copy Button */}
+          <button
+            onClick={async (e) => { 
+              e.stopPropagation();
+              await handleMultiCopy();
+            }}
+            title="Copy shapes"
+            aria-label="Copy selected shapes"
+            style={{ background: '#065F46', color: '#D1FAE5', border: '1px solid #10B981', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14, marginTop: 4 }}
+          >
+            Copy
+          </button>
+
+          {/* Delete Button */}
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              handleMultiDelete();
+            }}
+            title="Delete shapes"
+            aria-label="Delete selected shapes"
+            style={{ background: '#7f1d1d', color: '#FEE2E2', border: '1px solid #b91c1c', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
+          >
+            Delete
+          </button>
+        </div>
+      )
+    })() : selectedId ? (() => {
+      // Single-shape panel
       const sel = rectangles.find((rr: Rectangle) => rr.id === selectedId)
       if (!sel) return null
       const shapeNumber = shapeNumbers.get(sel.id) || 0
