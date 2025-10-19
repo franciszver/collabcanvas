@@ -48,7 +48,7 @@ export function debounce<T extends (...args: any[]) => any>(
  */
 export class Batcher<T> {
   private batch: T[] = []
-  private timeoutId: NodeJS.Timeout | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
   private readonly delay: number
   private readonly processor: (items: T[]) => void | Promise<void>
 

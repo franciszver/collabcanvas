@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Rect, Group } from 'react-konva'
 import type { Rectangle } from '../../types/canvas.types'
 

@@ -40,7 +40,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   // Function to extract color from user message
@@ -569,7 +571,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     setUserTyping(false)
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
@@ -722,7 +724,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             value={inputValue}
             onChange={handleInputChange}
             onBlur={handleInputBlur}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder={
               isWaitingForColor 
                 ? "Choose a color: red, orange, yellow, green, blue, indigo, violet" 

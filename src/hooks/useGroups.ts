@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { subscribeToGroups, createGroup, updateGroup, deleteGroup, addShapesToGroup, removeShapesFromGroup, ungroupShapes } from '../services/groups'
 import type { ShapeGroup } from '../types/canvas.types'
 import { useAuth } from '../contexts/AuthContext'
+import { Timestamp } from 'firebase/firestore'
 
 export interface UseGroupsOptions {
   documentId: string
@@ -56,7 +57,9 @@ export function useGroups({ documentId }: UseGroupsOptions): UseGroupsReturn {
     )
 
     return () => {
-      unsubscribe()
+      if (typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
     }
   }, [documentId])
 
@@ -86,7 +89,12 @@ export function useGroups({ documentId }: UseGroupsOptions): UseGroupsReturn {
   const updateGroupHandler = useCallback(async (groupId: string, updates: Partial<Omit<ShapeGroup, 'id' | 'createdAt' | 'createdBy' | 'createdByName'>>): Promise<void> => {
     try {
       setError(null)
-      await updateGroup(groupId, updates)
+      // Convert ShapeGroup updates to GroupDocument format
+      const groupUpdates: any = { ...updates }
+      if (updates.updatedAt !== undefined) {
+        groupUpdates.updatedAt = Timestamp.fromMillis(updates.updatedAt)
+      }
+      await updateGroup(groupId, groupUpdates)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update group'
       setError(errorMessage)

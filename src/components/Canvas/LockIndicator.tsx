@@ -1,6 +1,4 @@
-import React from 'react'
 import { Group, Rect, Text, Circle } from 'react-konva'
-import type Konva from 'konva'
 
 interface LockIndicatorProps {
   x: number
@@ -18,8 +16,8 @@ export default function LockIndicator({
   x,
   y,
   width,
-  height,
-  lockedBy,
+  height: _height,
+  lockedBy: _lockedBy,
   lockedByName,
   isCurrentUser,
   scale
@@ -95,7 +93,7 @@ export function SimpleLockIndicator({
   x,
   y,
   width,
-  height,
+  height: _height,
   isCurrentUser,
   scale
 }: Omit<LockIndicatorProps, 'lockedBy' | 'lockedByName' | 'lockedAt'>) {
