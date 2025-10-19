@@ -68,33 +68,86 @@ export default function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShort
   ]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div 
+      className="fixed inset-0 flex items-center justify-center" 
+      style={{ 
+        zIndex: 1000,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        position: 'fixed'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div 
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          maxWidth: '42rem',
+          width: '100%',
+          margin: '0 1rem',
+          maxHeight: '80vh',
+          overflowY: 'auto',
+          position: 'relative',
+          zIndex: 1001
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
               Keyboard Shortcuts
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl font-bold"
+              style={{ 
+                background: 'none',
+                border: 'none',
+                color: '#9CA3AF',
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                padding: '0.25rem'
+              }}
               aria-label="Close"
             >
               ×
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {shortcuts.map((category, categoryIndex) => (
               <div key={categoryIndex}>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '0.75rem' }}>
                   {category.category}
                 </h3>
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {category.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded">
-                      <span className="text-gray-700 dark:text-gray-300">{item.description}</span>
-                      <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded text-sm font-mono">
+                    <div 
+                      key={itemIndex} 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '0.5rem 0.75rem',
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: '0.25rem'
+                      }}
+                    >
+                      <span style={{ color: '#374151' }}>{item.description}</span>
+                      <kbd style={{ 
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#E5E7EB',
+                        color: '#1F2937',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.875rem',
+                        fontFamily: 'monospace'
+                      }}>
                         {item.keys}
                       </kbd>
                     </div>
@@ -104,9 +157,15 @@ export default function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShort
             ))}
           </div>
 
-          <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-600">
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-              Press <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-600 rounded text-xs">?</kbd> to toggle this help
+          <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #E5E7EB' }}>
+            <p style={{ fontSize: '0.875rem', color: '#6B7280', textAlign: 'center' }}>
+              Press <kbd style={{ 
+                padding: '0.125rem 0.25rem',
+                backgroundColor: '#E5E7EB',
+                borderRadius: '0.125rem',
+                fontSize: '0.75rem',
+                fontFamily: 'monospace'
+              }}>?</kbd> to toggle this help
             </p>
           </div>
         </div>
