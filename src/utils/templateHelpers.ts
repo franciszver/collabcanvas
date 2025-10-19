@@ -16,6 +16,9 @@ export interface TemplateCreationParams {
   includeRememberMe?: boolean
   includeForgotPassword?: boolean
   oauthProviders?: ('google' | 'github' | 'facebook')[]
+  // Viewport positioning
+  viewportCenterX?: number
+  viewportCenterY?: number
 }
 
 export interface TemplateCreationResult {
@@ -149,7 +152,9 @@ export async function createTemplateShapes(
         formType: 'login-oauth',
         includeRememberMe: params.includeRememberMe,
         includeForgotPassword: params.includeForgotPassword,
-        oauthProviders: params.oauthProviders
+        oauthProviders: params.oauthProviders,
+        x: params.viewportCenterX,
+        y: params.viewportCenterY
       } as any
     })
     
@@ -168,7 +173,9 @@ export async function createTemplateShapes(
       target: 'navbar',
       parameters: {
         buttonLabels: params.buttonLabels,
-        color: params.color
+        color: params.color,
+        x: params.viewportCenterX,
+        y: params.viewportCenterY
       }
     })
     

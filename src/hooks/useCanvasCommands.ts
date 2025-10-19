@@ -673,13 +673,17 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         const viewportWidth = window.innerWidth
         const viewportHeight = window.innerHeight
         
+        // Use provided center coordinates if available, otherwise calculate from viewport
+        const centerX = parameters.x !== undefined ? parameters.x : ((viewportWidth / 2 - viewport.x) / viewport.scale)
+        const centerY = parameters.y !== undefined ? parameters.y : ((viewportHeight / 2 - viewport.y) / viewport.scale)
+        
         const navbarShapes = generateNavbarShapes(buttonLabels, color, {
           x: viewport.x,
           y: viewport.y,
           scale: viewport.scale,
           width: viewportWidth,
           height: viewportHeight
-        })
+        }, centerX, centerY)
         
         const createdShapeIds: string[] = []
         
@@ -734,6 +738,10 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           const viewportWidth = window.innerWidth
           const viewportHeight = window.innerHeight
           
+          // Use provided center coordinates if available, otherwise calculate from viewport
+          const centerX = parameters.x !== undefined ? parameters.x : ((viewportWidth / 2 - viewport.x) / viewport.scale)
+          const centerY = parameters.y !== undefined ? parameters.y : ((viewportHeight / 2 - viewport.y) / viewport.scale)
+          
           // Generate form shapes
           const formShapes = generateFormShapes(template, {
             viewport: {
@@ -743,7 +751,7 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
               width: viewportWidth,
               height: viewportHeight
             }
-          }, loginOptions)
+          }, loginOptions, centerX, centerY)
           
           // Convert FormShapes to Rectangle shapes and add to canvas
           const createdShapeIds: string[] = []

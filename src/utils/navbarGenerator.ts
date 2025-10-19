@@ -33,7 +33,9 @@ function estimateTextWidth(text: string): number {
 export function generateNavbarShapes(
   buttonLabels: string[] | undefined,
   color: string | undefined,
-  viewport: { x: number; y: number; scale: number; width: number; height: number }
+  viewport: { x: number; y: number; scale: number; width: number; height: number },
+  centerX?: number,
+  centerY?: number
 ): Rectangle[] {
   const shapes: Rectangle[] = []
   const viewportWidth = viewport.width ?? window.innerWidth
@@ -48,7 +50,9 @@ export function generateNavbarShapes(
   // Navbar dimensions
   const navbarHeight = 60
   const navbarPadding = 40 // 20px on each side
-  const startY = viewportHeight * 0.1
+  
+  // Use provided center Y or calculate from viewport (deprecated)
+  const targetY = centerY !== undefined ? centerY - navbarHeight / 2 : viewportHeight * 0.1
   
   // Calculate dynamic button dimensions
   const buttonHeight = 40
@@ -81,7 +85,8 @@ export function generateNavbarShapes(
     buttonSpacing = Math.max(12, buttonSpacing * scaleFactor)
   }
   
-  const startX = (viewportWidth - navbarWidth) / 2
+  // Use provided center X or calculate from viewport (deprecated)
+  const targetX = centerX !== undefined ? centerX - navbarWidth / 2 : (viewportWidth - navbarWidth) / 2
   
   let zIndex = 0
   
@@ -89,8 +94,8 @@ export function generateNavbarShapes(
   shapes.push({
     id: generateRectId(),
     type: 'rect',
-    x: startX,
-    y: startY,
+    x: targetX,
+    y: targetY,
     width: navbarWidth,
     height: navbarHeight,
     fill: bgColor,
@@ -99,7 +104,7 @@ export function generateNavbarShapes(
   })
   
   // Calculate button positions
-  let currentX = startX + navbarPadding / 2
+  let currentX = targetX + navbarPadding / 2
   
   // Create buttons
   labels.forEach((label, index) => {
@@ -112,7 +117,7 @@ export function generateNavbarShapes(
       id: generateRectId(),
       type: 'rect',
       x: currentX,
-      y: startY + (navbarHeight - buttonHeight) / 2,
+      y: targetY + (navbarHeight - buttonHeight) / 2,
       width: buttonWidth,
       height: buttonHeight,
       fill: buttonColor,
@@ -125,7 +130,7 @@ export function generateNavbarShapes(
       id: generateRectId(),
       type: 'text',
       x: currentX + buttonWidth / 2,
-      y: startY + navbarHeight / 2,
+      y: targetY + navbarHeight / 2,
       width: buttonWidth - 20,
       height: 20,
       text: label,

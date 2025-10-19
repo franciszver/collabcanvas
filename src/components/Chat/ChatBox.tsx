@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useCanvas } from '../../contexts/CanvasContext'
 import { aiCanvasCommand, type CanvasAction } from '../../services/ai'
 import { useChatMessages } from '../../hooks/useChatMessages'
-import { useTypingIndicator } from '../../hooks/useTypingIndicator'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
 import { createTemplateShapes, isTemplateRequest, extractTemplateId, extractTemplateParams } from '../../utils/templateHelpers'
 import CommandsWindow from './CommandsWindow'
@@ -30,11 +29,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [hasDeselectedForCurrentInput, setHasDeselectedForCurrentInput] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
-  const { messages, sendMessage, clearMessages } = useChatMessages()
-  const { typingUsers, setUserTyping } = useTypingIndicator(
-    user?.id || '', 
-    user?.displayName || 'User'
-  )
+  const { messages, sendMessage, clearMessages } = useChatMessages(user?.id)
   const { selectedId, clearSelection, setViewport, viewport } = useCanvas()
   const documentId = selectedId || 'default-document'
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
@@ -43,6 +38,16 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
+  }
+
+  // Calculate viewport center for template positioning
+  const getViewportCenter = () => {
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+    // Convert screen center to canvas coordinates: (screenCoord - pan) / scale
+    const centerX = (windowWidth / 2 - viewport.x) / viewport.scale
+    const centerY = (windowHeight / 2 - viewport.y) / viewport.scale
+    return { centerX, centerY }
   }
 
   // Function to extract color from user message
@@ -246,9 +251,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             } else {
               aiResponse = `✅ Created ${createdCount} ${updatedCommand.target}(s) with ${color} color`
             }
-            await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
           } else {
-            await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, user.id, 'AI Assistant', 'assistant')
           }
           
           // Reset state
@@ -257,7 +262,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         } else {
           // Invalid color, ask again with examples
           const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
-          await sendMessage(`I didn't understand that color. Please choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`I didn't understand that color. Please choose from: ${rainbowColors.join(', ')}`, user.id, 'AI Assistant', 'assistant')
         }
       } else if (isWaitingForNavbarButtons) {
         // Handle button count response
@@ -269,10 +274,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           setIsWaitingForNavbarConfirmation(true)
           
           const labelsText = defaultLabels.join(', ')
-          await sendMessage(`Great! I'll create ${buttonCount} buttons: [${labelsText}]. Reply 'yes' to confirm or type custom labels separated by commas.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Great! I'll create ${buttonCount} buttons: [${labelsText}]. Reply 'yes' to confirm or type custom labels separated by commas.`, user.id, 'AI Assistant', 'assistant')
         } else {
           // Invalid count, ask again
-          await sendMessage(`Please enter a number between 1 and 10 for the number of buttons.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Please enter a number between 1 and 10 for the number of buttons.`, user.id, 'AI Assistant', 'assistant')
         }
       } else if (isWaitingForNavbarConfirmation && pendingNavbarParams) {
         // Handle label confirmation/customization
@@ -280,16 +285,19 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         
         if (customLabels === null) {
           // User confirmed with "yes" - use current labels
+          const { centerX, centerY } = getViewportCenter()
           const result = await createTemplateShapes('navbar', { 
             templateId: 'navbar', 
-            buttonLabels: pendingNavbarParams.labels 
+            buttonLabels: pendingNavbarParams.labels,
+            viewportCenterX: centerX,
+            viewportCenterY: centerY
           }, applyCanvasCommand)
           
           if (result.success) {
             const createdCount = result.createdShapes?.length || 0
-            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, user.id, 'AI Assistant', 'assistant')
           } else {
-            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, user.id, 'AI Assistant', 'assistant')
           }
           
           // Reset navbar state
@@ -297,16 +305,19 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           setIsWaitingForNavbarConfirmation(false)
         } else if (customLabels && customLabels.length > 0) {
           // User provided custom labels
+          const { centerX, centerY } = getViewportCenter()
           const result = await createTemplateShapes('navbar', { 
             templateId: 'navbar', 
-            buttonLabels: customLabels 
+            buttonLabels: customLabels,
+            viewportCenterX: centerX,
+            viewportCenterY: centerY
           }, applyCanvasCommand)
           
           if (result.success) {
             const createdCount = result.createdShapes?.length || 0
-            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`✅ Created navigation bar with ${createdCount} elements`, user.id, 'AI Assistant', 'assistant')
           } else {
-            await sendMessage(`❌ Failed to create navbar: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`❌ Failed to create navbar: ${result.error}`, user.id, 'AI Assistant', 'assistant')
           }
           
           // Reset navbar state
@@ -314,7 +325,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           setIsWaitingForNavbarConfirmation(false)
         } else {
           // Invalid label count
-          await sendMessage(`Please provide exactly ${pendingNavbarParams.buttonCount} labels separated by commas, or reply 'yes' to use the default labels.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Please provide exactly ${pendingNavbarParams.buttonCount} labels separated by commas, or reply 'yes' to use the default labels.`, user.id, 'AI Assistant', 'assistant')
         }
       } else if (isWaitingForLoginRememberMe) {
         // Handle Remember Me response
@@ -324,9 +335,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           setIsWaitingForLoginRememberMe(false)
           setIsWaitingForLoginForgotPassword(true)
           
-          await sendMessage(`Got it! Include 'Forgot Password' link? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Got it! Include 'Forgot Password' link? (yes/no)`, user.id, 'AI Assistant', 'assistant')
         } else {
-          await sendMessage(`Please answer with 'yes' or 'no' for the Remember Me checkbox.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Please answer with 'yes' or 'no' for the Remember Me checkbox.`, user.id, 'AI Assistant', 'assistant')
         }
       } else if (isWaitingForLoginForgotPassword && pendingLoginParams) {
         // Handle Forgot Password response
@@ -336,9 +347,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
           setIsWaitingForLoginForgotPassword(false)
           setIsWaitingForLoginOAuth(true)
           
-          await sendMessage(`Perfect! Which OAuth providers: Google, GitHub, Facebook, or all?`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Perfect! Which OAuth providers: Google, GitHub, Facebook, or all?`, user.id, 'AI Assistant', 'assistant')
         } else {
-          await sendMessage(`Please answer with 'yes' or 'no' for the Forgot Password link.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Please answer with 'yes' or 'no' for the Forgot Password link.`, user.id, 'AI Assistant', 'assistant')
         }
       } else if (isWaitingForLoginOAuth && pendingLoginParams) {
         // Handle OAuth provider response
@@ -346,23 +357,26 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
         if (oauthProviders) {
           const finalParams = { ...pendingLoginParams, oauthProviders: oauthProviders as ('google' | 'github' | 'facebook')[] }
           
+          const { centerX, centerY } = getViewportCenter()
           const result = await createTemplateShapes('login-oauth', { 
             templateId: 'login-oauth', 
-            ...finalParams
+            ...finalParams,
+            viewportCenterX: centerX,
+            viewportCenterY: centerY
           }, applyCanvasCommand)
           
           if (result.success) {
             const createdCount = result.createdShapes?.length || 0
-            await sendMessage(`✅ Created login form with ${createdCount} elements`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`✅ Created login form with ${createdCount} elements`, user.id, 'AI Assistant', 'assistant')
           } else {
-            await sendMessage(`❌ Failed to create login form: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+            await sendMessage(`❌ Failed to create login form: ${result.error}`, user.id, 'AI Assistant', 'assistant')
           }
           
           // Reset login form state
           setPendingLoginParams(null)
           setIsWaitingForLoginOAuth(false)
         } else {
-          await sendMessage(`Please specify OAuth providers: Google, GitHub, Facebook, or all.`, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(`Please specify OAuth providers: Google, GitHub, Facebook, or all.`, user.id, 'AI Assistant', 'assistant')
         }
       } else {
         // Normal AI command processing
@@ -378,16 +392,21 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             // Special handling for navbar - start interactive flow
             if (templateId === 'navbar') {
               setIsWaitingForNavbarButtons(true)
-              await sendMessage(`I'll create a navbar with Home, About, Services. How many buttons do you need? [1-10]`, 'ai', 'AI Assistant', 'assistant')
+              await sendMessage(`I'll create a navbar with Home, About, Services. How many buttons do you need? [1-10]`, user.id, 'AI Assistant', 'assistant')
             } else if (templateId === 'login-oauth') {
               // Special handling for login form - start interactive flow
               setIsWaitingForLoginRememberMe(true)
-              await sendMessage(`I'll create a login form. Include 'Remember Me' checkbox? (yes/no)`, 'ai', 'AI Assistant', 'assistant')
+              await sendMessage(`I'll create a login form. Include 'Remember Me' checkbox? (yes/no)`, user.id, 'AI Assistant', 'assistant')
             } else {
               // Use shared template logic for other templates
               const templateParams = extractTemplateParams(target, parameters)
               
-              const result = await createTemplateShapes(templateId, templateParams, applyCanvasCommand)
+              const { centerX, centerY } = getViewportCenter()
+              const result = await createTemplateShapes(templateId, {
+                ...templateParams,
+                viewportCenterX: centerX,
+                viewportCenterY: centerY
+              }, applyCanvasCommand)
               
               if (result.success) {
                 // Show success in chat
@@ -398,10 +417,10 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 if (result.details) {
                   aiResponse += `\n\nDetails: ${result.details}`
                 }
-                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+                await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
               } else {
                 // Show error in chat
-                await sendMessage(`❌ Failed to create template: ${result.error}`, 'ai', 'AI Assistant', 'assistant')
+                await sendMessage(`❌ Failed to create template: ${result.error}`, user.id, 'AI Assistant', 'assistant')
               }
             }
           } else {
@@ -416,7 +435,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
             if (action === 'create' && !parameters.color && !skipColorCheck) {
               // Ask for color clarification
               const rainbowColors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
-              await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, 'ai', 'AI Assistant', 'assistant')
+              await sendMessage(`You didn't specify a color. What color would you like it to be? Choose from: ${rainbowColors.join(', ')}`, user.id, 'AI Assistant', 'assistant')
               
               // Store the pending command and wait for color response
               setPendingCommand(response.data)
@@ -471,9 +490,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                     aiResponse = `✅ Created ${createdCount} ${target}(s) at position (${parameters.x}, ${parameters.y})`
                   }
                   
-                  await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+                  await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
                 } else {
-                  await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, 'ai', 'AI Assistant', 'assistant')
+                  await sendMessage(`❌ Failed to create shape: ${commandResult.error}`, user.id, 'AI Assistant', 'assistant')
                 }
               } else {
                 // Apply the canvas command normally
@@ -519,7 +538,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 if (commandResult.details) {
                   aiResponse += `\n\nDetails: ${commandResult.details}`
                 }
-                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+                await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
               } else {
                 let actionText = 'create'
                 if (action === 'manipulate') actionText = 'manipulate'
@@ -529,7 +548,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 if (commandResult.details) {
                   aiResponse += `\n\nDetails: ${commandResult.details}`
                 }
-                await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+                await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
               }
             }
           }
@@ -537,14 +556,14 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       } else {
           // Send AI error response
           const aiResponse = `❌ ${response.error}`
-          await sendMessage(aiResponse, 'ai', 'AI Assistant', 'assistant')
+          await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
         }
       }
       
       setIsAITyping(false)
     } catch (error) {
       console.error('Error sending message:', error)
-      await sendMessage('❌ Failed to process your request. Please try again.', 'ai', 'AI Assistant', 'assistant')
+      await sendMessage('❌ Failed to process your request. Please try again.', user.id, 'AI Assistant', 'assistant')
       setIsAITyping(false)
     }
   }
@@ -558,17 +577,6 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       clearSelection()
       setHasDeselectedForCurrentInput(true)
     }
-    
-    // Update typing indicator
-    if (newValue.trim()) {
-      setUserTyping(true)
-    } else {
-      setUserTyping(false)
-    }
-  }
-
-  const handleInputBlur = () => {
-    setUserTyping(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -582,11 +590,11 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     if (!user) return
     
     try {
-      await clearMessages()
+      await clearMessages(user.id)
     } catch (error) {
       console.error('Error clearing chat:', error)
       // Show error message to user
-      await sendMessage('❌ Failed to clear chat. Please try again.', 'ai', 'AI Assistant', 'assistant')
+      await sendMessage('❌ Failed to clear chat. Please try again.', user.id, 'AI Assistant', 'assistant')
     }
   }
 
@@ -615,6 +623,13 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       </button>
     )
   }
+
+  // Check if we're in an interactive flow (navbar or login form creation)
+  const isInteractiveFlow = isWaitingForNavbarButtons || 
+                            isWaitingForNavbarConfirmation || 
+                            isWaitingForLoginRememberMe || 
+                            isWaitingForLoginForgotPassword || 
+                            isWaitingForLoginOAuth
 
   return (
     <div className={styles.chatContainer}>
@@ -661,44 +676,26 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       </div>
 
       {/* Messages */}
-      <div className={styles.messagesArea}>
-        {messages.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>Hi! I'm your AI assistant.</p>
-            <p>Ask me to create or modify shapes on the canvas.</p>
-          </div>
-        ) : (
-          messages.map((message) => (
+      <div className={`${styles.messagesArea} ${isInteractiveFlow ? styles.messagesAreaCompact : ''}`}>
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`${styles.messageContainer} ${
+              message.role === 'user' ? styles.messageContainerUser : styles.messageContainerAssistant
+            }`}
+          >
             <div
-              key={message.id}
-              className={`${styles.messageContainer} ${
-                message.role === 'user' ? styles.messageContainerUser : styles.messageContainerAssistant
+              className={`${styles.messageBubble} ${
+                message.role === 'user' ? styles.messageBubbleUser : styles.messageBubbleAssistant
               }`}
             >
-              <div
-                className={`${styles.messageBubble} ${
-                  message.role === 'user' ? styles.messageBubbleUser : styles.messageBubbleAssistant
-                }`}
-              >
-                <div className={styles.messageSender}>
-                  {message.displayName}
-                </div>
-                <div className={styles.messageContent}>{message.content}</div>
+              <div className={styles.messageSender}>
+                {message.displayName}
               </div>
-            </div>
-          ))
-        )}
-        
-        {/* Other users typing indicator */}
-        {typingUsers.length > 0 && (
-          <div className={styles.typingIndicator}>
-            <div className={styles.typingBubble}>
-              <div className={styles.typingText}>
-                {typingUsers.map(user => user.displayName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
-              </div>
+              <div className={styles.messageContent}>{message.content}</div>
             </div>
           </div>
-        )}
+        ))}
         
         {/* AI typing indicator */}
         {isAITyping && (
@@ -717,13 +714,11 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       </div>
 
       {/* Input */}
-      <div className={styles.inputArea}>
-        <div className={styles.inputContainer}>
-          <input
-            type="text"
+      <div className={`${styles.inputArea} ${isInteractiveFlow ? styles.inputAreaExpanded : ''}`}>
+        <div className={`${styles.inputContainer} ${isInteractiveFlow ? styles.inputContainerExpanded : ''}`}>
+          <textarea
             value={inputValue}
-            onChange={handleInputChange}
-            onBlur={handleInputBlur}
+            onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               isWaitingForColor 
@@ -740,8 +735,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 ? "Specify OAuth providers: Google, GitHub, Facebook, or all..."
                 : "Ask me to create shapes..."
             }
-            className={styles.inputField}
+            className={`${styles.inputField} ${isInteractiveFlow ? styles.inputFieldExpanded : ''}`}
             disabled={isAITyping}
+            style={isInteractiveFlow ? {} : { resize: 'none', height: 'auto' }}
           />
           <button
             onClick={handleSendMessage}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, writeBatch, doc } from 'firebase/firestore'
+import { collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, doc } from 'firebase/firestore'
 import { getFirestore } from 'firebase/firestore'
 import { getFirebaseApp } from '../services/firebase'
 
@@ -12,14 +12,27 @@ export interface ChatMessage {
   displayName?: string
 }
 
-export function useChatMessages() {
+export function useChatMessages(userId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Only subscribe if userId is provided
+    if (!userId) {
+      setMessages([])
+      setIsLoading(false)
+      return
+    }
+
     const db = getFirestore(getFirebaseApp())
     const messagesRef = collection(db, 'chatMessages')
-    const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(50))
+    // Filter messages by userId to ensure privacy
+    const q = query(
+      messagesRef, 
+      where('userId', '==', userId),
+      orderBy('timestamp', 'desc'), 
+      limit(50)
+    )
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const messagesData: ChatMessage[] = []
@@ -44,7 +57,7 @@ export function useChatMessages() {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [userId])
 
   const sendMessage = async (content: string, userId: string, displayName?: string, role: 'user' | 'assistant' = 'user') => {
     try {
@@ -64,11 +77,17 @@ export function useChatMessages() {
     }
   }
 
-  const clearMessages = async () => {
+  const clearMessages = async (userId?: string) => {
     try {
+      // Only clear if userId is provided
+      if (!userId) {
+        throw new Error('User ID required to clear messages')
+      }
+
       const db = getFirestore(getFirebaseApp())
       const messagesRef = collection(db, 'chatMessages')
-      const q = query(messagesRef)
+      // Only delete messages belonging to this user
+      const q = query(messagesRef, where('userId', '==', userId))
       
       const snapshot = await getDocs(q)
       const batch = writeBatch(db)

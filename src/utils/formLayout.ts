@@ -198,7 +198,9 @@ export function calculateTotalFormHeight(template: FormTemplate): number {
 export function generateFormShapes(
   template: FormTemplate,
   config: FormLayoutConfig,
-  options?: LoginFormOptions
+  options?: LoginFormOptions,
+  explicitCenterX?: number,
+  explicitCenterY?: number
 ): FormShape[] {
   const shapes: FormShape[] = []
   
@@ -211,7 +213,7 @@ export function generateFormShapes(
   
   // Validate form fits in viewport
   const maxAllowedHeight = viewportHeight * FORM_LAYOUT.maxFormHeight
-  const shouldTopAlign = totalFormHeight > maxAllowedHeight
+  const shouldTopAlign = totalFormHeight > maxAllowedHeight && explicitCenterY === undefined
   
   if (shouldTopAlign) {
     console.warn(
@@ -222,15 +224,25 @@ export function generateFormShapes(
   // Calculate starting position
   const formWidth = FORM_LAYOUT.fieldWidth + (FORM_LAYOUT.margin * 2)
   
-  // Horizontal centering (default: true)
-  const centerX = config.centerX !== false
-  const startX = centerX
-    ? (viewportWidth - formWidth) / 2 + FORM_LAYOUT.margin
-    : config.viewport.x + FORM_LAYOUT.margin
+  // Use explicit center coordinates if provided, otherwise use config/viewport calculation
+  let startX: number
+  if (explicitCenterX !== undefined) {
+    // Use provided center and offset by half the form width
+    startX = explicitCenterX - formWidth / 2 + FORM_LAYOUT.margin
+  } else {
+    // Horizontal centering (default: true)
+    const centerX = config.centerX !== false
+    startX = centerX
+      ? (viewportWidth - formWidth) / 2 + FORM_LAYOUT.margin
+      : config.viewport.x + FORM_LAYOUT.margin
+  }
   
   // Vertical centering or top-alignment
   let currentY: number
-  if (config.startY !== undefined) {
+  if (explicitCenterY !== undefined) {
+    // Use provided center and offset by half the form height
+    currentY = explicitCenterY - totalFormHeight / 2 + FORM_LAYOUT.margin
+  } else if (config.startY !== undefined) {
     // Use explicit start position
     currentY = config.startY + FORM_LAYOUT.margin
   } else if (shouldTopAlign || config.centerY === false) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useCanvasCommands } from '../../hooks/useCanvasCommands'
+import { useCanvas } from '../../contexts/CanvasContext'
 import { createTemplateShapes, TEMPLATE_INFO } from '../../utils/templateHelpers'
 
 interface Template {
@@ -40,6 +41,17 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
   const [loginOAuthProviders, setLoginOAuthProviders] = useState<('google' | 'github' | 'facebook')[]>(['google'])
   const menuRef = useRef<HTMLDivElement>(null)
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
+  const { viewport } = useCanvas()
+  
+  // Calculate viewport center for template positioning
+  const getViewportCenter = () => {
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+    // Convert screen center to canvas coordinates: (screenCoord - pan) / scale
+    const centerX = (windowWidth / 2 - viewport.x) / viewport.scale
+    const centerY = (windowHeight / 2 - viewport.y) / viewport.scale
+    return { centerX, centerY }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -132,7 +144,13 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
     
     setBusy(true)
     try {
-      const result = await createTemplateShapes('navbar', { templateId: 'navbar', buttonLabels: validLabels }, applyCanvasCommand)
+      const { centerX, centerY } = getViewportCenter()
+      const result = await createTemplateShapes('navbar', { 
+        templateId: 'navbar', 
+        buttonLabels: validLabels,
+        viewportCenterX: centerX,
+        viewportCenterY: centerY
+      }, applyCanvasCommand)
       
       if (!result.success) {
         console.error('Failed to create navbar:', result.error)
@@ -161,11 +179,14 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
     
     setBusy(true)
     try {
+      const { centerX, centerY } = getViewportCenter()
       const result = await createTemplateShapes('login-oauth', { 
         templateId: 'login-oauth', 
         includeRememberMe: loginIncludeRememberMe,
         includeForgotPassword: loginIncludeForgotPassword,
-        oauthProviders: loginOAuthProviders
+        oauthProviders: loginOAuthProviders,
+        viewportCenterX: centerX,
+        viewportCenterY: centerY
       }, applyCanvasCommand)
       
       if (!result.success) {
@@ -189,7 +210,12 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
     
     try {
       // Use shared template creation logic
-      const result = await createTemplateShapes(templateId, params, applyCanvasCommand)
+      const { centerX, centerY } = getViewportCenter()
+      const result = await createTemplateShapes(templateId, {
+        ...params,
+        viewportCenterX: centerX,
+        viewportCenterY: centerY
+      }, applyCanvasCommand)
       
       if (!result.success) {
         console.error(`Failed to create ${templateId}:`, result.error)
