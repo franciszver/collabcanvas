@@ -6,7 +6,7 @@ import { useCanvas } from '../../contexts/CanvasContext'
 import type { Rectangle } from '../../types/canvas.types'
 import { MAX_SCALE, MIN_SCALE } from '../../utils/constants'
 import { usePresence } from '../../contexts/PresenceContext'
-import { updateCursorPositionRtdb } from '../../services/realtime'
+import { updateCursorPositionRtdb, publishViewportRtdbThrottled, clearViewportRtdb } from '../../services/realtime'
 import { useAuth } from '../../contexts/AuthContext'
 import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
@@ -42,6 +42,7 @@ function measureTextDimensions(text: string, fontSize: number): { width: number;
 
 export default function Canvas() {
   const { 
+    documentId,
     viewport, 
     setViewport, 
     rectangles, 
@@ -206,9 +207,19 @@ export default function Canvas() {
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) movedRef.current = true
       lastPosRef.current = pos
       const clamped = clampViewport(viewport.x + dx, viewport.y + dy)
-      setViewport({ ...viewport, x: clamped.x, y: clamped.y })
+      const newViewport = { ...viewport, x: clamped.x, y: clamped.y }
+      
+      // Update local state immediately for smooth UI
+      setViewport(newViewport)
+      
+      // Publish to RTDB for cross-tab sync (throttled at 60fps)
+      if (user) {
+        publishViewportRtdbThrottled(user.id, newViewport, documentId).catch(() => {
+          // Silent failure - panning continues smoothly
+        })
+      }
     }, 16), // 60fps throttling
-    [viewport, setViewport, clampViewport, isBoxSelecting, updateBoxSelection]
+    [viewport, setViewport, clampViewport, isBoxSelecting, updateBoxSelection, user, documentId]
   )
 
   const onMouseMove = useCallback(
@@ -224,10 +235,17 @@ export default function Canvas() {
       endBoxSelection()
     }
     
+    // Clear RTDB viewport when panning ends
+    if (isPanningRef.current && user) {
+      clearViewportRtdb(user.id).catch(() => {
+        // Silent failure
+      })
+    }
+    
     // Reset panning
     isPanningRef.current = false
     lastPosRef.current = null
-  }, [isBoxSelecting, endBoxSelection])
+  }, [isBoxSelecting, endBoxSelection, user])
 
   useEffect(() => {
     const tr = transformerRef.current

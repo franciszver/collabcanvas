@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CanvasState, Rectangle, ViewportTransform, ShapeLock } from '../types/canvas.types'
 import { INITIAL_SCALE } from '../utils/constants'
 import { useShapes } from '../hooks/useShapes'
@@ -6,9 +6,12 @@ import { useDocument } from '../hooks/useDocument'
 import { useSelection } from '../hooks/useSelection'
 import { useAuth } from './AuthContext'
 import { lockShapes, unlockShapes } from '../services/locking'
+import { debounce } from '../utils/performance'
+import { subscribeToViewportRtdb, setupViewportDisconnectCleanup } from '../services/realtime'
 // import { publishSelectionRtdb, clearSelectionRtdb } from '../services/realtime'
 
 export interface CanvasContextValue extends CanvasState {
+  documentId: string
   setViewport: (v: ViewportTransform) => void
   setRectangles: (r: Rectangle[]) => void
   addRectangle: (rect: Rectangle) => void
@@ -141,20 +144,65 @@ export function CanvasProvider({
     defaultTitle: 'Untitled Canvas'
   })
 
+  // Debounced Firestore viewport update (500ms delay after panning stops)
+  const debouncedFirestoreUpdate = useRef(
+    debounce((viewport: ViewportTransform) => {
+      updateDocumentViewport(viewport).catch(console.error)
+    }, 500)
+  ).current
+
   // Sync viewport with Firestore document
   const handleViewportChange = useCallback((newViewport: ViewportTransform) => {
     setViewport(newViewport)
     
-    // Update Firestore document viewport
-    updateDocumentViewport(newViewport).catch(console.error)
+    // Update Firestore document viewport (debounced to reduce writes during panning)
+    debouncedFirestoreUpdate(newViewport)
     
-    // Update localStorage
+    // Update localStorage immediately for fast restore
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('collabcanvas:viewport', JSON.stringify(newViewport))
       }
     } catch {}
-  }, [updateDocumentViewport])
+  }, [debouncedFirestoreUpdate])
+
+  // Subscribe to RTDB viewport updates for cross-tab sync
+  useEffect(() => {
+    if (!user) return
+
+    // Setup disconnect cleanup
+    setupViewportDisconnectCleanup(user.id).catch(console.error)
+
+    // Subscribe to viewport updates from RTDB (for cross-tab sync)
+    const unsubscribe = subscribeToViewportRtdb(user.id, (rtdbViewport) => {
+      if (!rtdbViewport) return
+      
+      // Only apply viewport updates for the current document
+      if (rtdbViewport.documentId !== documentId) return
+      
+      // Update local viewport state from RTDB (skip Firestore to avoid circular updates)
+      setViewport({
+        x: rtdbViewport.x,
+        y: rtdbViewport.y,
+        scale: rtdbViewport.scale
+      })
+      
+      // Update localStorage for fast restore
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('collabcanvas:viewport', JSON.stringify({
+            x: rtdbViewport.x,
+            y: rtdbViewport.y,
+            scale: rtdbViewport.scale
+          }))
+        }
+      } catch {}
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [user, documentId])
 
   // Shape operations
   const addRectangle = useCallback(async (rect: Rectangle) => {
@@ -428,6 +476,7 @@ export function CanvasProvider({
 
   const value: CanvasContextValue = useMemo(
     () => ({
+      documentId,
       viewport,
       rectangles,
       selectedTool,
@@ -485,6 +534,7 @@ export function CanvasProvider({
       panToShapePosition,
     }),
     [
+      documentId,
       viewport,
       rectangles,
       selectedTool,

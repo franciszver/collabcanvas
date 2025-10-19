@@ -6,6 +6,7 @@ import {
   update,
   remove,
   serverTimestamp,
+  onDisconnect,
   type Database,
 } from 'firebase/database'
 import type { CursorPosition, UserPresence } from '../types/presence.types'
@@ -242,6 +243,10 @@ export async function clearDragPositionRtdb(rectId: string, userId: string): Pro
 const DRAG_THROTTLE_MS = 1000 / 30 // 30fps max
 const dragThrottleMap = new Map<string, number>()
 
+// Viewport throttling for 60fps smooth panning
+const VIEWPORT_THROTTLE_MS = 1000 / 60 // 60fps max
+const viewportThrottleMap = new Map<string, number>()
+
 export async function publishDragPositionsRtdbThrottled(
   entries: Array<[string, { x: number; y: number }]>,
   userId: string
@@ -410,6 +415,97 @@ export async function cleanupStaleSelectionsRtdb(maxAgeMs: number = 10000): Prom
     }
   } catch (error) {
     console.warn('Failed to cleanup stale selections:', error)
+  }
+}
+
+// Viewport panning via RTDB for 60fps smooth updates
+export async function publishViewportRtdb(
+  userId: string,
+  viewport: { x: number; y: number; scale: number },
+  documentId: string
+): Promise<void> {
+  const viewportRef = ref(rtdb(), `viewport/${userId}/current`)
+  
+  try {
+    await update(viewportRef, {
+      x: viewport.x,
+      y: viewport.y,
+      scale: viewport.scale,
+      documentId,
+      updatedAt: serverTimestamp() as any
+    })
+  } catch (error) {
+    console.warn('Failed to publish viewport, retrying...', error)
+    // Retry once after a short delay
+    setTimeout(async () => {
+      try {
+        await update(viewportRef, {
+          x: viewport.x,
+          y: viewport.y,
+          scale: viewport.scale,
+          documentId,
+          updatedAt: serverTimestamp() as any
+        })
+      } catch (retryError) {
+        console.warn('Failed to publish viewport after retry:', retryError)
+      }
+    }, 100)
+  }
+}
+
+// Throttled viewport updates for smooth 60fps panning
+export async function publishViewportRtdbThrottled(
+  userId: string,
+  viewport: { x: number; y: number; scale: number },
+  documentId: string
+): Promise<void> {
+  const now = Date.now()
+  const key = userId
+  const lastUpdate = viewportThrottleMap.get(key) || 0
+  
+  if (now - lastUpdate >= VIEWPORT_THROTTLE_MS) {
+    viewportThrottleMap.set(key, now)
+    await publishViewportRtdb(userId, viewport, documentId)
+  }
+}
+
+// Subscribe to viewport updates from RTDB (for cross-tab sync)
+export function subscribeToViewportRtdb(
+  userId: string,
+  callback: (viewport: { x: number; y: number; scale: number; documentId: string } | null) => void
+): () => void {
+  const viewportRef = ref(rtdb(), `viewport/${userId}/current`)
+  const handler = (snap: any) => {
+    const data = snap.val()
+    if (data && typeof data.x === 'number' && typeof data.y === 'number' && typeof data.scale === 'number') {
+      callback({
+        x: data.x,
+        y: data.y,
+        scale: data.scale,
+        documentId: data.documentId || ''
+      })
+    } else {
+      callback(null)
+    }
+  }
+  
+  onValue(viewportRef, handler)
+  return () => off(viewportRef, 'value', handler)
+}
+
+// Clear viewport from RTDB when done panning
+export async function clearViewportRtdb(userId: string): Promise<void> {
+  const viewportRef = ref(rtdb(), `viewport/${userId}/current`)
+  await remove(viewportRef)
+}
+
+// Setup automatic cleanup of viewport on disconnect
+export async function setupViewportDisconnectCleanup(userId: string): Promise<void> {
+  const viewportRef = ref(rtdb(), `viewport/${userId}/current`)
+  try {
+    await onDisconnect(viewportRef).remove()
+  } catch (error) {
+    console.warn('Failed to setup viewport disconnect cleanup:', error)
   }
 }
 
