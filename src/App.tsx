@@ -5,8 +5,10 @@ import SignInButton from './components/Auth/SignInButton'
 import Canvas from './components/Canvas/Canvas'
 import AppLayout from './components/Layout/AppLayout'
 import ErrorBoundary from './components/Layout/ErrorBoundary'
-import DetailsDropdown from './components/Header/DetailsDropdown'
+import TemplatesDropdown from './components/Header/TemplatesDropdown'
 import ShapeSelector from './components/Header/ShapeSelector'
+import StatsDropdown from './components/Header/StatsDropdown'
+import UserMenu from './components/Header/UserMenu'
 import ChatBox from './components/Chat/ChatBox'
 import { APP_VERSION } from './version'
 import { CanvasProvider } from './contexts/CanvasContext'
@@ -51,24 +53,29 @@ function App() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #374151',
+                  padding: '12px 20px',
                   background: '#1f2937',
                   position: 'fixed',
-                  top: 0,
-                  right: 0,
-                  width: '50%',
+                  top: 16,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '80%',
+                  maxWidth: '1400px',
                   zIndex: 100,
-                  borderBottomLeftRadius: 8,
+                  borderRadius: 12,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  border: '1px solid #374151',
                 }}
               >
-                <div>
-                  <h1 style={{ margin: 0 }}>Chatty Canvas</h1>
-                  <div style={{ fontSize: 12, color: '#9CA3AF' }}>v{APP_VERSION}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Chatty Canvas</h1>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>v{APP_VERSION}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <TemplatesDropdown />
                   <ShapeSelector />
-                  <DetailsDropdown />
+                  <StatsDropdown />
+                  <UserMenu />
                 </div>
               </div>
               <Canvas />

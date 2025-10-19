@@ -16,6 +16,7 @@ import {
 } from '../utils/helpers'
 import { getFormTemplate } from '../utils/formTemplates'
 import { generateFormShapes } from '../utils/formLayout'
+import { generateNavbarShapes } from '../utils/navbarGenerator'
 
 export interface UseCanvasCommandsOptions {
   documentId: string
@@ -664,9 +665,43 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             details: error instanceof Error ? error.message : 'Unknown error'
           }
         }
+      } else if (target === 'navbar') {
+        // Generate navbar with custom button labels
+        const buttonLabels = parameters.buttonLabels
+        const color = parameters.color
+        
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight
+        
+        const navbarShapes = generateNavbarShapes(buttonLabels, color, {
+          x: viewport.x,
+          y: viewport.y,
+          scale: viewport.scale,
+          width: viewportWidth,
+          height: viewportHeight
+        })
+        
+        const createdShapeIds: string[] = []
+        
+        try {
+          for (const shape of navbarShapes) {
+            await addShape(shape)
+            createdShapeIds.push(shape.id)
+          }
+          
+          return {
+            success: true,
+            createdShapes: createdShapeIds
+          }
+        } catch (error) {
+          return {
+            success: false,
+            error: `Failed to create navbar: ${error instanceof Error ? error.message : 'Unknown error'}`
+          }
+        }
       }
       
-      // Handle complex action (forms, navbars, cards, etc.)
+      // Handle complex action (forms, cards, etc.)
       else if (action === 'complex') {
         if (target === 'form') {
           const formType = parameters.formType
@@ -674,19 +709,19 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           if (!formType) {
             return {
               success: false,
-              error: 'Form type is required',
-              details: 'Available types: login, signup, contact. Example: "create a login form"'
+            error: 'Form type is required',
+            details: 'Available types: login, signup, contact, login-oauth. Example: "create a login form"'
             }
           }
           
           // Get form template
           const template = getFormTemplate(formType)
           if (!template) {
-            return {
-              success: false,
-              error: `Unknown form type: "${formType}"`,
-              details: 'Available types: login, signup, contact'
-            }
+          return {
+            success: false,
+            error: `Unknown form type: "${formType}"`,
+            details: 'Available types: login, signup, contact, login-oauth'
+          }
           }
           
           // Get viewport dimensions from window

@@ -38,6 +38,7 @@ export interface CanvasAction {
     offsetY?: number
     fields?: string[]
     items?: string[]
+    buttonLabels?: string[]
   }
 }
 

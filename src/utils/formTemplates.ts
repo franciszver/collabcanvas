@@ -79,6 +79,18 @@ export const FORM_TEMPLATES: Record<string, FormTemplate> = {
     fields: [],
     buttons: [],
     options: []
+  },
+  
+  'login-oauth': {
+    formType: 'custom',
+    fields: [
+      { name: 'userid', label: 'User ID', type: 'text' },
+      { name: 'password', label: 'Password', type: 'password' }
+    ],
+    buttons: [
+      { label: 'Sign in with Google', type: 'primary' }
+    ],
+    options: []
   }
 }
 

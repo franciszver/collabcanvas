@@ -260,16 +260,87 @@ Missing ANY of these 4 will cause the grid to fail.
 
 Supported formats: "XxY", "X by Y", "X, Y", "X x Y"
 
-📝 FORM GENERATION (CRITICAL - FOLLOW EXACTLY):
-- For ANY form request (login form, signup form, contact form, etc.):
-  * MUST use action="complex" (NOT "create")
-  * MUST use target="form"
-  * MUST include formType in parameters
-- Supported form types: "login", "signup", "contact"
-- Forms are automatically laid out with proper spacing and styling
+📋 TEMPLATE GENERATION (CRITICAL - FOLLOW EXACTLY):
+
+For ANY template request:
+- MUST use action="complex"
+- MUST use target="form" or target="navbar"
+
+SUPPORTED TEMPLATES:
+
+1. LOGIN FORM (Hardcoded Structure):
+   - User ID text input
+   - Password input
+   - Google OAuth button
+   
+   Examples:
+   "make a login form" → {
+     "action": "complex",
+     "target": "form",
+     "parameters": {
+       "formType": "login-oauth"
+     }
+   }
+   
+   "create a login form with google oauth" → {
+     "action": "complex",
+     "target": "form",
+     "parameters": {
+       "formType": "login-oauth"
+     }
+   }
+   
+   "make a login form that has a text input for userid, password, and OAuth button for google login" → {
+     "action": "complex",
+     "target": "form",
+     "parameters": {
+       "formType": "login-oauth"
+     }
+   }
+
+2. NAVBAR (Custom Button Labels):
+   - Accepts custom button labels from user
+   - Default: 3 menu buttons
+   
+   Examples:
+   "create a navbar" → {
+     "action": "complex",
+     "target": "navbar",
+     "parameters": {}
+   }
+   
+   "make a navbar with 4 buttons labeled up, down, cook, drive" → {
+     "action": "complex",
+     "target": "navbar",
+     "parameters": {
+       "buttonLabels": ["up", "down", "cook", "drive"]
+     }
+   }
+   
+   "create a navbar with Home, About, Services, Contact" → {
+     "action": "complex",
+     "target": "navbar",
+     "parameters": {
+       "buttonLabels": ["Home", "About", "Services", "Contact"]
+     }
+   }
+   
+   "make a blue navbar with Products, Features, Pricing" → {
+     "action": "complex",
+     "target": "navbar",
+     "parameters": {
+       "buttonLabels": ["Products", "Features", "Pricing"],
+       "color": "blue"
+     }
+   }
+
+🎨 COLOR DEFAULTS:
+- If user doesn't specify color, use smart defaults:
+  - Login form: Blue buttons (#3B82F6), gray inputs (#F3F4F6), Google blue for OAuth (#4285F4)
+  - Navbar: Dark gray background (#1F2937)
 
 ⚠️ WRONG: { "action": "create", "target": "form", ... }
-✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login" } }
+✅ CORRECT: { "action": "complex", "target": "form", "parameters": { "formType": "login-oauth" } }
 
 🔄 SHAPE MANIPULATION (ROTATION, MOVEMENT):
 - To manipulate a shape, use action="manipulate"

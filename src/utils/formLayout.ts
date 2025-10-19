@@ -320,6 +320,12 @@ export function generateFormShapes(
     template.buttons.forEach(button => {
       const buttonX = startX + (FORM_LAYOUT.fieldWidth - FORM_LAYOUT.buttonWidth) / 2
       
+      // Check if this is an OAuth button
+      const isOAuth = button.label.toLowerCase().includes('google') || 
+                      button.label.toLowerCase().includes('oauth')
+      
+      const buttonColor = isOAuth ? '#4285F4' : (button.type === 'primary' ? FORM_COLORS.buttonFill : FORM_COLORS.inputFill)
+      
       // Button rectangle
       shapes.push({
         type: 'rect',
@@ -328,9 +334,9 @@ export function generateFormShapes(
         y: currentY,
         width: FORM_LAYOUT.buttonWidth,
         height: FORM_LAYOUT.buttonHeight,
-        fill: button.type === 'primary' ? FORM_COLORS.buttonFill : FORM_COLORS.inputFill,
-        stroke: button.type === 'primary' ? FORM_COLORS.buttonStroke : FORM_COLORS.inputStroke,
-        strokeWidth: FORM_COLORS.buttonStrokeWidth,
+        fill: buttonColor,
+        stroke: undefined,
+        strokeWidth: 0,
         rotation: 0,
       })
       
