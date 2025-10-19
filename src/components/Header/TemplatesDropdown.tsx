@@ -31,19 +31,30 @@ interface TemplatesDropdownProps {
 export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [showNavbarForm, setShowNavbarForm] = useState(false)
+  const [navbarButtonCount, setNavbarButtonCount] = useState(3)
+  const [navbarLabels, setNavbarLabels] = useState(['Home', 'About', 'Services'])
   const menuRef = useRef<HTMLDivElement>(null)
   const { applyCanvasCommand } = useCanvasCommands({ documentId })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        if (showNavbarForm) {
+          // Don't close when navbar form is open - require explicit action
+          return
+        }
         setIsOpen(false)
       }
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false)
+        if (showNavbarForm) {
+          setShowNavbarForm(false)
+        } else {
+          setIsOpen(false)
+        }
       }
     }
 
@@ -56,21 +67,69 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen])
+  }, [isOpen, showNavbarForm])
 
-  const createTemplate = async (templateId: string) => {
+  // Helper function to manage button count changes
+  const handleButtonCountChange = (count: number) => {
+    setNavbarButtonCount(count)
+    // Extend or trim labels array
+    const newLabels = [...navbarLabels]
+    while (newLabels.length < count) {
+      newLabels.push(`Button ${newLabels.length + 1}`)
+    }
+    setNavbarLabels(newLabels.slice(0, count))
+  }
+
+  // Handle template click - show form for navbar, create others directly
+  const handleTemplateClick = (templateId: string) => {
+    if (templateId === 'navbar') {
+      setShowNavbarForm(true)
+    } else {
+      createTemplate(templateId, {})
+    }
+  }
+
+  // Reset navbar form to defaults
+  const resetNavbarForm = () => {
+    setNavbarButtonCount(3)
+    setNavbarLabels(['Home', 'About', 'Services'])
+  }
+
+  // Create navbar with custom parameters
+  const handleNavbarCreate = async () => {
+    if (busy) return
+    
+    // Validate labels
+    const validLabels = navbarLabels.slice(0, navbarButtonCount).filter(l => l.trim())
+    if (validLabels.length !== navbarButtonCount) {
+      alert('Please fill in all button labels')
+      return
+    }
+    
+    setBusy(true)
+    try {
+      const result = await createTemplateShapes('navbar', { templateId: 'navbar', buttonLabels: validLabels }, applyCanvasCommand)
+      
+      if (!result.success) {
+        console.error('Failed to create navbar:', result.error)
+        alert(`Failed to create navbar: ${result.error || 'Unknown error'}`)
+      } else {
+        setShowNavbarForm(false)
+        setIsOpen(false)
+      }
+    } catch (error) {
+      console.error('Error creating navbar:', error)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const createTemplate = async (templateId: string, params: any = {}) => {
     if (busy) return
     setBusy(true)
     
     try {
-      // Use default parameters for templates
-      let params: any = {}
-      
-      if (templateId === 'navbar') {
-        // Use default navbar labels (no prompting)
-        params.buttonLabels = ['Home', 'About', 'Services']
-      }
-      
       // Use shared template creation logic
       const result = await createTemplateShapes(templateId, params, applyCanvasCommand)
       
@@ -134,44 +193,162 @@ export default function TemplatesDropdown({ documentId }: TemplatesDropdownProps
             gap: 4,
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#E5E7EB', padding: '4px 8px' }}>
-            Quick Templates
-          </div>
-          
-          {TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => createTemplate(template.id)}
-              disabled={busy}
-              style={{
-                background: '#111827',
-                color: '#E5E7EB',
-                border: '1px solid #1f2937',
-                borderRadius: 6,
-                padding: '10px 12px',
-                cursor: busy ? 'not-allowed' : 'pointer',
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                if (!busy) e.currentTarget.style.background = '#1f2937'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#111827'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>{template.icon}</span>
-                <span style={{ fontWeight: 500, fontSize: 14 }}>{template.name}</span>
+          {showNavbarForm ? (
+            // Navbar Customization Form
+            <>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: '#E5E7EB', padding: '4px 8px' }}>
+                Customize Navigation Bar
               </div>
-              <div style={{ fontSize: 12, color: '#9CA3AF', paddingLeft: 26 }}>
-                {template.description}
+              
+              {/* Button Count Selector */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Number of buttons:</label>
+                <select
+                  value={navbarButtonCount}
+                  onChange={(e) => handleButtonCountChange(parseInt(e.target.value))}
+                  disabled={busy}
+                  style={{
+                    background: '#111827',
+                    color: '#E5E7EB',
+                    border: '1px solid #374151',
+                    borderRadius: 6,
+                    padding: '6px 8px',
+                    fontSize: 14,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
               </div>
-            </button>
-          ))}
+
+              {/* Button Labels */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: '#9CA3AF' }}>Button Labels:</label>
+                {Array.from({ length: navbarButtonCount }, (_, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#9CA3AF', minWidth: 20 }}>{i + 1}.</span>
+                    <input
+                      type="text"
+                      value={navbarLabels[i] || ''}
+                      onChange={(e) => {
+                        const newLabels = [...navbarLabels]
+                        newLabels[i] = e.target.value
+                        setNavbarLabels(newLabels)
+                      }}
+                      placeholder={`Button ${i + 1}`}
+                      disabled={busy}
+                      style={{
+                        background: '#111827',
+                        color: '#E5E7EB',
+                        border: '1px solid #374151',
+                        borderRadius: 6,
+                        padding: '6px 8px',
+                        fontSize: 14,
+                        flex: 1,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+                <button
+                  onClick={resetNavbarForm}
+                  disabled={busy}
+                  style={{
+                    background: '#374151',
+                    color: '#E5E7EB',
+                    border: '1px solid #4B5563',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                  }}
+                >
+                  Reset to Defaults
+                </button>
+                <button
+                  onClick={() => setShowNavbarForm(false)}
+                  disabled={busy}
+                  style={{
+                    background: '#374151',
+                    color: '#E5E7EB',
+                    border: '1px solid #4B5563',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNavbarCreate}
+                  disabled={busy}
+                  style={{
+                    background: '#3B82F6',
+                    color: '#FFFFFF',
+                    border: '1px solid #2563EB',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    flex: 1,
+                    fontWeight: 500,
+                  }}
+                >
+                  Create Navbar
+                </button>
+              </div>
+            </>
+          ) : (
+            // Template List
+            <>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#E5E7EB', padding: '4px 8px' }}>
+                Quick Templates
+              </div>
+              
+              {TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => handleTemplateClick(template.id)}
+                  disabled={busy}
+                  style={{
+                    background: '#111827',
+                    color: '#E5E7EB',
+                    border: '1px solid #1f2937',
+                    borderRadius: 6,
+                    padding: '10px 12px',
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!busy) e.currentTarget.style.background = '#1f2937'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#111827'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>{template.icon}</span>
+                    <span style={{ fontWeight: 500, fontSize: 14 }}>{template.name}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#9CA3AF', paddingLeft: 26 }}>
+                    {template.description}
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
