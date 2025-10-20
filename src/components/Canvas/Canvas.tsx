@@ -12,7 +12,7 @@ import UserCursor from '../Presence/UserCursor'
 import { useCursorSync } from '../../hooks/useCursorSync'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { calculateShapeNumbers, getShapeTypeName, generateRectId } from '../../utils/helpers'
-import { throttle, debounce } from '../../utils/performance'
+import { throttle } from '../../utils/performance'
 import { SimpleLockIndicator } from './LockIndicator'
 import LockTooltip from './LockTooltip'
 import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
@@ -345,38 +345,37 @@ export default function Canvas() {
 
   // Track pointer for presence updates (optimized throttling)
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
-  const lastSentAt = useRef<number>(0)
   const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
   const stageRef = useRef<any>(null)
 
-  // Debounced cursor update for better performance
+  // Throttled cursor update for smooth continuous updates
   const scheduleCursorSend = useMemo(
-    () => debounce(async () => {
-      const now = Date.now()
-      if (now - lastSentAt.current < 100) return // Throttle to 100ms
-      
+    () => throttle(async () => {
       const p = pendingCursor.current
       if (!p || !user) return
       
-      // Only send if position has changed significantly (reduces unnecessary updates)
+      // Only send if position has changed (reduced threshold for smoother movement)
       const lastPos = lastSentPosition.current
-      if (lastPos && Math.abs(p.x - lastPos.x) < 5 && Math.abs(p.y - lastPos.y) < 5) {
+      if (lastPos && Math.abs(p.x - lastPos.x) < 1 && Math.abs(p.y - lastPos.y) < 1) {
         return
       }
       
-      pendingCursor.current = null
-      lastSentAt.current = now
       lastSentPosition.current = { ...p }
       try {
         await updateCursorPositionRtdb(user.id, p)
       } catch (error) {
         console.warn('Failed to update cursor position:', error)
       }
-    }, 100),
+    }, 50),
     [user]
   )
 
   const onStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Don't broadcast cursor if user has shapes selected
+    if (hasSelection) {
+      return
+    }
+    
     const stage = e.target.getStage()
     if (!stage) return
     const pos = stage.getPointerPosition()
@@ -386,7 +385,15 @@ export default function Canvas() {
     const canvasY = (pos.y - viewport.y) / viewport.scale
     pendingCursor.current = { x: canvasX, y: canvasY }
     scheduleCursorSend()
-  }, [viewport, scheduleCursorSend])
+  }, [viewport, scheduleCursorSend, hasSelection])
+
+  // Clear cursor position when shapes are selected
+  useEffect(() => {
+    if (hasSelection && user) {
+      // Clear cursor position when shapes are selected
+      updateCursorPositionRtdb(user.id, { x: -1, y: -1 }).catch(console.warn)
+    }
+  }, [hasSelection, user])
 
   // Online/offline lifecycle is handled by PresenceProvider
 
@@ -468,6 +475,10 @@ export default function Canvas() {
               if (evt.evt.shiftKey) { 
                 toggleShape(r.id) 
               } else { 
+                // If clicking a shape not in current selection, clear first
+                if (!isSelected(r.id)) {
+                  clearSelection()
+                }
                 selectShape(r.id) 
               }
             },
@@ -918,6 +929,11 @@ export default function Canvas() {
           // Only show cursors that have been updated recently (within 5 seconds)
           const now = Date.now()
           return now - u.updatedAt < 5000
+        })
+        .filter((u) => {
+          // Hide cursors with negative coordinates (user has shapes selected)
+          const pos = u.cursor!
+          return pos.x >= 0 && pos.y >= 0
         })
         .map((u) => {
           const pos = u.cursor!

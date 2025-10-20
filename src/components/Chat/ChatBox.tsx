@@ -28,6 +28,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
   const [isCommandsOpen, setIsCommandsOpen] = useState(false)
   const [hasDeselectedForCurrentInput, setHasDeselectedForCurrentInput] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { user } = useAuth()
   const { messages, sendMessage, clearMessages } = useChatMessages(user?.id)
   const { selectedId, clearSelection, setViewport, viewport } = useCanvas()
@@ -221,6 +222,11 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     
     // Reset the deselection flag for the next input
     setHasDeselectedForCurrentInput(false)
+    
+    // Refocus the textarea immediately for seamless interaction
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 0)
 
     try {
       // Send user message to Firestore
@@ -566,14 +572,24 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       }
       
       setIsAITyping(false)
+      
+      // Ensure focus remains after AI responds (especially during interactive flows)
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
     } catch (error) {
       console.error('Error sending message:', error)
       await sendMessage('❌ Failed to process your request. Please try again.', user.id, 'AI Assistant', 'assistant')
       setIsAITyping(false)
+      
+      // Refocus even after error
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value
     setInputValue(newValue)
     
@@ -588,6 +604,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+      // Focus is already handled in handleSendMessage
     }
   }
 
@@ -722,8 +739,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       <div className={`${styles.inputArea} ${isInteractiveFlow ? styles.inputAreaExpanded : ''}`}>
         <div className={`${styles.inputContainer} ${isInteractiveFlow ? styles.inputContainerExpanded : ''}`}>
           <textarea
+            ref={textareaRef}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={
               isWaitingForColor 
