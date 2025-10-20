@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CanvasState, Rectangle, ViewportTransform, ShapeLock } from '../types/canvas.types'
+import type Konva from 'konva'
 import { INITIAL_SCALE } from '../utils/constants'
 import { useShapes } from '../hooks/useShapes'
 import { useDocument } from '../hooks/useDocument'
@@ -67,6 +68,9 @@ export interface CanvasContextValue extends CanvasState {
   // Navigation
   panToPosition: (x: number, y: number, targetScale?: number) => void
   panToShapePosition: (shape: Rectangle) => void
+  // Stage ref for export
+  getStageRef: () => Konva.Stage | null
+  setStageRef: (stage: Konva.Stage | null) => void
 }
 
 const CanvasContext = createContext<CanvasContextValue | undefined>(undefined)
@@ -107,6 +111,7 @@ export function CanvasProvider({
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [shapeLocks, setShapeLocks] = useState<Record<string, ShapeLock>>({})
+  const [stageRef, setStageRefState] = useState<Konva.Stage | null>(null)
   const selectedTool: CanvasState['selectedTool'] = 'pan'
   const { user } = useAuth()
 
@@ -498,6 +503,15 @@ export function CanvasProvider({
     panToPosition(centerX, centerY, scale)
   }, [panToPosition])
 
+  // Stage ref management for export
+  const getStageRef = useCallback(() => {
+    return stageRef
+  }, [stageRef])
+
+  const setStageRef = useCallback((stage: Konva.Stage | null) => {
+    setStageRefState(stage)
+  }, [])
+
   // Computed state
   const isLoading = shapesLoading || documentLoading
 
@@ -561,6 +575,9 @@ export function CanvasProvider({
       // Navigation
       panToPosition,
       panToShapePosition,
+      // Stage ref for export
+      getStageRef,
+      setStageRef,
     }),
     [
       documentId,
@@ -620,6 +637,9 @@ export function CanvasProvider({
       // Navigation dependencies
       panToPosition,
       panToShapePosition,
+      // Stage ref dependencies
+      getStageRef,
+      setStageRef,
     ]
   )
 

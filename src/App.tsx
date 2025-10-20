@@ -8,6 +8,7 @@ import ErrorBoundary from './components/Layout/ErrorBoundary'
 import TemplatesDropdown from './components/Header/TemplatesDropdown'
 import ShapeSelector from './components/Header/ShapeSelector'
 import StatsDropdown from './components/Header/StatsDropdown'
+import ExportDropdown from './components/Header/ExportDropdown'
 import LocateDropdown, { type LocateDropdownRef } from './components/Header/LocateDropdown'
 import UserMenu from './components/Header/UserMenu'
 import ChatBox from './components/Chat/ChatBox'
@@ -205,6 +206,7 @@ function App() {
                   <TemplatesDropdown documentId={documentId} />
                   <ShapeSelector />
                   <StatsDropdown />
+                  <ExportDropdown />
                   <LocateDropdown ref={locateDropdownRef} />
                   <UserMenu />
                 </div>

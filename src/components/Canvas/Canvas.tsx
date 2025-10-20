@@ -78,7 +78,9 @@ export default function Canvas() {
     selectByType,
     selectByColor,
     bringToFront,
-    sendToBack
+    sendToBack,
+    // Stage ref for export
+    setStageRef
   } = useCanvas()
   const { users, isOnline } = usePresence()
   const { user } = useAuth()
@@ -448,6 +450,16 @@ export default function Canvas() {
   const pendingCursor = useRef<{ x: number; y: number } | null>(null)
   const lastSentPosition = useRef<{ x: number; y: number } | null>(null)
   const stageRef = useRef<any>(null)
+
+  // Pass stage ref to context when it changes
+  useEffect(() => {
+    if (stageRef.current) {
+      setStageRef(stageRef.current)
+    }
+    return () => {
+      setStageRef(null)
+    }
+  }, [setStageRef])
 
   // Throttled cursor update for smooth continuous updates
   const scheduleCursorSend = useMemo(
