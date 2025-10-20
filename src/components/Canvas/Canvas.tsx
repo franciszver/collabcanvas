@@ -22,6 +22,7 @@ import ActivityPanel from './ActivityPanel'
 import ZoomControls from './ZoomControls'
 import canvasBackground from '../../assets/user_images/background_2.jpg'
 import { trackShapeEdit } from '../../services/activityService'
+import { getVisibleShapes } from '../../utils/viewportCulling'
 
 // Helper to calculate text dimensions for auto-resize
 function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
@@ -147,6 +148,16 @@ export default function Canvas() {
   
   // Calculate shape numbers by type
   const shapeNumbers = useMemo(() => calculateShapeNumbers(rectangles), [rectangles])
+  
+  // Calculate visible shapes using viewport culling
+  const visibleShapes = useMemo(() => {
+    return getVisibleShapes(
+      rectangles,
+      viewport,
+      containerSize.width,
+      containerSize.height
+    )
+  }, [rectangles, viewport, containerSize])
   
   // Clamp viewport - no clamping needed since canvas fills entire window
   const clampViewport = useCallback(
@@ -439,7 +450,7 @@ export default function Canvas() {
       </Layer>
       {/* Shapes Layer */}
       <Layer listening>
-        {([...rectangles].sort((a, b) => (a.z ?? 0) - (b.z ?? 0))).map((r: Rectangle) => {
+        {([...visibleShapes].sort((a, b) => (a.z ?? 0) - (b.z ?? 0))).map((r: Rectangle) => {
           const isShapeSelected = isSelected(r.id)
           const isLocked = r.lockedBy && r.lockedBy !== user?.id
           const isLockedByUser = r.lockedBy === user?.id
@@ -1568,7 +1579,7 @@ export default function Canvas() {
       
       {/* Right side info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span>Total: {rectangles.length} shapes</span>
+        <span>Total: {rectangles.length} shapes ({visibleShapes.length} visible)</span>
         {hasSelection && (
           <span>•</span>
         )}
