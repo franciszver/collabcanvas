@@ -43,6 +43,12 @@ export function createEditEntry(
     
     if (distance > 5) {
       changes.push('moved')
+      const oldX = Math.round(oldProps.x)
+      const oldY = Math.round(oldProps.y)
+      const newX = Math.round(newProps.x)
+      const newY = Math.round(newProps.y)
+      if (details) details += '; '
+      details += `from (${oldX}, ${oldY}) to (${newX}, ${newY})`
     }
   }
 
@@ -52,6 +58,15 @@ export function createEditEntry(
     (newProps.height !== undefined && oldProps.height !== undefined && Math.abs(newProps.height - oldProps.height) > 2)
   ) {
     changes.push('resized')
+    if (newProps.width !== undefined && newProps.height !== undefined && 
+        oldProps.width !== undefined && oldProps.height !== undefined) {
+      const oldW = Math.round(oldProps.width)
+      const oldH = Math.round(oldProps.height)
+      const newW = Math.round(newProps.width)
+      const newH = Math.round(newProps.height)
+      if (details) details += '; '
+      details += `from ${oldW}×${oldH} to ${newW}×${newH}`
+    }
   }
 
   // Track rotation changes
@@ -61,20 +76,23 @@ export function createEditEntry(
     Math.abs(newProps.rotation - oldProps.rotation) > 1
   ) {
     changes.push('rotated')
+    const oldRot = Math.round(oldProps.rotation)
+    const newRot = Math.round(newProps.rotation)
+    if (details) details += '; '
+    details += `from ${oldRot}° to ${newRot}°`
   }
 
   // Track fill color changes
   if (newProps.fill !== undefined && oldProps.fill !== undefined && newProps.fill !== oldProps.fill) {
     changes.push('changed fill')
-    details = `from ${oldProps.fill} to ${newProps.fill}`
+    if (details) details += '; '
+    details += `fill from ${oldProps.fill} to ${newProps.fill}`
   }
 
   // Track stroke changes
   if (newProps.stroke !== undefined && oldProps.stroke !== undefined && newProps.stroke !== oldProps.stroke) {
     changes.push('changed stroke')
-    if (details) {
-      details += '; '
-    }
+    if (details) details += '; '
     details += `stroke from ${oldProps.stroke} to ${newProps.stroke}`
   }
 
