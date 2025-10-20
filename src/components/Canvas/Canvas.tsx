@@ -20,9 +20,9 @@ import SelectionBounds from './SelectionBounds'
 import MultiShapeProperties from './MultiShapeProperties'
 import GroupsPanel from './GroupsPanel'
 import ActivityPanel from './ActivityPanel'
-import ActivityBadge from './ActivityBadge'
 import ZoomControls from './ZoomControls'
 import canvasBackground from '../../assets/user_images/background_2.jpg'
+import { trackShapeEdit } from '../../services/activityService'
 
 // Helper to calculate text dimensions for auto-resize
 function measureTextDimensions(text: string, fontSize: number): { width: number; height: number } {
@@ -485,6 +485,11 @@ export default function Canvas() {
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
             const selected = selectedIdsRef.current
+            
+            // Track moves for activity history
+            const oldX = r.x
+            const oldY = r.y
+            
             if (selected.size > 1) {
               // persist all selected
               const prev = lastDragPosRef.current[r.id] || { x, y }
@@ -493,13 +498,29 @@ export default function Canvas() {
               for (const id of selected) {
                 if (id === r.id) {
                   updateRectangle(id, { x, y })
+                  // Track activity
+                  if (user) {
+                    trackShapeEdit(id, { x: oldX, y: oldY }, { x, y }, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                  }
                 } else {
                   const cur = rectangles.find((rc: Rectangle) => rc.id === id)
-                  if (cur) updateRectangle(id, { x: cur.x + dx, y: cur.y + dy })
+                  if (cur) {
+                    const newX = cur.x + dx
+                    const newY = cur.y + dy
+                    updateRectangle(id, { x: newX, y: newY })
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(id, { x: cur.x, y: cur.y }, { x: newX, y: newY }, user.id, user.displayName || 'Unknown User', cur.history).catch(console.error)
+                    }
+                  }
                 }
               }
             } else {
               updateRectangle(r.id, { x, y })
+              // Track activity
+              if (user) {
+                trackShapeEdit(r.id, { x: oldX, y: oldY }, { x, y }, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+              }
             }
             draggingIdRef.current = null
             
@@ -534,7 +555,18 @@ export default function Canvas() {
                     const newHeight = newRadius * 2
                     const newX = node.x() - newWidth / 2
                     const newY = node.y() - newHeight / 2
-                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                    const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                    
+                    // Track transform for activity history
+                    const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                    const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                    
+                    updateRectangle(r.id, newProps)
+                    
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                    }
                   }}
                 />
               {/* Lock Indicator */}
@@ -548,15 +580,6 @@ export default function Canvas() {
                   scale={viewport.scale}
                 />
               )}
-              {/* Activity Badge */}
-              <ActivityBadge
-                shape={r}
-                x={baseX}
-                y={baseY}
-                width={r.width}
-                height={r.height}
-                scale={viewport.scale}
-              />
             </Group>
           )
         }
@@ -587,21 +610,24 @@ export default function Canvas() {
                     if (node.scaleY) node.scaleY(1)
                     const newX = node.x() - newWidth / 2
                     const newY = node.y() - newHeight / 2
-                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                    const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                    
+                    // Track transform for activity history
+                    const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                    const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                    
+                    updateRectangle(r.id, newProps)
+                    
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                    }
                   }}
-                />
-                <ActivityBadge
-                  shape={r}
-                  x={baseX}
-                  y={baseY}
-                  width={r.width}
-                  height={r.height}
-                  scale={viewport.scale}
                 />
               </Group>
             )
           }
-          if (r.type === 'star') {
+        if (r.type === 'star') {
             const outer = Math.min(r.width, r.height) / 2
             const inner = outer / 2
             const cx = baseX + r.width / 2
@@ -630,21 +656,24 @@ export default function Canvas() {
                     if (node.scaleY) node.scaleY(1)
                     const newX = node.x() - newWidth / 2
                     const newY = node.y() - newHeight / 2
-                    updateRectangle(r.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                    const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                    
+                    // Track transform for activity history
+                    const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                    const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                    
+                    updateRectangle(r.id, newProps)
+                    
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                    }
                   }}
-                />
-                <ActivityBadge
-                  shape={r}
-                  x={baseX}
-                  y={baseY}
-                  width={r.width}
-                  height={r.height}
-                  scale={viewport.scale}
                 />
               </Group>
             )
           }
-          if (r.type === 'arrow') {
+        if (r.type === 'arrow') {
             const points = [0, r.height / 2, r.width, r.height / 2]
             return (
               <Group key={key}>
@@ -669,21 +698,26 @@ export default function Canvas() {
                     const newHeight = Math.max(5, r.height * scaleY)
                     if (node.scaleX) node.scaleX(1)
                     if (node.scaleY) node.scaleY(1)
-                    updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                    const newX = node.x()
+                    const newY = node.y()
+                    const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                    
+                    // Track transform for activity history
+                    const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                    const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                    
+                    updateRectangle(r.id, newProps)
+                    
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                    }
                   }}
-                />
-                <ActivityBadge
-                  shape={r}
-                  x={baseX}
-                  y={baseY}
-                  width={r.width}
-                  height={r.height}
-                  scale={viewport.scale}
                 />
               </Group>
             )
           }
-          if (r.type === 'text') {
+        if (r.type === 'text') {
             return (
               <Group key={key}>
                 <Text
@@ -710,16 +744,21 @@ export default function Canvas() {
                     const newHeight = Math.max(30, r.height * scaleY)
                     if (node.scaleX) node.scaleX(1)
                     if (node.scaleY) node.scaleY(1)
-                    updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                    const newX = node.x()
+                    const newY = node.y()
+                    const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                    
+                    // Track transform for activity history
+                    const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                    const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                    
+                    updateRectangle(r.id, newProps)
+                    
+                    // Track activity
+                    if (user) {
+                      trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                    }
                   }}
-                />
-                <ActivityBadge
-                  shape={r}
-                  x={baseX}
-                  y={baseY}
-                  width={r.width}
-                  height={r.height}
-                  scale={viewport.scale}
                 />
               </Group>
             )
@@ -755,7 +794,20 @@ export default function Canvas() {
                   const newHeight = Math.max(5, r.height * scaleY)
                   if (node.scaleX) node.scaleX(1)
                   if (node.scaleY) node.scaleY(1)
-                  updateRectangle(r.id, { x: node.x(), y: node.y(), width: newWidth, height: newHeight, rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
+                  const newX = node.x()
+                  const newY = node.y()
+                  const newRotation = node.rotation ? node.rotation() : (r.rotation || 0)
+                  
+                  // Track transform for activity history
+                  const oldProps = { x: r.x, y: r.y, width: r.width, height: r.height, rotation: r.rotation }
+                  const newProps = { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation }
+                  
+                  updateRectangle(r.id, newProps)
+                  
+                  // Track activity
+                  if (user) {
+                    trackShapeEdit(r.id, oldProps, newProps, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                  }
                 }}
               />
               {/* Lock Indicator */}
@@ -769,15 +821,6 @@ export default function Canvas() {
                   scale={viewport.scale}
                 />
               )}
-              {/* Activity Badge */}
-              <ActivityBadge
-                shape={r}
-                x={baseX}
-                y={baseY}
-                width={r.width}
-                height={r.height}
-                scale={viewport.scale}
-              />
             </Group>
           )
         })}
@@ -867,7 +910,15 @@ export default function Canvas() {
       const handleMultiColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newColor = e.target.value
         Array.from(selectedIds).forEach(id => {
-          updateRectangle(id, { fill: newColor })
+          const shape = rectangles.find(r => r.id === id);
+          if (shape) {
+            const oldColor = shape.fill;
+            updateRectangle(id, { fill: newColor });
+            // Track color change
+            if (user) {
+              trackShapeEdit(id, { fill: oldColor }, { fill: newColor }, user.id, user.displayName || 'Unknown User', shape.history).catch(console.error);
+            }
+          }
         })
         // Update color history (keep last 2 unique colors)
         setColorHistory(prev => {
@@ -970,7 +1021,15 @@ export default function Canvas() {
                     onClick={(e) => {
                       e.stopPropagation();
                       Array.from(selectedIds).forEach(id => {
-                        updateRectangle(id, { fill: color });
+                        const shape = rectangles.find(r => r.id === id);
+                        if (shape) {
+                          const oldColor = shape.fill;
+                          updateRectangle(id, { fill: color });
+                          // Track color change
+                          if (user) {
+                            trackShapeEdit(id, { fill: oldColor }, { fill: color }, user.id, user.displayName || 'Unknown User', shape.history).catch(console.error);
+                          }
+                        }
                       });
                     }}
                     title={`Use ${color}`}
@@ -1094,7 +1153,12 @@ export default function Canvas() {
                 value={sel.fill}
                 onChange={(e) => {
                   const newColor = e.target.value;
+                  const oldColor = sel.fill;
                   updateRectangle(sel.id, { fill: newColor });
+                  // Track color change
+                  if (user) {
+                    trackShapeEdit(sel.id, { fill: oldColor }, { fill: newColor }, user.id, user.displayName || 'Unknown User', sel.history).catch(console.error);
+                  }
                   // Update color history (keep last 2 unique colors)
                   setColorHistory(prev => {
                     const filtered = prev.filter(c => c !== newColor);
@@ -1113,7 +1177,12 @@ export default function Canvas() {
                     key={`${color}-${index}`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      const oldColor = sel.fill;
                       updateRectangle(sel.id, { fill: color });
+                      // Track color change
+                      if (user) {
+                        trackShapeEdit(sel.id, { fill: oldColor }, { fill: color }, user.id, user.displayName || 'Unknown User', sel.history).catch(console.error);
+                      }
                     }}
                     title={`Use ${color}`}
                     style={{

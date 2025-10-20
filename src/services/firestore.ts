@@ -16,7 +16,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore'
 import { getFirestoreDB } from './firebase'
-import type { Rectangle } from '../types/canvas.types'
+import type { Rectangle, ActivityHistoryEntry } from '../types/canvas.types'
 
 // Shape document interface for Firestore
 export interface ShapeDocument {
@@ -44,6 +44,12 @@ export interface ShapeDocument {
   isLocked?: boolean
   lockedBy?: string
   lockedAt?: any // Firestore Timestamp
+  // Comments and Activity Tracking
+  comment?: string
+  commentBy?: string
+  commentByName?: string
+  commentAt?: number
+  history?: ActivityHistoryEntry[]
 }
 
 // Document metadata interface
@@ -146,6 +152,17 @@ export function rectangleToShape(rect: Rectangle, documentId: string, userId: st
     shape.fontSize = rect.fontSize
   }
   
+  // Include comment fields if they exist
+  if (rect.comment !== undefined) {
+    shape.comment = rect.comment
+    shape.commentBy = rect.commentBy
+    shape.commentByName = rect.commentByName
+    shape.commentAt = rect.commentAt
+  }
+  if (rect.history !== undefined) {
+    shape.history = rect.history
+  }
+  
   return shape
 }
 
@@ -163,6 +180,12 @@ export function shapeToRectangle(shape: ShapeDocument): Rectangle {
     fill: shape.fill,
     text: shape.text,
     fontSize: shape.fontSize,
+    // Map comment and history fields
+    comment: shape.comment,
+    commentBy: shape.commentBy,
+    commentByName: shape.commentByName,
+    commentAt: shape.commentAt,
+    history: shape.history,
   }
 }
 
