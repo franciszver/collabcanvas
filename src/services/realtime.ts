@@ -509,4 +509,110 @@ export async function setupViewportDisconnectCleanup(userId: string): Promise<vo
   }
 }
 
+// Bulk updates channel via RTDB
+export interface BulkShapeUpdate {
+  shapeId: string
+  updates: Record<string, any>
+}
+
+export async function publishBulkUpdateRtdb(
+  userId: string,
+  updates: BulkShapeUpdate[],
+  documentId: string
+): Promise<void> {
+  if (!updates.length) return
+  
+  const timestamp = Date.now()
+  const bulkUpdateRef = ref(rtdb(), `bulkUpdates/${documentId}/${userId}/${timestamp}`)
+  
+  try {
+    await update(bulkUpdateRef, {
+      updates,
+      updatedAt: serverTimestamp() as any
+    })
+    
+    // Auto-expire after 5 seconds to prevent memory buildup
+    setTimeout(async () => {
+      try {
+        await remove(bulkUpdateRef)
+      } catch (error) {
+        console.warn('Failed to cleanup bulk update:', error)
+      }
+    }, 5000)
+  } catch (error) {
+    console.warn('Failed to publish bulk update, retrying...', error)
+    // Retry once after a short delay
+    setTimeout(async () => {
+      try {
+        await update(bulkUpdateRef, {
+          updates,
+          updatedAt: serverTimestamp() as any
+        })
+      } catch (retryError) {
+        console.error('Failed to publish bulk update after retry:', retryError)
+      }
+    }, 100)
+  }
+}
+
+export function subscribeToBulkUpdateRtdb(
+  documentId: string,
+  selfUserId: string,
+  callback: (updates: BulkShapeUpdate[], fromUserId: string) => void
+): () => void {
+  const bulkUpdatesRef = ref(rtdb(), `bulkUpdates/${documentId}`)
+  
+  const handler = (snap: any) => {
+    const val = snap.val() || {}
+    
+    // Process updates from all users except self
+    for (const [userId, userUpdates] of Object.entries(val)) {
+      if (userId === selfUserId) continue
+      
+      // Process all timestamps for this user
+      const timestampData = userUpdates as any
+      for (const data of Object.values(timestampData)) {
+        const updateData = data as any
+        if (updateData?.updates && Array.isArray(updateData.updates)) {
+          callback(updateData.updates, userId)
+        }
+      }
+    }
+  }
+  
+  onValue(bulkUpdatesRef, handler)
+  return () => off(bulkUpdatesRef, 'value', handler)
+}
+
+// Clean up stale bulk updates (call periodically if needed)
+export async function cleanupStaleBulkUpdatesRtdb(documentId: string, maxAgeMs: number = 10000): Promise<void> {
+  const bulkUpdatesRef = ref(rtdb(), `bulkUpdates/${documentId}`)
+  const now = Date.now()
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(bulkUpdatesRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const updates: Record<string, any> = {}
+    
+    for (const [userId, userUpdates] of Object.entries(data)) {
+      const timestampData = userUpdates as any
+      for (const [timestamp] of Object.entries(timestampData)) {
+        const ts = parseInt(timestamp, 10)
+        if (now - ts > maxAgeMs) {
+          updates[`bulkUpdates/${documentId}/${userId}/${timestamp}`] = null
+        }
+      }
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb()), updates)
+    }
+  } catch (error) {
+    console.warn('Failed to cleanup stale bulk updates:', error)
+  }
+}
+
 

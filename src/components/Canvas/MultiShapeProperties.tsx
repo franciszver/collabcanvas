@@ -10,7 +10,7 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
   const { 
     selectedIds, 
     getSelectedShapes, 
-    updateRectangle, 
+    updateMultipleRectangles,
     deleteRectangle,
     bringToFront,
     sendToBack,
@@ -49,10 +49,10 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     setIsProcessing(true)
     
     try {
-      const updatePromises = selectedShapes.map(shape => 
-        updateRectangle(shape.id, { fill: color })
+      // Use bulk update for instant sync
+      await updateMultipleRectangles(
+        selectedShapes.map(shape => ({ id: shape.id, updates: { fill: color } }))
       )
-      await Promise.all(updatePromises)
     } catch (error) {
       console.error('Failed to update colors:', error)
     } finally {
@@ -65,10 +65,10 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     setIsProcessing(true)
     
     try {
-      const updatePromises = selectedShapes.map(shape => 
-        updateRectangle(shape.id, { stroke: color })
+      // Use bulk update for instant sync
+      await updateMultipleRectangles(
+        selectedShapes.map(shape => ({ id: shape.id, updates: { stroke: color } }))
       )
-      await Promise.all(updatePromises)
     } catch (error) {
       console.error('Failed to update stroke colors:', error)
     } finally {
@@ -81,10 +81,10 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     setIsProcessing(true)
     
     try {
-      const updatePromises = selectedShapes.map(shape => 
-        updateRectangle(shape.id, { strokeWidth: width })
+      // Use bulk update for instant sync
+      await updateMultipleRectangles(
+        selectedShapes.map(shape => ({ id: shape.id, updates: { strokeWidth: width } }))
       )
-      await Promise.all(updatePromises)
     } catch (error) {
       console.error('Failed to update stroke widths:', error)
     } finally {

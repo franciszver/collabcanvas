@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { subscribeToShapes, createShape, updateShape, deleteShape, deleteAllShapes, rectangleToShape } from '../services/firestore'
-import { publishDragPositionsRtdbThrottled, subscribeToDragRtdb, clearDragPositionRtdb } from '../services/realtime'
+import { subscribeToShapes, createShape, updateShape, deleteShape, deleteAllShapes, rectangleToShape, updateMultipleShapes } from '../services/firestore'
+import { publishDragPositionsRtdbThrottled, subscribeToDragRtdb, clearDragPositionRtdb, publishBulkUpdateRtdb, subscribeToBulkUpdateRtdb, type BulkShapeUpdate } from '../services/realtime'
 import type { Rectangle } from '../types/canvas.types'
 import { useAuth } from '../contexts/AuthContext'
 import { createEditEntry, addToHistory } from '../utils/historyTracking'
@@ -18,6 +18,7 @@ export interface UseShapesReturn {
   // Shape operations
   addShape: (shape: Rectangle) => Promise<void>
   updateShape: (id: string, updates: Partial<Rectangle>) => Promise<void>
+  updateMultipleShapes: (updates: Array<{ shapeId: string; updates: Partial<Rectangle> }>) => Promise<void>
   deleteShape: (id: string) => Promise<void>
   clearAllShapes: () => Promise<void>
   
@@ -61,6 +62,38 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     return unsubscribe
   }, [enableLiveDrag, user?.id, documentId])
 
+  // Subscribe to bulk updates from RTDB
+  useEffect(() => {
+    if (!user || !documentId) return
+
+    const unsubscribe = subscribeToBulkUpdateRtdb(documentId, user.id, (updates) => {
+      // Apply bulk updates immediately to local state
+      setShapes((prevShapes) => {
+        const updatedShapes = [...prevShapes]
+        
+        for (const { shapeId, updates: shapeUpdates } of updates) {
+          const index = updatedShapes.findIndex(s => s.id === shapeId)
+          if (index === -1) continue
+          
+          const shape = updatedShapes[index]
+          
+          // Skip shapes locked by other users
+          if (shape.lockedBy && shape.lockedBy !== user.id) continue
+          
+          // Apply updates to the shape
+          updatedShapes[index] = {
+            ...shape,
+            ...shapeUpdates
+          }
+        }
+        
+        return updatedShapes
+      })
+    })
+
+    return unsubscribe
+  }, [user?.id, documentId])
+
   // Shape operations
   const addShape = useCallback(async (shape: Rectangle) => {
     if (!user) throw new Error('User not authenticated')
@@ -96,7 +129,6 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
       if (updates.fontSize !== undefined) shapeUpdates.fontSize = updates.fontSize
       if (updates.stroke !== undefined) shapeUpdates.stroke = updates.stroke
       if (updates.strokeWidth !== undefined) shapeUpdates.strokeWidth = updates.strokeWidth
-      if (updates.opacity !== undefined) shapeUpdates.opacity = updates.opacity
       
       // Handle comment and history fields (pass through without tracking)
       if (updates.comment !== undefined) shapeUpdates.comment = updates.comment
@@ -127,6 +159,98 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
       throw err
     }
   }, [user, shapes])
+
+  const updateMultipleShapesHandler = useCallback(async (updates: Array<{ shapeId: string; updates: Partial<Rectangle> }>) => {
+    if (!user) throw new Error('User not authenticated')
+    if (!updates.length) return
+    
+    try {
+      // Step 1: Optimistically update local state immediately
+      setShapes((prevShapes) => {
+        const updatedShapes = [...prevShapes]
+        
+        for (const { shapeId, updates: shapeUpdates } of updates) {
+          const index = updatedShapes.findIndex(s => s.id === shapeId)
+          if (index === -1) continue
+          
+          const shape = updatedShapes[index]
+          
+          // Skip shapes locked by other users
+          if (shape.lockedBy && shape.lockedBy !== user.id) continue
+          
+          // Apply updates to the shape
+          updatedShapes[index] = {
+            ...shape,
+            ...shapeUpdates
+          }
+        }
+        
+        return updatedShapes
+      })
+      
+      // Step 2: Broadcast to RTDB for instant remote updates
+      const rtdbUpdates: BulkShapeUpdate[] = updates.map(({ shapeId, updates: shapeUpdates }) => ({
+        shapeId,
+        updates: shapeUpdates as Record<string, any>
+      }))
+      
+      await publishBulkUpdateRtdb(user.id, rtdbUpdates, documentId)
+      
+      // Step 3: Batch update Firestore in background
+      const firestoreUpdates = updates.map(({ shapeId, updates: shapeUpdates }) => {
+        const currentShape = shapes.find(s => s.id === shapeId)
+        
+        // Convert Rectangle updates to ShapeDocument updates
+        const shapeDocUpdates: any = {}
+        if (shapeUpdates.type !== undefined) shapeDocUpdates.type = shapeUpdates.type
+        if (shapeUpdates.x !== undefined) shapeDocUpdates.x = shapeUpdates.x
+        if (shapeUpdates.y !== undefined) shapeDocUpdates.y = shapeUpdates.y
+        if (shapeUpdates.width !== undefined) shapeDocUpdates.width = shapeUpdates.width
+        if (shapeUpdates.height !== undefined) shapeDocUpdates.height = shapeUpdates.height
+        if (shapeUpdates.rotation !== undefined) shapeDocUpdates.rotation = shapeUpdates.rotation
+        if (shapeUpdates.z !== undefined) shapeDocUpdates.z = shapeUpdates.z
+        if (shapeUpdates.fill !== undefined) shapeDocUpdates.fill = shapeUpdates.fill
+        if (shapeUpdates.text !== undefined) shapeDocUpdates.text = shapeUpdates.text
+        if (shapeUpdates.fontSize !== undefined) shapeDocUpdates.fontSize = shapeUpdates.fontSize
+        if (shapeUpdates.stroke !== undefined) shapeDocUpdates.stroke = shapeUpdates.stroke
+        if (shapeUpdates.strokeWidth !== undefined) shapeDocUpdates.strokeWidth = shapeUpdates.strokeWidth
+        
+        // Handle comment fields
+        if (shapeUpdates.comment !== undefined) shapeDocUpdates.comment = shapeUpdates.comment
+        if (shapeUpdates.commentBy !== undefined) shapeDocUpdates.commentBy = shapeUpdates.commentBy
+        if (shapeUpdates.commentByName !== undefined) shapeDocUpdates.commentByName = shapeUpdates.commentByName
+        if (shapeUpdates.commentAt !== undefined) shapeDocUpdates.commentAt = shapeUpdates.commentAt
+        
+        // Handle history tracking
+        if (shapeUpdates.history !== undefined) {
+          shapeDocUpdates.history = shapeUpdates.history
+        } else if (currentShape) {
+          // Only auto-track if history is not explicitly provided
+          const editEntry = createEditEntry(
+            currentShape,
+            shapeUpdates,
+            user.id,
+            user.displayName || 'Unknown User'
+          )
+          
+          if (editEntry) {
+            shapeDocUpdates.history = addToHistory(currentShape.history, editEntry, 10)
+          }
+        }
+        
+        return { shapeId, updates: shapeDocUpdates }
+      })
+      
+      // Fire and forget - Firestore snapshot will reconcile any issues
+      updateMultipleShapes(firestoreUpdates).catch((err) => {
+        console.error('Failed to batch update shapes in Firestore:', err)
+      })
+    } catch (err) {
+      console.error('Failed to update multiple shapes:', err)
+      setError(err as Error)
+      throw err
+    }
+  }, [user, documentId, shapes])
 
   const deleteShapeHandler = useCallback(async (id: string) => {
     try {
@@ -173,6 +297,7 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     error,
     addShape,
     updateShape: updateShapeHandler,
+    updateMultipleShapes: updateMultipleShapesHandler,
     deleteShape: deleteShapeHandler,
     clearAllShapes: clearAllShapesHandler,
     liveDragPositions,

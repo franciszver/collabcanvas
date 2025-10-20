@@ -13,6 +13,7 @@ import { useCursorSync } from '../../hooks/useCursorSync'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { calculateShapeNumbers, getShapeTypeName, generateRectId } from '../../utils/helpers'
 import { throttle } from '../../utils/performance'
+import { createEditEntry, addToHistory } from '../../utils/historyTracking'
 import { SimpleLockIndicator } from './LockIndicator'
 import LockTooltip from './LockTooltip'
 import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
@@ -48,6 +49,7 @@ export default function Canvas() {
     setViewport, 
     rectangles, 
     updateRectangle, 
+    updateMultipleRectangles,
     deleteRectangle, 
     addRectangle,
     isLoading, 
@@ -145,6 +147,11 @@ export default function Canvas() {
   }, [isBoxSelecting, endBoxSelection, user])
   const selectedIdsRef = useRef<Set<string>>(new Set())
   const transformerRef = useRef<Konva.Transformer>(null)
+  
+  // Sync selectedIdsRef with selectedIds state for stable reference in callbacks
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds
+  }, [selectedIds])
   
   // Calculate shape numbers by type
   const shapeNumbers = useMemo(() => calculateShapeNumbers(rectangles), [rectangles])
@@ -322,6 +329,87 @@ export default function Canvas() {
       tr.getLayer()?.batchDraw()
     }
   }, [selectedIds, rectangles])
+
+  // Handle multi-shape transform end (rotation/resize)
+  useEffect(() => {
+    const tr = transformerRef.current
+    if (!tr) return
+    
+    const handleTransformEnd = () => {
+      const selected = selectedIdsRef.current
+      if (selected.size <= 1) return // Single shape transforms are handled by individual onTransformEnd
+      
+      // Get all nodes being transformed
+      const nodes = tr.nodes()
+      if (nodes.length === 0) return
+      
+      // Collect all updates for bulk operation
+      const allUpdates: Array<{ id: string; updates: Partial<Rectangle> }> = []
+      
+      // Calculate updates for all transformed shapes
+      nodes.forEach(node => {
+        const id = (node.attrs as any).id
+        if (!id) return
+        
+        const shape = rectangles.find((r: Rectangle) => r.id === id)
+        if (!shape) return
+        
+        // Skip locked shapes
+        if (shape.lockedBy && shape.lockedBy !== user?.id) return
+        
+        // Calculate new properties based on shape type
+        const updates: Partial<Rectangle> = {}
+        
+        // Position (center-based shapes need offset adjustment)
+        if (shape.type === 'circle' || shape.type === 'triangle' || shape.type === 'star') {
+          updates.x = node.x() - node.width() / 2
+          updates.y = node.y() - node.height() / 2
+        } else {
+          updates.x = node.x()
+          updates.y = node.y()
+        }
+        
+        // Size
+        const scaleX = node.scaleX()
+        const scaleY = node.scaleY()
+        updates.width = Math.max(5, shape.width * scaleX)
+        updates.height = Math.max(5, shape.height * scaleY)
+        
+        // Rotation
+        updates.rotation = node.rotation()
+        
+        // Reset scale
+        node.scaleX(1)
+        node.scaleY(1)
+        
+        // Track activity history for this shape
+        if (user) {
+          const editEntry = createEditEntry(
+            shape,
+            updates,
+            user.id,
+            user.displayName || 'Unknown User'
+          )
+          if (editEntry) {
+            updates.history = addToHistory(shape.history, editEntry, 10)
+          }
+        }
+        
+        allUpdates.push({ id, updates })
+      })
+      
+      // Batch update all shapes with a single network call
+      if (allUpdates.length > 0) {
+        updateMultipleRectangles(allUpdates).catch(console.error)
+      }
+    }
+    
+    tr.on('transformend', handleTransformEnd)
+    
+    return () => {
+      tr.off('transformend', handleTransformEnd)
+    }
+  }, [selectedIds, rectangles, user, updateMultipleRectangles])
 
   // Deselect locally if the selected rectangle was deleted remotely
   useEffect(() => {
@@ -537,10 +625,11 @@ export default function Canvas() {
             const cy = node.y()
             const { x, y } = toTopLeft(cx, cy)
             lastDragPosRef.current[r.id] = { x, y }
-            // Update local state immediately for responsive UI
-            // Note: In hybrid approach, this is handled by the context
-            // Publish live drag update via RTDB for other users
-            if (user) {
+            
+            // Only publish live RTDB updates for single shape selection
+            // Multi-select will update all shapes at drag end to reduce network traffic
+            const selected = selectedIdsRef.current
+            if (user && selected.size <= 1) {
               publishDragUpdate(r.id, { x, y }).catch(console.error)
             }
           }
@@ -550,41 +639,70 @@ export default function Canvas() {
             const { x, y } = toTopLeft(cx, cy)
             const selected = selectedIdsRef.current
             
-            // Track moves for activity history
-            const oldX = r.x
-            const oldY = r.y
-            
             if (selected.size > 1) {
-              // persist all selected
+              // Batch update all selected shapes with bulk update
               const prev = lastDragPosRef.current[r.id] || { x, y }
               const dx = x - prev.x
               const dy = y - prev.y
+              
+              const allUpdates: Array<{ id: string; updates: Partial<Rectangle> }> = []
+              
               for (const id of selected) {
+                const cur = rectangles.find((rc: Rectangle) => rc.id === id)
+                if (!cur) continue
+                
+                // Skip locked shapes
+                if (cur.lockedBy && cur.lockedBy !== user?.id) continue
+                
+                let newX: number, newY: number
                 if (id === r.id) {
-                  updateRectangle(id, { x, y })
-                  // Track activity
-                  if (user) {
-                    trackShapeEdit(id, { x: oldX, y: oldY }, { x, y }, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
-                  }
+                  newX = x
+                  newY = y
                 } else {
-                  const cur = rectangles.find((rc: Rectangle) => rc.id === id)
-                  if (cur) {
-                    const newX = cur.x + dx
-                    const newY = cur.y + dy
-                    updateRectangle(id, { x: newX, y: newY })
-                    // Track activity
-                    if (user) {
-                      trackShapeEdit(id, { x: cur.x, y: cur.y }, { x: newX, y: newY }, user.id, user.displayName || 'Unknown User', cur.history).catch(console.error)
-                    }
+                  newX = cur.x + dx
+                  newY = cur.y + dy
+                }
+                
+                const updates: Partial<Rectangle> = { x: newX, y: newY }
+                
+                // Track activity history
+                if (user) {
+                  const editEntry = createEditEntry(
+                    cur,
+                    updates,
+                    user.id,
+                    user.displayName || 'Unknown User'
+                  )
+                  if (editEntry) {
+                    updates.history = addToHistory(cur.history, editEntry, 10)
                   }
                 }
+                
+                allUpdates.push({ id, updates })
+              }
+              
+              // Single bulk update call
+              if (allUpdates.length > 0) {
+                updateMultipleRectangles(allUpdates).catch(console.error)
               }
             } else {
-              updateRectangle(r.id, { x, y })
-              // Track activity
+              // Single shape update
+              const updates: Partial<Rectangle> = { x, y }
+              
+              // Track activity history
               if (user) {
-                trackShapeEdit(r.id, { x: oldX, y: oldY }, { x, y }, user.id, user.displayName || 'Unknown User', r.history).catch(console.error)
+                const editEntry = createEditEntry(
+                  r,
+                  updates,
+                  user.id,
+                  user.displayName || 'Unknown User'
+                )
+                if (editEntry) {
+                  updates.history = addToHistory(r.history, editEntry, 10)
+                }
               }
+              
+              updateRectangle(r.id, updates)
             }
             draggingIdRef.current = null
             
@@ -840,16 +958,7 @@ export default function Canvas() {
                 strokeWidth={r.strokeWidth}
                 rotation={r.rotation || 0}
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
-                onDragEnd={(evt: any) => {
-                  const node = evt.target
-                  updateRectangle(r.id, { x: node.x(), y: node.y(), rotation: node.rotation ? node.rotation() : (r.rotation || 0) })
-                  draggingIdRef.current = null
-                  
-                  // Clear RTDB drag data for this shape
-                  if (user) {
-                    clearDragUpdate(r.id).catch(() => {})
-                  }
-                }}
+                onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
                 onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1

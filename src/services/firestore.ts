@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  writeBatch,
   type Unsubscribe,
   type Firestore,
   type DocumentData,
@@ -125,6 +126,42 @@ export async function deleteAllShapes(documentId: string): Promise<void> {
   const snapshot = await getDocs(shapesQuery)
   const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref))
   await Promise.all(deletePromises)
+}
+
+// Batch update multiple shapes atomically
+export async function updateMultipleShapes(
+  updates: Array<{ shapeId: string; updates: Partial<Omit<ShapeDocument, 'id' | 'createdAt' | 'createdBy'>> }>
+): Promise<void> {
+  if (!updates.length) return
+  
+  const BATCH_LIMIT = 500 // Firestore batch limit
+  const batches: Array<Array<typeof updates[0]>> = []
+  
+  // Split updates into chunks of 500
+  for (let i = 0; i < updates.length; i += BATCH_LIMIT) {
+    batches.push(updates.slice(i, i + BATCH_LIMIT))
+  }
+  
+  // Execute batches sequentially
+  for (const batch of batches) {
+    const writeBatchInstance = writeBatch(db())
+    
+    for (const { shapeId, updates: shapeUpdates } of batch) {
+      const shapeRef = shapeDoc(shapeId)
+      writeBatchInstance.update(shapeRef, {
+        ...shapeUpdates,
+        updatedAt: serverTimestamp(),
+      })
+    }
+    
+    try {
+      await writeBatchInstance.commit()
+    } catch (error) {
+      console.error('Failed to commit batch update:', error)
+      // Don't throw - let Firestore snapshot reconcile
+      // This prevents cascading failures
+    }
+  }
 }
 
 // Convert Rectangle to ShapeDocument

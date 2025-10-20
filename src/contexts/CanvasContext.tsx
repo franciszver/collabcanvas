@@ -16,6 +16,7 @@ export interface CanvasContextValue extends CanvasState {
   setRectangles: (r: Rectangle[]) => void
   addRectangle: (rect: Rectangle) => void
   updateRectangle: (id: string, update: Partial<Rectangle>) => void
+  updateMultipleRectangles: (updates: Array<{ id: string; updates: Partial<Rectangle> }>) => Promise<void>
   deleteRectangle: (id: string) => void
   isLoading: boolean
   clearAllRectangles: () => Promise<void>
@@ -119,6 +120,7 @@ export function CanvasProvider({
     isLoading: shapesLoading,
     addShape,
     updateShape,
+    updateMultipleShapes,
     deleteShape,
     clearAllShapes,
     liveDragPositions,
@@ -222,6 +224,20 @@ export function CanvasProvider({
       throw err
     }
   }, [updateShape])
+
+  const updateMultipleRectangles = useCallback(async (updates: Array<{ id: string; updates: Partial<Rectangle> }>) => {
+    try {
+      // Map to the format expected by updateMultipleShapes
+      const shapesUpdates = updates.map(({ id, updates: updateData }) => ({
+        shapeId: id,
+        updates: updateData
+      }))
+      await updateMultipleShapes(shapesUpdates)
+    } catch (err) {
+      console.error('Failed to update multiple rectangles:', err)
+      throw err
+    }
+  }, [updateMultipleShapes])
 
   const deleteRectangle = useCallback(async (id: string) => {
     try {
@@ -484,6 +500,7 @@ export function CanvasProvider({
       setRectangles: () => {}, // Not used in hybrid approach
       addRectangle,
       updateRectangle,
+      updateMultipleRectangles,
       deleteRectangle,
       isLoading,
       clearAllRectangles,
@@ -541,6 +558,7 @@ export function CanvasProvider({
       handleViewportChange,
       addRectangle,
       updateRectangle,
+      updateMultipleRectangles,
       deleteRectangle,
       isLoading,
       clearAllRectangles,
