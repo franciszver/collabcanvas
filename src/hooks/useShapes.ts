@@ -145,6 +145,22 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
       if (updates.stroke !== undefined) shapeUpdates.stroke = updates.stroke
       if (updates.strokeWidth !== undefined) shapeUpdates.strokeWidth = updates.strokeWidth
       
+      // Handle shape-specific fields
+      if (updates.radius !== undefined) shapeUpdates.radius = updates.radius
+      if (updates.sides !== undefined) shapeUpdates.sides = updates.sides
+      if (updates.points !== undefined) shapeUpdates.points = updates.points
+      
+      // Handle locking fields
+      if (updates.lockedBy !== undefined) shapeUpdates.lockedBy = updates.lockedBy
+      if (updates.lockedByName !== undefined) shapeUpdates.lockedByName = updates.lockedByName
+      if (updates.lockedAt !== undefined) shapeUpdates.lockedAt = updates.lockedAt
+      
+      // Handle grouping field
+      if (updates.groupId !== undefined) shapeUpdates.groupId = updates.groupId
+      
+      // Always set updatedBy for tracking
+      shapeUpdates.updatedBy = user.id
+      
       // Handle comment and history fields (pass through without tracking)
       if (updates.comment !== undefined) shapeUpdates.comment = updates.comment
       if (updates.commentBy !== undefined) shapeUpdates.commentBy = updates.commentBy
@@ -229,6 +245,22 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
         if (shapeUpdates.fontSize !== undefined) shapeDocUpdates.fontSize = shapeUpdates.fontSize
         if (shapeUpdates.stroke !== undefined) shapeDocUpdates.stroke = shapeUpdates.stroke
         if (shapeUpdates.strokeWidth !== undefined) shapeDocUpdates.strokeWidth = shapeUpdates.strokeWidth
+        
+        // Handle shape-specific fields
+        if (shapeUpdates.radius !== undefined) shapeDocUpdates.radius = shapeUpdates.radius
+        if (shapeUpdates.sides !== undefined) shapeDocUpdates.sides = shapeUpdates.sides
+        if (shapeUpdates.points !== undefined) shapeDocUpdates.points = shapeUpdates.points
+        
+        // Handle locking fields
+        if (shapeUpdates.lockedBy !== undefined) shapeDocUpdates.lockedBy = shapeUpdates.lockedBy
+        if (shapeUpdates.lockedByName !== undefined) shapeDocUpdates.lockedByName = shapeUpdates.lockedByName
+        if (shapeUpdates.lockedAt !== undefined) shapeDocUpdates.lockedAt = shapeUpdates.lockedAt
+        
+        // Handle grouping field
+        if (shapeUpdates.groupId !== undefined) shapeDocUpdates.groupId = shapeUpdates.groupId
+        
+        // Always set updatedBy for tracking
+        shapeDocUpdates.updatedBy = user.id
         
         // Handle comment fields
         if (shapeUpdates.comment !== undefined) shapeDocUpdates.comment = shapeUpdates.comment

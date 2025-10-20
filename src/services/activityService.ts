@@ -1,4 +1,4 @@
-import { updateShape } from './firestore'
+import { updateShape, deleteField } from './firestore'
 import { createCommentEntry, createEditEntry, addToHistory } from '../utils/historyTracking'
 import type { Rectangle, ActivityHistoryEntry } from '../types/canvas.types'
 
@@ -32,10 +32,10 @@ export async function clearShapeComment(
   currentShape: Rectangle
 ): Promise<void> {
   await updateShape(shapeId, {
-    comment: undefined,
-    commentBy: undefined,
-    commentByName: undefined,
-    commentAt: undefined,
+    comment: deleteField(),
+    commentBy: deleteField(),
+    commentByName: deleteField(),
+    commentAt: deleteField(),
     // Keep history intact
   })
 }

@@ -7,6 +7,7 @@ import { useDocument } from '../hooks/useDocument'
 import { useSelection } from '../hooks/useSelection'
 import { useAuth } from './AuthContext'
 import { lockShapes, unlockShapes } from '../services/locking'
+import { deleteField } from '../services/firestore'
 import { debounce } from '../utils/performance'
 import { subscribeToViewportRtdb, setupViewportDisconnectCleanup } from '../services/realtime'
 // import { publishSelectionRtdb, clearSelectionRtdb } from '../services/realtime'
@@ -387,7 +388,7 @@ export function CanvasProvider({
     try {
       // Remove group ID from all selected shapes
       const updatePromises = shapeIds.map(shapeId => 
-        updateShape(shapeId, { groupId: undefined })
+        updateShape(shapeId, { groupId: deleteField() as any })
       )
       await Promise.all(updatePromises)
     } catch (err) {

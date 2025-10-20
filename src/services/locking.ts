@@ -1,4 +1,4 @@
-import { updateShape } from './firestore'
+import { updateShape, deleteField } from './firestore'
 import type { Rectangle, ShapeLock } from '../types/canvas.types'
 
 /**
@@ -33,9 +33,9 @@ export async function unlockShapes(shapeIds: string[]): Promise<void> {
   if (shapeIds.length === 0) return
 
   const unlockData = {
-        lockedBy: undefined,
-        lockedByName: undefined,
-        lockedAt: undefined
+    lockedBy: deleteField(),
+    lockedByName: deleteField(),
+    lockedAt: deleteField()
   }
 
   // Update each shape in Firestore to remove lock

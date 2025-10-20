@@ -11,6 +11,7 @@ import {
   orderBy,
   serverTimestamp,
   writeBatch,
+  deleteField,
   type Unsubscribe,
   type Firestore,
   type DocumentData,
@@ -18,6 +19,9 @@ import {
 } from 'firebase/firestore'
 import { getFirestoreDB } from './firebase'
 import type { Rectangle, ActivityHistoryEntry } from '../types/canvas.types'
+
+// Re-export deleteField for use in other services
+export { deleteField }
 
 // Shape document interface for Firestore
 export interface ShapeDocument {
@@ -44,7 +48,14 @@ export interface ShapeDocument {
   documentId: string
   isLocked?: boolean
   lockedBy?: string
+  lockedByName?: string
   lockedAt?: any // Firestore Timestamp
+  // Shape-specific fields
+  radius?: number
+  sides?: number
+  points?: number
+  // Grouping
+  groupId?: string
   // Comments and Activity Tracking
   comment?: string
   commentBy?: string
@@ -77,6 +88,34 @@ function db(): Firestore {
   return getFirestoreDB()
 }
 
+// Helper to filter out undefined values from update objects (including nested objects/arrays)
+// Firestore rejects undefined - fields must be omitted or use deleteField()
+function filterUndefined(obj: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {}
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      // Skip undefined values
+      continue
+    } else if (Array.isArray(value)) {
+      // Recursively filter arrays
+      result[key] = value.map(item => {
+        if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+          return filterUndefined(item)
+        }
+        return item
+      })
+    } else if (typeof value === 'object' && value !== null && value.constructor === Object) {
+      // Recursively filter plain objects (not Firestore special objects like Timestamp)
+      result[key] = filterUndefined(value)
+    } else {
+      result[key] = value
+    }
+  }
+  
+  return result
+}
+
 // Shape operations
 export function shapesCollection() {
   return collection(db(), 'shapes')
@@ -107,10 +146,11 @@ export async function createShape(shape: Omit<ShapeDocument, 'createdAt' | 'upda
 
 export async function updateShape(shapeId: string, updates: Partial<Omit<ShapeDocument, 'id' | 'createdAt' | 'createdBy'>>): Promise<void> {
   const shapeRef = shapeDoc(shapeId)
-  await updateDoc(shapeRef, {
+  const filteredUpdates = filterUndefined({
     ...updates,
     updatedAt: serverTimestamp(),
   })
+  await updateDoc(shapeRef, filteredUpdates)
 }
 
 export async function deleteShape(shapeId: string): Promise<void> {
@@ -148,10 +188,11 @@ export async function updateMultipleShapes(
     
     for (const { shapeId, updates: shapeUpdates } of batch) {
       const shapeRef = shapeDoc(shapeId)
-      writeBatchInstance.update(shapeRef, {
+      const filteredUpdates = filterUndefined({
         ...shapeUpdates,
         updatedAt: serverTimestamp(),
       })
+      writeBatchInstance.update(shapeRef, filteredUpdates)
     }
     
     try {
@@ -304,10 +345,11 @@ export async function updateDocument(
   updates: Partial<Omit<DocumentDocument, 'id' | 'createdAt' | 'ownerId'>>
 ): Promise<void> {
   const docRef = documentDoc(documentId)
-  await updateDoc(docRef, {
+  const filteredUpdates = filterUndefined({
     ...updates,
     updatedAt: serverTimestamp(),
   })
+  await updateDoc(docRef, filteredUpdates)
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {

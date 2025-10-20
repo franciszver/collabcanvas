@@ -11,10 +11,26 @@ import {
   onSnapshot,
   Timestamp,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore'
 import { getFirestore } from 'firebase/firestore'
 import type { ShapeGroup } from '../types/canvas.types'
+
+// Helper to filter out undefined values from update objects
+// Firestore rejects undefined - fields must be omitted or use deleteField()
+function filterUndefined(obj: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+// Re-export deleteField for use in other files
+export { deleteField }
 
 export interface GroupDocument {
   id: string
@@ -81,10 +97,11 @@ export async function updateGroup(
 ): Promise<void> {
   try {
     const groupRef = doc(getFirestore(), 'groups', groupId)
-    await updateDoc(groupRef, {
+    const filteredUpdates = filterUndefined({
       ...updates,
       updatedAt: serverTimestamp()
     })
+    await updateDoc(groupRef, filteredUpdates)
   } catch (error) {
     console.error('Failed to update group:', error)
     throw error
@@ -122,10 +139,11 @@ export async function addShapesToGroup(
     const groupData = groupDoc.docs[0].data() as GroupDocument
     const updatedShapeIds = [...new Set([...groupData.shapeIds, ...shapeIds])]
     
-    await updateDoc(groupRef, {
+    const filteredUpdates = filterUndefined({
       shapeIds: updatedShapeIds,
       updatedAt: serverTimestamp()
     })
+    await updateDoc(groupRef, filteredUpdates)
   } catch (error) {
     console.error('Failed to add shapes to group:', error)
     throw error
@@ -154,10 +172,11 @@ export async function removeShapesFromGroup(
       // If no shapes left, delete the group
       await deleteGroup(groupId)
     } else {
-      await updateDoc(groupRef, {
+      const filteredUpdates = filterUndefined({
         shapeIds: updatedShapeIds,
         updatedAt: serverTimestamp()
       })
+      await updateDoc(groupRef, filteredUpdates)
     }
   } catch (error) {
     console.error('Failed to remove shapes from group:', error)
@@ -351,10 +370,11 @@ export async function batchUpdateGroups(operations: Array<{
         case 'update':
           if (operation.groupId && operation.data) {
             const groupRef = doc(getFirestore(), 'groups', operation.groupId)
-            batch.update(groupRef, {
+            const filteredUpdates = filterUndefined({
               ...operation.data,
               updatedAt: serverTimestamp()
             })
+            batch.update(groupRef, filteredUpdates)
           }
           break
           
