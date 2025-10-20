@@ -16,7 +16,6 @@ import { throttle, debounce } from '../../utils/performance'
 import { SimpleLockIndicator } from './LockIndicator'
 import LockTooltip from './LockTooltip'
 import KeyboardShortcutsHelp from '../KeyboardShortcutsHelp'
-import SelectionBounds from './SelectionBounds'
 import MultiShapeProperties from './MultiShapeProperties'
 import GroupsPanel from './GroupsPanel'
 import ActivityPanel from './ActivityPanel'
@@ -100,6 +99,49 @@ export default function Canvas() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Handle mouse/touch release outside canvas to prevent stuck panning/dragging
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      // Only cleanup if we're actually panning/dragging
+      if (!isPanningRef.current && !draggingIdRef.current && !isBoxSelecting) {
+        return
+      }
+
+      // Handle box selection end
+      if (isBoxSelecting) {
+        endBoxSelection()
+      }
+
+      // Clear RTDB viewport when panning ends
+      if (isPanningRef.current && user) {
+        clearViewportRtdb(user.id).catch(() => {
+          // Silent failure
+        })
+      }
+
+      // Clear dragging state and RTDB drag data
+      if (draggingIdRef.current && user) {
+        clearDragUpdate(draggingIdRef.current).catch(() => {})
+        draggingIdRef.current = null
+      }
+
+      // Reset panning state
+      isPanningRef.current = false
+      lastPosRef.current = null
+    }
+
+    // Listen for both mouse and touch events
+    window.addEventListener('mouseup', handleGlobalPointerUp)
+    window.addEventListener('touchend', handleGlobalPointerUp)
+    window.addEventListener('touchcancel', handleGlobalPointerUp)
+
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalPointerUp)
+      window.removeEventListener('touchend', handleGlobalPointerUp)
+      window.removeEventListener('touchcancel', handleGlobalPointerUp)
+    }
+  }, [isBoxSelecting, endBoxSelection, user])
   const selectedIdsRef = useRef<Set<string>>(new Set())
   const transformerRef = useRef<Konva.Transformer>(null)
   
@@ -841,15 +883,6 @@ export default function Canvas() {
           />
         </Layer>
       )}
-      {/* Selection Bounds Layer */}
-      {hasSelection && (
-        <Layer listening={false}>
-          <SelectionBounds
-            selectedShapes={getSelectedShapes()}
-            visible={true}
-          />
-        </Layer>
-      )}
       
       {/* Lock Tooltip Layer */}
       {hoveredLockedShape && (
@@ -1527,6 +1560,12 @@ export default function Canvas() {
             </button>
           </>
         )}
+        {/* Zoom Controls */}
+        <span>•</span>
+        <ZoomControls 
+          containerWidth={containerSize.width}
+          containerHeight={containerSize.height}
+        />
       </div>
       
       {/* Right side info */}
@@ -1580,12 +1619,6 @@ export default function Canvas() {
         onClose={() => setShowActivityPanel(false)} 
       />
     )}
-    
-    {/* Zoom Controls */}
-    <ZoomControls 
-      containerWidth={containerSize.width}
-      containerHeight={containerSize.height}
-    />
     </div>
   )
 }

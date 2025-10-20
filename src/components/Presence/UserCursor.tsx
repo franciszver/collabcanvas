@@ -10,50 +10,49 @@ interface UserCursorProps {
 export default function UserCursor({ x, y, name, isActive = true }: UserCursorProps) {
   const [displayPos, setDisplayPos] = useState({ x, y })
   const animationRef = useRef<number>()
-  const lastUpdateRef = useRef<number>(Date.now())
+  const targetPosRef = useRef({ x, y })
+  const currentPosRef = useRef({ x, y })
+  const isAnimatingRef = useRef(false)
 
   useEffect(() => {
-    const now = Date.now()
-    const timeSinceLastUpdate = now - lastUpdateRef.current
+    // Update target position
+    targetPosRef.current = { x, y }
     
-    // Only interpolate if enough time has passed (cursor is moving)
-    if (timeSinceLastUpdate > 50) {
-      lastUpdateRef.current = now
+    // If not currently animating, start animation
+    if (!isAnimatingRef.current) {
+      isAnimatingRef.current = true
       
-      // Cancel previous animation
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-      
-      // Smooth interpolation to new position
-      const startPos = { ...displayPos }
-      const targetPos = { x, y }
-      const startTime = now
-      const duration = 150 // 150ms interpolation
-      
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime
-        const progress = Math.min(elapsed / duration, 1)
+      const animate = () => {
+        const current = currentPosRef.current
+        const target = targetPosRef.current
         
-        // Ease-out interpolation
-        const easeOut = 1 - Math.pow(1 - progress, 3)
+        // Calculate distance to target
+        const dx = target.x - current.x
+        const dy = target.y - current.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
         
-        setDisplayPos({
-          x: startPos.x + (targetPos.x - startPos.x) * easeOut,
-          y: startPos.y + (targetPos.y - startPos.y) * easeOut
-        })
-        
-        if (progress < 1) {
-          animationRef.current = requestAnimationFrame(animate)
+        // If we're close enough, snap to target and stop
+        if (distance < 0.5) {
+          currentPosRef.current = { ...target }
+          setDisplayPos({ ...target })
+          isAnimatingRef.current = false
+          return
         }
+        
+        // Smooth interpolation with easing (lerp with factor 0.2 for smooth following)
+        const lerpFactor = 0.2
+        currentPosRef.current = {
+          x: current.x + dx * lerpFactor,
+          y: current.y + dy * lerpFactor
+        }
+        
+        setDisplayPos({ ...currentPosRef.current })
+        animationRef.current = requestAnimationFrame(animate)
       }
       
       animationRef.current = requestAnimationFrame(animate)
-    } else {
-      // For rapid updates, update immediately
-      setDisplayPos({ x, y })
     }
-  }, [x, y, displayPos])
+  }, [x, y])
 
   // Cleanup animation on unmount
   useEffect(() => {

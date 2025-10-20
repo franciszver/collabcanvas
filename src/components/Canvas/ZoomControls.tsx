@@ -143,52 +143,44 @@ export default function ZoomControls({ containerWidth, containerHeight }: ZoomCo
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: '48px',
-        right: '16px',
-        zIndex: 30,
-        background: '#FFFFFF',
-        border: '1px solid #D4C5A9',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(62, 56, 50, 0.1)',
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '4px',
       }}
     >
-      {/* Zoom In Button */}
+      {/* Zoom Out Button */}
       <button
-        onClick={handleZoomIn}
-        disabled={isAtMaxZoom}
-        title="Zoom in (+20%)"
+        onClick={handleZoomOut}
+        disabled={isAtMinZoom}
+        title="Zoom out (-20%)"
         style={{
-          background: isAtMaxZoom ? '#F5F5F5' : '#FFFFFF',
-          border: 'none',
-          borderBottom: '1px solid #D4C5A9',
-          padding: '10px 16px',
-          cursor: isAtMaxZoom ? 'not-allowed' : 'pointer',
-          color: isAtMaxZoom ? '#B5A89D' : '#3E3832',
-          fontSize: '18px',
-          fontWeight: '600',
+          background: 'transparent',
+          border: '1px solid #D4C5A9',
+          borderRadius: '4px',
+          padding: '2px 6px',
+          cursor: isAtMinZoom ? 'not-allowed' : 'pointer',
+          color: isAtMinZoom ? '#B5A89D' : '#6B5F54',
+          fontSize: '11px',
+          fontWeight: '500',
           transition: 'background 0.15s ease',
-          width: '48px',
-          height: '40px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minWidth: '24px',
         }}
         onMouseEnter={(e) => {
-          if (!isAtMaxZoom) {
+          if (!isAtMinZoom) {
             e.currentTarget.style.background = '#F0ECE3'
           }
         }}
         onMouseLeave={(e) => {
-          if (!isAtMaxZoom) {
-            e.currentTarget.style.background = '#FFFFFF'
+          if (!isAtMinZoom) {
+            e.currentTarget.style.background = 'transparent'
           }
         }}
       >
-        +
+        −
       </button>
 
       {/* Current Zoom Display - Clickable to reset to 100% */}
@@ -196,64 +188,62 @@ export default function ZoomControls({ containerWidth, containerHeight }: ZoomCo
         onClick={handleResetZoom}
         title="Reset to 100%"
         style={{
-          background: '#FFFFFF',
-          border: 'none',
-          borderBottom: '1px solid #D4C5A9',
-          padding: '8px 12px',
+          background: 'transparent',
+          border: '1px solid #D4C5A9',
+          borderRadius: '4px',
+          padding: '2px 6px',
           cursor: 'pointer',
-          color: '#3E3832',
-          fontSize: '12px',
+          color: '#6B5F54',
+          fontSize: '11px',
           fontWeight: '500',
           transition: 'background 0.15s ease',
-          width: '48px',
-          height: '36px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minWidth: '50px',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = '#F0ECE3'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#FFFFFF'
+          e.currentTarget.style.background = 'transparent'
         }}
       >
         {currentZoom}%
       </button>
 
-      {/* Zoom Out Button */}
+      {/* Zoom In Button */}
       <button
-        onClick={handleZoomOut}
-        disabled={isAtMinZoom}
-        title="Zoom out (-20%)"
+        onClick={handleZoomIn}
+        disabled={isAtMaxZoom}
+        title="Zoom in (+20%)"
         style={{
-          background: isAtMinZoom ? '#F5F5F5' : '#FFFFFF',
-          border: 'none',
-          borderBottom: '1px solid #D4C5A9',
-          padding: '10px 16px',
-          cursor: isAtMinZoom ? 'not-allowed' : 'pointer',
-          color: isAtMinZoom ? '#B5A89D' : '#3E3832',
-          fontSize: '18px',
-          fontWeight: '600',
+          background: 'transparent',
+          border: '1px solid #D4C5A9',
+          borderRadius: '4px',
+          padding: '2px 6px',
+          cursor: isAtMaxZoom ? 'not-allowed' : 'pointer',
+          color: isAtMaxZoom ? '#B5A89D' : '#6B5F54',
+          fontSize: '11px',
+          fontWeight: '500',
           transition: 'background 0.15s ease',
-          width: '48px',
-          height: '40px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minWidth: '24px',
         }}
         onMouseEnter={(e) => {
-          if (!isAtMinZoom) {
+          if (!isAtMaxZoom) {
             e.currentTarget.style.background = '#F0ECE3'
           }
         }}
         onMouseLeave={(e) => {
-          if (!isAtMinZoom) {
-            e.currentTarget.style.background = '#FFFFFF'
+          if (!isAtMaxZoom) {
+            e.currentTarget.style.background = 'transparent'
           }
         }}
       >
-        −
+        +
       </button>
 
       {/* Fit to Screen Button */}
@@ -261,25 +251,25 @@ export default function ZoomControls({ containerWidth, containerHeight }: ZoomCo
         onClick={handleFitToScreen}
         title="Fit all shapes in view"
         style={{
-          background: '#FFFFFF',
-          border: 'none',
-          padding: '10px 16px',
+          background: 'transparent',
+          border: '1px solid #D4C5A9',
+          borderRadius: '4px',
+          padding: '2px 6px',
           cursor: 'pointer',
           color: '#5B8FA3',
-          fontSize: '18px',
-          fontWeight: '600',
+          fontSize: '11px',
+          fontWeight: '500',
           transition: 'background 0.15s ease',
-          width: '48px',
-          height: '40px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minWidth: '24px',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = '#F0ECE3'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#FFFFFF'
+          e.currentTarget.style.background = 'transparent'
         }}
       >
         ⊕
