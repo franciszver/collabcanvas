@@ -381,9 +381,11 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
       } else {
         // Normal AI command processing
         const response = await aiCanvasCommand(messageContent)
+        console.log('[ChatBox] AI Response:', JSON.stringify(response, null, 2))
         
         if (response.success && response.data) {
           const { action, target, parameters } = response.data
+          console.log('[ChatBox] Parsed command:', { action, target, parameters })
           
           // Check if this is a template request
           if (isTemplateRequest(action, target)) {
@@ -496,7 +498,9 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 }
               } else {
                 // Apply the canvas command normally
+                console.log('[ChatBox] Applying canvas command:', JSON.stringify(response.data, null, 2))
                 const commandResult = await applyCanvasCommand(response.data)
+                console.log('[ChatBox] Command result:', JSON.stringify(commandResult, null, 2))
                 
                 if (commandResult.success) {
                   let aiResponse = ''
@@ -540,6 +544,7 @@ export default function ChatBox({ isOpen, onToggle }: ChatBoxProps) {
                 }
                 await sendMessage(aiResponse, user.id, 'AI Assistant', 'assistant')
               } else {
+                console.error('[ChatBox] Command failed:', commandResult.error, commandResult.details)
                 let actionText = 'create'
                 if (action === 'manipulate') actionText = 'manipulate'
                 else if (action === 'layout') actionText = 'layout'

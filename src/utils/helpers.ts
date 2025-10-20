@@ -258,15 +258,32 @@ export function selectShapesByColor(shapes: Rectangle[], color: string, toleranc
  * Select shape by type and number
  */
 export function selectShapeByTypeAndNumber(shapes: Rectangle[], type: CanvasShapeType, number: number): Rectangle | null {
+  console.log('[selectShapeByTypeAndNumber] Input:', { type, number, totalShapes: shapes.length })
+  
   const shapeNumbers = calculateShapeNumbers(shapes)
+  console.log('[selectShapeByTypeAndNumber] Shape numbers map:', Array.from(shapeNumbers.entries()).map(([id, num]) => {
+    const shape = shapes.find(s => s.id === id)
+    return { id: id.slice(0, 8), type: shape?.type, number: num }
+  }))
+  
   const shapesOfType = shapes.filter(s => (s.type || 'rect') === type)
+  console.log('[selectShapeByTypeAndNumber] Shapes of type:', shapesOfType.length, 'type:', type)
   
   for (const shape of shapesOfType) {
-    if (shapeNumbers.get(shape.id) === number) {
+    const shapeNum = shapeNumbers.get(shape.id)
+    console.log('[selectShapeByTypeAndNumber] Checking shape:', { 
+      id: shape.id.slice(0, 8), 
+      type: shape.type, 
+      number: shapeNum,
+      matches: shapeNum === number
+    })
+    if (shapeNum === number) {
+      console.log('[selectShapeByTypeAndNumber] Found match!')
       return shape
     }
   }
   
+  console.log('[selectShapeByTypeAndNumber] No match found')
   return null
 }
 
