@@ -233,7 +233,7 @@ describe('useCanvasCommands', () => {
         action: 'create',
         target: 'circle',
         parameters: {
-          count: 25, // Exceeds MAX_LAYOUT_SHAPES (20)
+          count: 501, // Exceeds MAX_LAYOUT_SHAPES (500)
           color: '#3B82F6',
           layout: 'row',
         },
@@ -245,7 +245,7 @@ describe('useCanvasCommands', () => {
       })
 
       expect(response.success).toBe(false)
-      expect(response.error).toContain('Cannot create more than 20 shapes with layout')
+      expect(response.error).toContain('Cannot create more than 500 shapes with layout')
     })
   })
 
@@ -545,7 +545,7 @@ describe('useCanvasCommands', () => {
         action: 'layout',
         target: 'circle',
         parameters: {
-          count: 25, // Exceeds MAX_LAYOUT_SHAPES (20)
+          count: 501, // Exceeds MAX_LAYOUT_SHAPES (500)
           layout: 'row',
         },
       }
@@ -556,7 +556,7 @@ describe('useCanvasCommands', () => {
       })
 
       expect(response.success).toBe(false)
-      expect(response.error).toContain('Cannot layout more than 20 shapes at once')
+      expect(response.error).toContain('Cannot layout more than 500 shapes at once')
     })
   })
 

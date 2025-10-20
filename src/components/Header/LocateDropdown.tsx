@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useMemo } from 'react'
 import usePresence from '../../hooks/usePresence'
 import { useCanvas } from '../../contexts/CanvasContext'
 import { usePresence as usePresenceContext } from '../../contexts/PresenceContext'
 import type { Rectangle } from '../../types/canvas.types'
+import { calculateShapeNumbers, getShapeTypeName } from '../../utils/helpers'
 
 export interface LocateDropdownRef {
   openDropdown: () => void
@@ -18,6 +19,9 @@ const LocateDropdown = forwardRef<LocateDropdownRef>((_, ref) => {
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Calculate shape numbers for display
+  const shapeNumbers = useMemo(() => calculateShapeNumbers(rectangles), [rectangles])
 
   // Expose openDropdown method to parent
   useImperativeHandle(ref, () => ({
@@ -50,9 +54,13 @@ const LocateDropdown = forwardRef<LocateDropdownRef>((_, ref) => {
     s.text && s.text.toLowerCase().includes(searchQuery.toLowerCase())
   )
   
-  const filteredOtherShapes = otherShapes.filter(s =>
-    s.id.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredOtherShapes = otherShapes.filter(s => {
+    const shapeNumber = shapeNumbers.get(s.id) || 0
+    const shapeTypeName = getShapeTypeName(s.type)
+    const shapeName = `${shapeTypeName} #${shapeNumber}`
+    return shapeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           s.id.toLowerCase().includes(searchQuery.toLowerCase())
+  })
 
   // Limit results to 10 per section
   const MAX_RESULTS = 10
@@ -329,6 +337,9 @@ const LocateDropdown = forwardRef<LocateDropdownRef>((_, ref) => {
                   const globalIdx = allItems.findIndex(item => item.type === 'other-shape' && item.data.id === s.id)
                   const isSelected = globalIdx === selectedIndex
                   const icon = s.type === 'circle' ? '●' : s.type === 'triangle' ? '▲' : s.type === 'star' ? '★' : s.type === 'arrow' ? '➜' : '■'
+                  const shapeNumber = shapeNumbers.get(s.id) || 0
+                  const shapeTypeName = getShapeTypeName(s.type)
+                  const shapeName = `${shapeTypeName} #${shapeNumber}`
                   return (
                     <button
                       key={s.id}
@@ -355,8 +366,8 @@ const LocateDropdown = forwardRef<LocateDropdownRef>((_, ref) => {
                       }}
                     >
                       <span style={{ fontSize: 16 }}>{icon}</span>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 11 }}>
-                        {s.id}
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {shapeName}
                       </span>
                     </button>
                   )

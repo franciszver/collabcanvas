@@ -33,7 +33,7 @@ let lastShapePosition = { x: 0, y: 0 }
 const STORAGE_KEY = 'collabcanvas:lastCreatedShapeId'
 
 // Maximum shapes per layout command
-const MAX_LAYOUT_SHAPES = 20
+const MAX_LAYOUT_SHAPES = 500
 
 function getLastCreatedShapeId(): string | null {
   if (typeof window === 'undefined') return null

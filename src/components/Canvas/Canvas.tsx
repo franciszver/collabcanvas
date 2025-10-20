@@ -1135,7 +1135,7 @@ export default function Canvas() {
           </button>
         </div>
       )
-    })() : selectedId ? (() => {
+    })() : selectedId && selectedIds.size <= 1 ? (() => {
       // Single-shape panel
       const sel = rectangles.find((rr: Rectangle) => rr.id === selectedId)
       if (!sel) return null
@@ -1497,24 +1497,6 @@ export default function Canvas() {
                 >
                   Select Color
                 </button>
-                <button
-                  onClick={() => setShowMultiShapeProperties(true)}
-                  style={{
-                    background: '#5B8FA3',
-                    border: '1px solid #5B8FA3',
-                    borderRadius: '4px',
-                    padding: '4px 12px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '500'
-                  }}
-                  title="Open bulk properties panel"
-                >
-                  Properties
-                </button>
-                <span>•</span>
-                <span>Ctrl+G to group • Delete to remove</span>
               </>
             )}
           </>

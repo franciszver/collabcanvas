@@ -202,7 +202,7 @@ that describe canvas actions.
     "color": string (CSS color, optional),
     "text": string (for text shapes, optional),
     "layout": string ("grid" | "row" | "column", optional),
-    "count": number (for repeated elements or layout, optional, max 20),
+    "count": number (for repeated elements or layout, optional, max 500),
     "spacing": number (gap between shapes in pixels, optional, default 20),
     "rows": number (grid rows, optional, auto-calculated if not provided),
     "cols": number (grid columns, optional, auto-calculated if not provided),
