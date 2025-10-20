@@ -350,12 +350,19 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
       
       // Handle manipulate action
       if (action === 'manipulate') {
+        console.log('[useCanvasCommands] Manipulate action:', {
+          target,
+          parameters,
+          availableShapes: shapes.length
+        })
+        
         // Enhanced shape selection logic
         let selectedShapes: Rectangle[] = []
         
         // 1. Try selector-based selection first
         if (parameters.selector) {
           const { color, shapeNumber, shapeType } = parameters.selector
+          console.log('[useCanvasCommands] Selector:', { color, shapeNumber, shapeType })
           
           if (color) {
             // Select by color
@@ -371,7 +378,9 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
             // Select by type and number - use shapeType from selector or fallback to target
             const typeToUse = shapeType || target
             const mappedType = typeToUse === 'rectangle' ? 'rect' : typeToUse as any
+            console.log('[useCanvasCommands] Selecting by type and number:', { typeToUse, mappedType, shapeNumber })
             const shape = selectShapeByTypeAndNumber(shapes, mappedType, shapeNumber)
+            console.log('[useCanvasCommands] Shape found:', shape ? { id: shape.id, type: shape.type, x: shape.x, y: shape.y } : 'null')
             if (shape) {
               selectedShapes = [shape]
             } else {
@@ -470,6 +479,16 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         
         // 5. We have exactly one shape, proceed with manipulation
         const targetShape = selectedShapes[0]
+        console.log('[useCanvasCommands] Target shape selected:', {
+          id: targetShape.id,
+          type: targetShape.type,
+          x: targetShape.x,
+          y: targetShape.y,
+          width: targetShape.width,
+          height: targetShape.height,
+          rotation: targetShape.rotation
+        })
+        
         const updates: Partial<Rectangle> = {}
         
         // Handle relative sizing
@@ -486,14 +505,17 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
         if (parameters.rotationDirection) {
           const degrees = parseRotationDirection(parameters.rotationDirection)
           updates.rotation = ((targetShape.rotation || 0) + degrees) % 360
+          console.log('[useCanvasCommands] Rotation by direction:', { direction: parameters.rotationDirection, degrees, newRotation: updates.rotation })
         } else if (parameters.rotationDegrees !== undefined) {
           if (parameters.relativeRotation) {
             updates.rotation = ((targetShape.rotation || 0) + parameters.rotationDegrees) % 360
           } else {
             updates.rotation = parameters.rotationDegrees % 360
           }
+          console.log('[useCanvasCommands] Rotation by degrees:', { rotationDegrees: parameters.rotationDegrees, relative: parameters.relativeRotation, newRotation: updates.rotation })
         } else if (parameters.rotation !== undefined) {
           updates.rotation = parameters.rotation % 360
+          console.log('[useCanvasCommands] Absolute rotation:', { rotation: parameters.rotation, newRotation: updates.rotation })
         }
         
         // Handle smart positioning
@@ -523,8 +545,16 @@ export function useCanvasCommands({ documentId }: UseCanvasCommandsOptions): Use
           updates.fill = validateColor(parameters.color) || targetShape.fill
         }
         
+        console.log('[useCanvasCommands] Applying updates:', updates)
+        
         // Apply the manipulation
-        await updateShape(targetShape.id, updates)
+        try {
+          await updateShape(targetShape.id, updates)
+          console.log('[useCanvasCommands] Update successful')
+        } catch (error) {
+          console.error('[useCanvasCommands] Update failed:', error)
+          throw error
+        }
         
         const actionDescription = []
         if (updates.width || updates.height) actionDescription.push('resized')
