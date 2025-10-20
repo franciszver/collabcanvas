@@ -18,6 +18,7 @@ export interface CanvasContextValue extends CanvasState {
   updateRectangle: (id: string, update: Partial<Rectangle>) => void
   updateMultipleRectangles: (updates: Array<{ id: string; updates: Partial<Rectangle> }>) => Promise<void>
   deleteRectangle: (id: string) => void
+  deleteMultipleRectangles: (ids: string[]) => Promise<void>
   isLoading: boolean
   clearAllRectangles: () => Promise<void>
   selectedId: string | null
@@ -122,6 +123,7 @@ export function CanvasProvider({
     updateShape,
     updateMultipleShapes,
     deleteShape,
+    deleteMultipleShapes,
     clearAllShapes,
     liveDragPositions,
     isDragging,
@@ -247,6 +249,15 @@ export function CanvasProvider({
       throw err
     }
   }, [deleteShape])
+
+  const deleteMultipleRectangles = useCallback(async (ids: string[]) => {
+    try {
+      await deleteMultipleShapes(ids)
+    } catch (err) {
+      console.error('Failed to delete multiple rectangles:', err)
+      throw err
+    }
+  }, [deleteMultipleShapes])
 
   const clearAllRectangles = useCallback(async () => {
     try {
@@ -502,6 +513,7 @@ export function CanvasProvider({
       updateRectangle,
       updateMultipleRectangles,
       deleteRectangle,
+      deleteMultipleRectangles,
       isLoading,
       clearAllRectangles,
       selectedId,
@@ -560,6 +572,7 @@ export function CanvasProvider({
       updateRectangle,
       updateMultipleRectangles,
       deleteRectangle,
+      deleteMultipleRectangles,
       isLoading,
       clearAllRectangles,
       selectedId,

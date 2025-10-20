@@ -15,6 +15,7 @@ export function useKeyboardShortcuts({ enabled = true }: UseKeyboardShortcutsOpt
     clearSelection,
     getSelectedShapes,
     deleteRectangle,
+    deleteMultipleRectangles,
     addRectangle,
     rectangles,
     bringToFront,
@@ -61,13 +62,14 @@ export function useKeyboardShortcuts({ enabled = true }: UseKeyboardShortcutsOpt
           e.preventDefault()
           // Delete all selected shapes
           const selectedShapes = getSelectedShapes()
+          const shapeIds = selectedShapes.map(shape => shape.id)
           if (selectedShapes.length > 5) {
             // Show confirmation for large selections
             if (confirm(`Delete ${selectedShapes.length} shapes?`)) {
-              selectedShapes.forEach(shape => deleteRectangle(shape.id))
+              deleteMultipleRectangles(shapeIds).catch(console.error)
             }
           } else {
-            selectedShapes.forEach(shape => deleteRectangle(shape.id))
+            deleteMultipleRectangles(shapeIds).catch(console.error)
           }
         }
         break
@@ -250,6 +252,7 @@ export function useKeyboardShortcuts({ enabled = true }: UseKeyboardShortcutsOpt
     clearSelection,
     getSelectedShapes,
     deleteRectangle,
+    deleteMultipleRectangles,
     addRectangle,
     rectangles,
     bringToFront,

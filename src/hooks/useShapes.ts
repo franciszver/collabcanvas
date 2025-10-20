@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { subscribeToShapes, createShape, updateShape, deleteShape, deleteAllShapes, rectangleToShape, updateMultipleShapes } from '../services/firestore'
-import { publishDragPositionsRtdbThrottled, subscribeToDragRtdb, clearDragPositionRtdb, publishBulkUpdateRtdb, subscribeToBulkUpdateRtdb, type BulkShapeUpdate } from '../services/realtime'
+import { subscribeToShapes, createShape, updateShape, deleteShape, deleteAllShapes, deleteMultipleShapes, rectangleToShape, updateMultipleShapes } from '../services/firestore'
+import { publishDragPositionsRtdbThrottled, subscribeToDragRtdb, clearDragPositionRtdb, publishBulkUpdateRtdb, subscribeToBulkUpdateRtdb, publishMultiDeleteRtdb, subscribeToMultiDeleteRtdb, type BulkShapeUpdate } from '../services/realtime'
 import type { Rectangle } from '../types/canvas.types'
 import { useAuth } from '../contexts/AuthContext'
 import { createEditEntry, addToHistory } from '../utils/historyTracking'
@@ -20,6 +20,7 @@ export interface UseShapesReturn {
   updateShape: (id: string, updates: Partial<Rectangle>) => Promise<void>
   updateMultipleShapes: (updates: Array<{ shapeId: string; updates: Partial<Rectangle> }>) => Promise<void>
   deleteShape: (id: string) => Promise<void>
+  deleteMultipleShapes: (shapeIds: string[]) => Promise<void>
   clearAllShapes: () => Promise<void>
   
   // Live collaboration
@@ -88,6 +89,20 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
         }
         
         return updatedShapes
+      })
+    })
+
+    return unsubscribe
+  }, [user?.id, documentId])
+
+  // Subscribe to multi-delete events from RTDB
+  useEffect(() => {
+    if (!user || !documentId) return
+
+    const unsubscribe = subscribeToMultiDeleteRtdb(documentId, user.id, (shapeIds) => {
+      // Immediately remove shapes from local state
+      setShapes((prevShapes) => {
+        return prevShapes.filter(shape => !shapeIds.includes(shape.id))
       })
     })
 
@@ -261,6 +276,38 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     }
   }, [])
 
+  const deleteMultipleShapesHandler = useCallback(async (shapeIds: string[]) => {
+    if (!user) throw new Error('User not authenticated')
+    if (!shapeIds.length) return
+    
+    try {
+      // Filter out shapes locked by other users
+      const deletableShapeIds = shapes
+        .filter(shape => shapeIds.includes(shape.id))
+        .filter(shape => !shape.lockedBy || shape.lockedBy === user.id)
+        .map(shape => shape.id)
+      
+      if (!deletableShapeIds.length) return
+      
+      // Step 1: Optimistically update local state immediately
+      setShapes((prevShapes) => {
+        return prevShapes.filter(shape => !deletableShapeIds.includes(shape.id))
+      })
+      
+      // Step 2: Broadcast to RTDB for instant remote updates
+      await publishMultiDeleteRtdb(user.id, deletableShapeIds, documentId)
+      
+      // Step 3: Batch delete from Firestore in background (fire and forget)
+      deleteMultipleShapes(deletableShapeIds).catch((err) => {
+        console.error('Failed to batch delete shapes from Firestore:', err)
+      })
+    } catch (err) {
+      console.error('Failed to delete multiple shapes:', err)
+      setError(err as Error)
+      throw err
+    }
+  }, [user, documentId, shapes])
+
   const clearAllShapesHandler = useCallback(async () => {
     try {
       await deleteAllShapes(documentId)
@@ -299,6 +346,7 @@ export function useShapes({ documentId, enableLiveDrag = true }: UseShapesOption
     updateShape: updateShapeHandler,
     updateMultipleShapes: updateMultipleShapesHandler,
     deleteShape: deleteShapeHandler,
+    deleteMultipleShapes: deleteMultipleShapesHandler,
     clearAllShapes: clearAllShapesHandler,
     liveDragPositions,
     isDragging,

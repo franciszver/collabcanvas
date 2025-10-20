@@ -615,4 +615,105 @@ export async function cleanupStaleBulkUpdatesRtdb(documentId: string, maxAgeMs: 
   }
 }
 
+// Multi-delete channel via RTDB for instant deletion propagation
+export async function publishMultiDeleteRtdb(
+  userId: string,
+  shapeIds: string[],
+  documentId: string
+): Promise<void> {
+  if (!shapeIds.length) return
+  
+  const timestamp = Date.now()
+  const multiDeleteRef = ref(rtdb(), `multiDelete/${documentId}/${userId}/${timestamp}`)
+  
+  try {
+    await update(multiDeleteRef, {
+      shapeIds,
+      updatedAt: serverTimestamp() as any
+    })
+    
+    // Auto-expire after 5 seconds to prevent memory buildup
+    setTimeout(async () => {
+      try {
+        await remove(multiDeleteRef)
+      } catch (error) {
+        console.warn('Failed to cleanup multi-delete event:', error)
+      }
+    }, 5000)
+  } catch (error) {
+    console.warn('Failed to publish multi-delete, retrying...', error)
+    // Retry once after a short delay
+    setTimeout(async () => {
+      try {
+        await update(multiDeleteRef, {
+          shapeIds,
+          updatedAt: serverTimestamp() as any
+        })
+      } catch (retryError) {
+        console.error('Failed to publish multi-delete after retry:', retryError)
+      }
+    }, 100)
+  }
+}
+
+export function subscribeToMultiDeleteRtdb(
+  documentId: string,
+  selfUserId: string,
+  callback: (shapeIds: string[], fromUserId: string) => void
+): () => void {
+  const multiDeleteRef = ref(rtdb(), `multiDelete/${documentId}`)
+  
+  const handler = (snap: any) => {
+    const val = snap.val() || {}
+    
+    // Process deletions from all users except self
+    for (const [userId, userDeletes] of Object.entries(val)) {
+      if (userId === selfUserId) continue
+      
+      // Process all timestamps for this user
+      const timestampData = userDeletes as any
+      for (const data of Object.values(timestampData)) {
+        const deleteData = data as any
+        if (deleteData?.shapeIds && Array.isArray(deleteData.shapeIds)) {
+          callback(deleteData.shapeIds, userId)
+        }
+      }
+    }
+  }
+  
+  onValue(multiDeleteRef, handler)
+  return () => off(multiDeleteRef, 'value', handler)
+}
+
+// Clean up stale multi-delete events (call periodically if needed)
+export async function cleanupStaleMultiDeleteRtdb(documentId: string, maxAgeMs: number = 10000): Promise<void> {
+  const multiDeleteRef = ref(rtdb(), `multiDelete/${documentId}`)
+  const now = Date.now()
+  
+  try {
+    const snapshot = await new Promise<any>((resolve) => {
+      onValue(multiDeleteRef, resolve, { onlyOnce: true })
+    })
+    
+    const data = snapshot.val() || {}
+    const updates: Record<string, any> = {}
+    
+    for (const [userId, userDeletes] of Object.entries(data)) {
+      const timestampData = userDeletes as any
+      for (const [timestamp] of Object.entries(timestampData)) {
+        const ts = parseInt(timestamp, 10)
+        if (now - ts > maxAgeMs) {
+          updates[`multiDelete/${documentId}/${userId}/${timestamp}`] = null
+        }
+      }
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb()), updates)
+    }
+  } catch (error) {
+    console.warn('Failed to cleanup stale multi-delete events:', error)
+  }
+}
+
 

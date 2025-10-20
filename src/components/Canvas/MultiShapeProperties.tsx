@@ -12,6 +12,7 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     getSelectedShapes, 
     updateMultipleRectangles,
     deleteRectangle,
+    deleteMultipleRectangles,
     bringToFront,
     sendToBack,
     groupShapes,
@@ -97,8 +98,8 @@ export default function MultiShapeProperties({ onClose }: MultiShapePropertiesPr
     setIsProcessing(true)
     
     try {
-      const deletePromises = selectedShapes.map(shape => deleteRectangle(shape.id))
-      await Promise.all(deletePromises)
+      const shapeIds = selectedShapes.map(shape => shape.id)
+      await deleteMultipleRectangles(shapeIds)
       setShowDeleteConfirm(false)
       onClose()
     } catch (error) {

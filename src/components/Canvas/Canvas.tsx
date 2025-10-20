@@ -50,7 +50,8 @@ export default function Canvas() {
     rectangles, 
     updateRectangle, 
     updateMultipleRectangles,
-    deleteRectangle, 
+    deleteRectangle,
+    deleteMultipleRectangles,
     addRectangle,
     isLoading, 
     selectedId, 
@@ -193,6 +194,7 @@ export default function Canvas() {
   }, [viewport, containerSize])
   const draggingIdRef = useRef<string | null>(null)
   const lastDragPosRef = useRef<Record<string, { x: number; y: number }>>({})
+  const multiDragProcessedRef = useRef<boolean>(false)
 
   const onWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -640,11 +642,18 @@ export default function Canvas() {
             const selected = selectedIdsRef.current
             
             if (selected.size > 1) {
-              // Batch update all selected shapes with bulk update
-              const prev = lastDragPosRef.current[r.id] || { x, y }
-              const dx = x - prev.x
-              const dy = y - prev.y
+              // Prevent duplicate bulk updates - only process once per multi-drag operation
+              if (multiDragProcessedRef.current) {
+                return // Already processed by another shape in this drag operation
+              }
+              multiDragProcessedRef.current = true
               
+              // Reset the flag after a short delay to allow next drag operation
+              setTimeout(() => {
+                multiDragProcessedRef.current = false
+              }, 100)
+              
+              // Batch update all selected shapes using their tracked positions from lastDragPosRef
               const allUpdates: Array<{ id: string; updates: Partial<Rectangle> }> = []
               
               for (const id of selected) {
@@ -654,16 +663,11 @@ export default function Canvas() {
                 // Skip locked shapes
                 if (cur.lockedBy && cur.lockedBy !== user?.id) continue
                 
-                let newX: number, newY: number
-                if (id === r.id) {
-                  newX = x
-                  newY = y
-                } else {
-                  newX = cur.x + dx
-                  newY = cur.y + dy
-                }
+                // Use the tracked position from handleDragMove
+                const newPos = lastDragPosRef.current[id]
+                if (!newPos) continue // Shape wasn't dragged
                 
-                const updates: Partial<Rectangle> = { x: newX, y: newY }
+                const updates: Partial<Rectangle> = { x: newPos.x, y: newPos.y }
                 
                 // Track activity history
                 if (user) {
@@ -728,6 +732,7 @@ export default function Canvas() {
                   onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                     const node = evt.target as Konva.Circle
                     const scaleX = node.scaleX()
                     const newRadius = Math.max(5, node.radius() * scaleX)
@@ -783,6 +788,7 @@ export default function Canvas() {
                   onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                     const node = evt.target
                     const scaleX = node.scaleX ? node.scaleX() : 1
                     const scaleY = node.scaleY ? node.scaleY() : 1
@@ -829,6 +835,7 @@ export default function Canvas() {
                   onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x: x - r.width / 2, y: y - r.height / 2 }))}
                   onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                     const node = evt.target
                     const scaleX = node.scaleX ? node.scaleX() : 1
                     const scaleY = node.scaleY ? node.scaleY() : 1
@@ -873,6 +880,7 @@ export default function Canvas() {
                   onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
                   onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
                   onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                     const node = evt.target
                     const scaleX = node.scaleX ? node.scaleX() : 1
                     const scaleY = node.scaleY ? node.scaleY() : 1
@@ -919,6 +927,7 @@ export default function Canvas() {
                   onDragMove={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
                   onDragEnd={(evt: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
                   onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                    if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                     const node = evt.target
                     const scaleX = node.scaleX ? node.scaleX() : 1
                     const scaleY = node.scaleY ? node.scaleY() : 1
@@ -960,6 +969,7 @@ export default function Canvas() {
                 onDragMove={(evt: any) => handleDragMove(evt.target, (x, y) => ({ x, y }))}
                 onDragEnd={(evt: any) => handleDragEnd(evt.target, (x, y) => ({ x, y }))}
                 onTransformEnd={(evt: Konva.KonvaEventObject<Event>) => {
+                  if (selectedIdsRef.current.size > 1) return // Multi-select handled by bulk transform
                   const node = evt.target
                   const scaleX = node.scaleX ? node.scaleX() : 1
                   const scaleY = node.scaleY ? node.scaleY() : 1
@@ -1114,14 +1124,15 @@ export default function Canvas() {
         }
       }
 
-      const handleMultiDelete = () => {
+      const handleMultiDelete = async () => {
         const selectedShapes = getSelectedShapes()
         
         if (selectedShapes.length > 5) {
           if (!confirm(`Delete ${selectedShapes.length} shapes?`)) return
         }
         
-        selectedShapes.forEach(shape => deleteRectangle(shape.id))
+        const shapeIds = selectedShapes.map(shape => shape.id)
+        await deleteMultipleRectangles(shapeIds)
         clearSelection()
       }
 

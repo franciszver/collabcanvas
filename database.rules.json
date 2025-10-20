@@ -1,0 +1,54 @@
+{
+  "rules": {
+    "presence": {
+      "$userId": {
+        ".read": true,
+        ".write": "$userId === auth.uid"
+      }
+    },
+    "drag": {
+      "$shapeId": {
+        "$userId": {
+          ".read": true,
+          ".write": "$userId === auth.uid"
+        }
+      }
+    },
+    "resize": {
+      "$shapeId": {
+        "$userId": {
+          ".read": true,
+          ".write": "$userId === auth.uid"
+        }
+      }
+    },
+    "selections": {
+      "$userId": {
+        ".read": true,
+        ".write": "$userId === auth.uid"
+      }
+    },
+    "viewport": {
+      "$userId": {
+        ".read": true,
+        ".write": "$userId === auth.uid"
+      }
+    },
+    "bulkUpdates": {
+      "$documentId": {
+        ".read": "auth != null",
+        "$userId": {
+          ".write": "$userId === auth.uid"
+        }
+      }
+    },
+    "multiDelete": {
+      "$documentId": {
+        ".read": "auth != null",
+        "$userId": {
+          ".write": "$userId === auth.uid"
+        }
+      }
+    }
+  }
+}

@@ -164,6 +164,37 @@ export async function updateMultipleShapes(
   }
 }
 
+// Batch delete multiple shapes atomically
+export async function deleteMultipleShapes(shapeIds: string[]): Promise<void> {
+  if (!shapeIds.length) return
+  
+  const BATCH_LIMIT = 500 // Firestore batch limit
+  const batches: Array<string[]> = []
+  
+  // Split deletions into chunks of 500
+  for (let i = 0; i < shapeIds.length; i += BATCH_LIMIT) {
+    batches.push(shapeIds.slice(i, i + BATCH_LIMIT))
+  }
+  
+  // Execute batches sequentially
+  for (const batch of batches) {
+    const writeBatchInstance = writeBatch(db())
+    
+    for (const shapeId of batch) {
+      const shapeRef = shapeDoc(shapeId)
+      writeBatchInstance.delete(shapeRef)
+    }
+    
+    try {
+      await writeBatchInstance.commit()
+    } catch (error) {
+      console.error('Failed to commit batch delete:', error)
+      // Don't throw - let Firestore snapshot reconcile
+      // This prevents cascading failures
+    }
+  }
+}
+
 // Convert Rectangle to ShapeDocument
 export function rectangleToShape(rect: Rectangle, documentId: string, userId: string): Omit<ShapeDocument, 'createdAt' | 'updatedAt'> {
   const shape: any = {
