@@ -9,7 +9,7 @@ Persistent shape data - the source of truth for all shape properties.
 interface ShapeDocument {
   // Core properties
   id: string
-  type: 'rect' | 'circle' | 'line' | 'text'
+  type: 'rect' | 'circle' | 'triangle' | 'star' | 'arrow' | 'text'
   
   // Position & dimensions
   x: number
@@ -43,7 +43,16 @@ interface ShapeDocument {
   // Collaboration
   isLocked?: boolean
   lockedBy?: string // userId
+  lockedByName?: string // Display name of locker
   lockedAt?: Timestamp
+  
+  // Grouping
+  groupId?: string // ID of group this shape belongs to
+  
+  // Shape-specific properties
+  radius?: number // For circles
+  sides?: number // For polygons
+  points?: number // For paths
   
   // Comments and Activity Tracking
   comment?: string // Current comment text
@@ -103,6 +112,54 @@ interface DocumentDocument {
 }
 ```
 
+### `/groups/{groupId}`
+Shape groups for organizing related shapes.
+
+```typescript
+interface GroupDocument {
+  id: string
+  documentId: string
+  name: string
+  shapeIds: string[] // Array of shape IDs in this group
+  createdBy: string // userId
+  createdByName: string // Display name
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  color?: string // Visual indicator color
+  
+  // Comments and Activity Tracking (same as shapes)
+  comment?: string
+  commentBy?: string
+  commentByName?: string
+  commentAt?: number
+  history?: Array<{
+    type: 'comment' | 'edit'
+    text?: string
+    action?: string
+    details?: string
+    by: string
+    byName: string
+    at: number
+  }>
+}
+```
+
+### `/chatMessages/{messageId}`
+AI chat messages for natural language commands.
+
+```typescript
+interface ChatMessageDocument {
+  id: string
+  content: string
+  role: 'user' | 'assistant'
+  userId: string // User who sent the message
+  displayName?: string // User's display name
+  timestamp: Timestamp
+}
+```
+
+**Note:** Chat messages are filtered by `userId` to ensure privacy. Each user only sees their own conversation history.
+
 ### `/workspaces/{workspaceId}`
 Workspace-level settings and permissions.
 
@@ -134,6 +191,8 @@ interface WorkspaceDocument {
 }
 ```
 
+**Note:** Workspaces are planned for future implementation.
+
 ## Indexes
 
 ### Composite Indexes for `/shapes`
@@ -146,6 +205,13 @@ interface WorkspaceDocument {
 - `(ownerId, updatedAt)` - for user's documents
 - `(collaborators, updatedAt)` - for shared documents
 - `(isPublic, updatedAt)` - for public documents
+
+### Composite Indexes for `/groups`
+- `(documentId, updatedAt)` - for groups within a document
+- `(documentId, createdAt)` - for recent groups
+
+### Composite Indexes for `/chatMessages`
+- `(userId, timestamp)` - for user's chat history
 
 ## Security Rules
 
@@ -164,6 +230,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null && 
         (resource.data.ownerId == request.auth.uid || 
          request.auth.uid in resource.data.collaborators);
+    }
+    
+    // Groups: users can read/write groups in documents they have access to
+    match /groups/{groupId} {
+      allow read, write: if request.auth != null && 
+        hasDocumentAccess(resource.data.documentId);
+    }
+    
+    // Chat Messages: users can only read/write their own messages
+    match /chatMessages/{messageId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
     }
     
     // Workspaces: users can read/write workspaces they're members of
