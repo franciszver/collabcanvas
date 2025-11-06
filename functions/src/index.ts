@@ -5,6 +5,7 @@ const Ajv = require("ajv");
 const schema = require("./schema");
 
 // Initialize Firebase Admin if not already initialized
+// Note: This uses default credentials from Firebase Functions runtime
 if (!admin.apps.length) {
   admin.initializeApp();
 }
