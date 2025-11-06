@@ -457,3 +457,4 @@ export function getFunctionsService(region: string = 'us-central1') {
 - Verify OAuth credentials are configured
 - Ensure API keys are correct
 
+
